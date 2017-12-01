@@ -1,0 +1,27 @@
+{
+    "title": "Go Current Deployment Data File Syntax",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "Schema for a Go Current Deploymnet Data File",
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "guid": {
+                "type": "string"
+            },
+            "instanceName": {
+                "type": "string"
+            },
+            "deploymentSet": {
+                "type": "string"
+            },
+            "packages": {
+                "type": "array",
+                "description": "Packages in deployment group",
+                "items": {
+                    "$ref": "./sharedDefinitions.json#definitions/deploymentPackage"
+                }
+            }
+        }
+    }
+}

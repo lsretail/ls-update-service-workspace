@@ -1,0 +1,98 @@
+{
+    "name": "go-current.workspace",
+    "displayName": "LS Go Current - Workspace",
+    "description": "LS Go Current - Workspace brings you the power of Go Current to your Visual Studio Code workspace.",
+    "version": "0.0.1",
+    "publisher": "LS Retail",
+    "engines": {
+        "vscode": "^1.18.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "workspaceContains:go-current.json"
+    ],
+    "main": "./out/src/extension",
+    "contributes": {
+        "commands": [
+            {
+                "command": "go-current.deploy",
+                "title": "Deploy packages",
+                "category": "Go Current"
+            },
+            {
+                "command": "go-current.remove",
+                "title": "Remove packages",
+                "category": "Go Current"
+            },
+            {
+                "command": "go-current.update",
+                "title": "Updates available",
+                "category": "Go Current"
+            },
+            {
+                "command": "go-current.checkForUpdates",
+                "title": "Check for Updates",
+                "category": "Go Current"
+            },
+            {
+                "command": "go-current.experimental",
+                "title": "Experimental",
+                "category": "Go Current"
+            }
+        ],
+        "menus": {
+            "commandPalette": [
+                {
+                    "command": "go-current.deploy",
+                    "when": "go-current.deploy.active"
+                },
+                {
+                    "command": "go-current.remove",
+                    "when": "go-current.deploy.active"
+                },
+                {
+                    "command": "go-current.update",
+                    "when": "go-current.deploy.active && go-current.deploy.updatesAvailable"
+                },
+                {
+                    "command": "go-current.checkForUpdates",
+                    "when": "go-current.deploy.active && go-current.debug"
+                },
+                {
+                    "command": "go-current.experimental",
+                    "when": "go-current.deploy.active && go-current.debug"
+                }
+            ]
+        },
+        "jsonValidation": [
+            {
+                "fileMatch": "go-current.json",
+                "url": "./syntaxes/projectFileSyntax.json"
+            },
+            {
+                "fileMatch": ".gocurrent/data.json",
+                "url": "./syntaxes/deploymentSyntax.json"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "postinstall": "node ./node_modules/vscode/bin/install",
+        "test": "npm run compile && node ./node_modules/vscode/bin/test"
+    },
+    "devDependencies": {
+        "@types/mocha": "^2.2.44",
+        "@types/node": "^7.0.46",
+        "mocha": "^3.5.3",
+        "typescript": "^2.6.1",
+        "vscode": "^1.1.6"
+    },
+    "dependencies": {
+        "node-powershell": "^3.3.1",
+        "then-fs": "2.0"
+    }
+}

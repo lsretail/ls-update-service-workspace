@@ -1,0 +1,40 @@
+{
+    "title": "Go Current Project Syntax",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "Schema for a Go Current Project File",
+    "type": "object",
+    "required": ["id"],
+    "properties": {
+        "id": {
+            "type": "string",
+            "description": "Id of Go Current package"
+        },
+        "devPackageGroups": {
+            "type": "array",
+            "description": "List of development deployments",
+            "items": {
+                "type": "object",
+                "required":[
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Name of deployment group"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Description of deployment group"
+                    },
+                    "packages": {
+                        "type": "array",
+                        "description": "Packages in deployment group",
+                        "items": {
+                            "$ref": "./sharedDefinitions.json#definitions/deploymentPackage"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,19 @@
+{
+    "id": "Shared ",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {
+        "deploymentPackage": {
+            "required": ["id", "version"],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Package id"
+                },
+                "version": {
+                    "type": "string",
+                    "description": "Package version"
+                }
+            }
+        }
+    }
+}
