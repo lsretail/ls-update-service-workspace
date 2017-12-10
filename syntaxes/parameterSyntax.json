@@ -1,0 +1,20 @@
+{
+    "title": "Go Current Arguments File Syntax",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "Schema for a Go Current Arguments File.",
+    "type": "object",
+    "patternProperties": {
+        "^[a-z0-9\/-]+$" : {
+            "type": "object",
+            "description": "Package id",
+            "patternProperties": {
+                "^[a-zA-Z0-9]+$": {
+                    "type": "string",
+                    "description": "Argument name and value pair"
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "additionalProperties": false
+}

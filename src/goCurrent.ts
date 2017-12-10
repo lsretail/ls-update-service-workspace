@@ -1,5 +1,5 @@
 
-import PowerShell from './PowerShell'
+import {PowerShell} from './PowerShell'
 import {PackageInfo} from './interfaces/packageInfo';
 
 export class GoCurrent
@@ -10,6 +10,7 @@ export class GoCurrent
     {
         this._powerShell = powerShell;
         this._powerShell.addModuleFromPath(modulePath);
+        this._powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
     }
 
     public getTestString(): Promise<string>
@@ -20,7 +21,7 @@ export class GoCurrent
         return this._powerShell.executeCommandSafe("Get-TestString", false, param);
     }
 
-    public installDeploymentSet(projectFilePath: string, deploymentSetName: string, instanceName: string) : Promise<PackageInfo[]>
+    public installDeploymentSet(projectFilePath: string, deploymentSetName: string, instanceName: string, argumentsFilePath: string) : Promise<PackageInfo[]>
     {
         let param = {
             'ProjectFilePath': projectFilePath,
@@ -28,6 +29,8 @@ export class GoCurrent
         }
         if (instanceName)
             param['InstanceName'] = instanceName;
+        if (argumentsFilePath)
+            param['ArgumentsFilePath'] = argumentsFilePath;
         return this._powerShell.executeCommandSafe("Install-DeploymentSet", true, param);
     }
 
@@ -56,12 +59,20 @@ export class GoCurrent
     {
         let param = {
             'ProjectFilePath': projectFilePath,
-            'DeploymentSetName': deploymentSetName,
+            'DeploymentName': deploymentSetName,
             'InstanceName': instanceName
         }
         return this._powerShell.executeCommandSafe("Remove-DeploymentSet", false, param);
     }
 
+    public getArguments(projectFilePath: string, deploymentSetName: string): Promise<any>
+    {
+        let param = {
+            'ProjectFilePath': projectFilePath,
+            'DeploymentName': deploymentSetName
+        }
+        return this._powerShell.executeCommandSafe("Get-Arguments", true, param);
+    }
 
     public testGoCurrentInstalled(): Promise<boolean>
     {

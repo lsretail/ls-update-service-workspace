@@ -1,15 +1,15 @@
 "use strict"
 
 import {InputBoxOptions, QuickPickItem, QuickPickOptions, MessageOptions, WorkspaceFolder,
-    WorkspaceFolderPickOptions, WorkspaceFoldersChangeEvent, commands, window, Disposable, workspace} from 'vscode';
+    WorkspaceFolderPickOptions, WorkspaceFoldersChangeEvent, commands, window, Disposable, 
+    Uri, workspace} from 'vscode';
 import * as vscode from 'vscode'
 import {QuickPickItemPayload} from './interfaces/quickPickItemPayload'
 import {ExtensionController} from './extensionController'
-import PowerShell from './PowerShell'
+import {PowerShell, PowerShellError} from './PowerShell'
 import {GoCurrent} from './GoCurrent'
 import {ProjectFile, PackageGroup} from './models/projectFile'
 import {Constants} from './constants'
-import {DeploymentHelpers} from './deploymentHelpers'
 import {JsonData} from './jsonData'
 import {Deployment} from './models/deployment'
 import {WorkspaceData} from './models/workspaceData'
@@ -40,11 +40,16 @@ export default class DeployController extends ExtensionController
     {
         this._goCurrent = new GoCurrent(new PowerShell(true), this.context.asAbsolutePath("PowerShell\\GoCurrent.psm1"));
 
+        this.registerFolderCommand("go-current.activate", () => {});
         this.registerFolderCommand("go-current.deploy", () => this.deploy());
         this.registerFolderCommand("go-current.checkForUpdates", () => this.checkForUpdates());
         this.registerFolderCommand("go-current.update", () => this.update());
         this.registerFolderCommand("go-current.remove", () => this.remove());
         this.registerFolderCommand("go-current.experimental", () => this.experimental());
+        process.on('unhandledRejection', (reason) => {
+            if (!DeployController.handleError(reason))
+                window.showErrorMessage("Unhandled error occurred.");
+        });
 
         this._goCurrent.testGoCurrentInstalled().then(result => 
         {
@@ -59,6 +64,17 @@ export default class DeployController extends ExtensionController
             workspace.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this);
             this.checkForUpdates();
         });
+    }
+
+    private static handleError(reason: any)
+    {
+        console.log('Reason: ' + reason);
+        if (reason instanceof PowerShellError && reason.fromJson)
+        {
+            window.showErrorMessage(reason.message);
+            return true;
+        }
+        return false;
     }
 
     private onWorkspaceChanges(e: WorkspaceFoldersChangeEvent)
@@ -212,17 +228,22 @@ export default class DeployController extends ExtensionController
         {
             instanceName = await this.getOrShowInstanceNamePick(workspaceFolder.name);
         }
+        let argumentsObj = await this.getArguments(workspaceFolder, deployService, selectedSet.payload.name);
+
         try
         {
             let deployment = await deployService.deployPackageGroup(
                 selectedSet.payload,
-                instanceName
+                instanceName,
+                undefined,
+                argumentsObj
             );
             window.showInformationMessage(`Package group "${deployment.name}" installed: ` + deployment.lastUpdated.map(p => `${p.id} v${p.version}`).join(', '))
         }
         catch (e)
-        {   
-            window.showErrorMessage(e);
+        { 
+            if (!DeployController.handleError(e))
+                window.showErrorMessage("Error occurred while installing packages.");
         };
     }
 
@@ -311,9 +332,9 @@ export default class DeployController extends ExtensionController
                         if (idx > -1)
                             this._updatesAvailable[result.payload.uri.path].splice(idx, 1);
                     }
+                    commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, this.anyUpdatesPending());
                 });
             }
-            commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, this.anyUpdatesPending());
         });
     }
 
@@ -399,34 +420,46 @@ export default class DeployController extends ExtensionController
         });
     }
 
+    private async getArguments(workspaceFolder: WorkspaceFolder, deployService: DeployService, name: string) : Promise<Uri>
+    {
+        let packagesArguments = await deployService.getArguments(name);
+        if (Object.keys(packagesArguments).length === 0)
+            return
+        let filePath = Uri.file(path.join(
+            workspaceFolder.uri.fsPath,
+            Constants.vscodeWorkspaceDirName, 
+            Constants.argumentsFilename
+        ));
+        await fsHelpers.writeJson(filePath.fsPath, packagesArguments);
+        let document = await workspace.openTextDocument(filePath)
+        let currentDocument = window.activeTextEditor.document;
+        let editor = await window.showTextDocument(document);
+
+        let buttons: string[] = [Constants.buttonContinue, Constants.buttonCancel];
+        let result = await window.showInformationMessage("Arguments required, please fill the json document.", ...buttons);
+
+        if (result !== Constants.buttonContinue)
+        {
+            editor.hide();
+            if (currentDocument)
+                window.showTextDocument(currentDocument);
+            
+            fsHelpers.unlink(filePath.fsPath);
+            return;
+        }
+        let p = fsHelpers.readJson<any>(filePath.fsPath);
+
+        editor.hide();
+        if (currentDocument)
+            window.showTextDocument(currentDocument);
+
+        return filePath;
+    }
+
     private async experimental()
     {
-        let instanceName = await this.getOrShowInstanceNamePick("LSNav");
-        window.showInformationMessage(instanceName);
-    }
-    private async ble()
-    {
-        this.showWorkspaceFolderPick().then(workspaceFolder => 
-        {
-            let deployService: DeployService = this._deployServices[workspaceFolder.uri.path];
-            deployService.getDeploymentSets().then(deployments => {
-                let picks: QuickPickItem[] = [];
-                for (let entry of deployments)
-                {
-                    picks.push({"label": entry.name, "description": `Deployment set ${entry.name}`});
-                }
-                var options: QuickPickOptions = {};
-                options.placeHolder = "Select deployment set..."
-                window.showQuickPick(picks, options).then(selectedDeployment =>
-                {
-                    deployService.experimental(selectedDeployment.label).then(value => {
-                        vscode.window.showInformationMessage(value);
-                    }, error => {
-                        vscode.window.showErrorMessage(error);
-                    });
-                });
-            });
-        });
+        let deployService: DeployService = this._deployServices[workspace.workspaceFolders[0].uri.path];
+        await this.getArguments(workspace.workspaceFolders[0], deployService, "Developments")
     }
 
     public displose()

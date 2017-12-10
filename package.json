@@ -11,7 +11,8 @@
         "Other"
     ],
     "activationEvents": [
-        "workspaceContains:go-current.json"
+        "workspaceContains:go-current.json",
+        "onCommand:go-current.activate"
     ],
     "main": "./out/src/extension",
     "contributes": {
@@ -74,6 +75,10 @@
             {
                 "fileMatch": ".gocurrent/data.json",
                 "url": "./syntaxes/deploymentSyntax.json"
+            },
+            {
+                "fileMatch": ".gocurrent/arguments.json",
+                "url": "./syntaxes/parameterSyntax.json"
             }
         ]
     },

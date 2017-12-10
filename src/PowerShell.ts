@@ -1,7 +1,7 @@
 
 import * as Shell from 'node-powershell'
 
-export default class PowerShell
+export class PowerShell
 {
     private _debug: boolean;
     private _shell: any;
@@ -9,6 +9,7 @@ export default class PowerShell
     private _isExecuting: boolean;
     private _inExecution: number = 0;
     private _promiseOrder: Promise<any>;
+    private _preCommand: string;
 
     constructor(debug: boolean = false)
     {
@@ -28,14 +29,19 @@ export default class PowerShell
         });
         for (var path of this._modulePaths)
         {
-            this._shell.addCommand(`Import-Module ${path}`);
+            this._shell.addCommand(`Import-Module ${path} -DisableNameChecking`);
         }
+    }
+
+    public setPreCommand(command: string)
+    {
+        this._preCommand = command;
     }
 
     public addModuleFromPath(modulePath: string)
     {
         if (this._shell)
-            this._shell.addCommand(`Import-Module ${modulePath}`);
+            this._shell.addCommand(`Import-Module ${modulePath} -DisableNameChecking`);
         else
             this._modulePaths.push(modulePath);
     }
@@ -48,10 +54,7 @@ export default class PowerShell
             for (let key of Object.keys(args[idx]))
             {
                 let obj = {};
-                /*if (typeof (args[idx][key]) === 'string')
-                    obj[key] = "'"+args[idx][key]+"'";
-                else*/
-                    obj[key] = args[idx][key];
+                obj[key] = args[idx][key];
                 newArgs.push(obj);
             }
         }
@@ -61,7 +64,9 @@ export default class PowerShell
     public executeCommand(commandName: string, parseJson: boolean, ...args: any[]) : Promise<any>
     {
         this._initializeIfNecessary();
-        this._shell.addCommand(commandName, this.splitArguments(args)).then(value =>
+        if (this._preCommand)
+            this._shell.addCommand(this._preCommand);
+        let command = this._shell.addCommand(commandName, this.splitArguments(args)).then(value =>
         {
             console.log(value);
         }, error => 
@@ -70,13 +75,15 @@ export default class PowerShell
         });
         return this._shell.invoke().then(data =>
         {
+            console.log(data);
             if (parseJson)
                 return JSON.parse(data);
             else
                 return data;
         }, error => 
         {
-            throw error;
+            console.log(error);
+            this.processError(error);
         });
     }
 
@@ -118,11 +125,45 @@ export default class PowerShell
         }
     }
 
+    private processError(error: string)
+    {
+        let split = error.split('\n');
+        let firstLine = split[0];
+        split.splice(0, 1);
+        let rest = split.join('\n');
+        let powerShellError = new PowerShellError(firstLine, rest, false);
+        try
+        {
+            let errorObj = JSON.parse(firstLine);
+            if (Object.keys(errorObj).indexOf('message') >= 0)
+            {
+                powerShellError = new PowerShellError(errorObj.message, rest, true);
+            }
+        }
+        catch
+        {
+        }
+        throw powerShellError; 
+    }
+
     public dispose()
     {
         this._shell.dispose().catch(error => {
             if (this._debug)
                 console.error(`Error from PowerShell: ${error}`)
         });
+    }
+}
+
+export class PowerShellError extends Error 
+{
+    public scriptStackTrace: string;
+    public fromJson: boolean;
+
+    constructor(message: string, scriptStackTrace: string, fromJson: boolean)
+    {
+        super(message);
+        this.scriptStackTrace = scriptStackTrace;
+        this.fromJson = fromJson;
     }
 }

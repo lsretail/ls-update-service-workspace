@@ -24,7 +24,7 @@ export class fsHelpers
         return thenfs.writeFile(path, data);
     }
 
-    public static writeJson(path, data, options = null) : Promise<void>
+    public static writeJson(path: string, data, options = null) : Promise<void>
     {
         return new Promise((resolve, reject) =>
         {
@@ -50,5 +50,17 @@ export class fsHelpers
     public static existsSync(path: string): boolean
     {
         return thenfs.existsSync(path);
+    }
+
+    public static unlink(path: string) : Promise<void>
+    {
+        return new Promise((resolve, reject) => {
+            fs.unlink(path, error => {
+                if (error)
+                    reject(error);
+                else
+                    resolve();
+            });
+        });
     }
 }

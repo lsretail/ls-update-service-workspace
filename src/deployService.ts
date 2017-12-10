@@ -4,10 +4,10 @@ import {ProjectFile, PackageGroup, Package} from './models/projectFile'
 import {Deployment} from './models/deployment'
 import {WorkspaceData} from './models/workspaceData'
 import {JsonData} from './jsonData'
-import PowerShell from './PowerShell'
+import {PowerShell} from './PowerShell'
 import {GoCurrent} from './GoCurrent'
 import {DataHelpers} from './dataHelpers'
-import {workspace, EventEmitter, Event, Disposable} from 'vscode';
+import {workspace, EventEmitter, Event, Disposable, Uri} from 'vscode';
 import {UpdateAvailable} from './models/updateAvailable';
 import {PackageInfo} from './interfaces/packageInfo';
 
@@ -69,12 +69,17 @@ export class DeployService
         });
     }
 
-    public async deployPackageGroup(packageGroup: PackageGroup, instanceName: string, deploymentGuid: string = undefined) : Promise<Deployment>
+    public async deployPackageGroup(packageGroup: PackageGroup, instanceName: string, deploymentGuid: string = undefined, argumentsUri: Uri = undefined) : Promise<Deployment>
     {
         // TODO, check if instanceName is already taken
         let projectData = await this._workspaceData.getData();
         let deployment = DataHelpers.getEntryByProperty(projectData.deployments, "guid", deploymentGuid);
-        var packagesInstalled = await this._goCurrent.installDeploymentSet(this._projectFile.uri.fsPath, packageGroup.name, instanceName);
+        var packagesInstalled = await this._goCurrent.installDeploymentSet(
+            this._projectFile.uri.fsPath,
+            packageGroup.name,
+            instanceName,
+            argumentsUri ? argumentsUri.fsPath : undefined
+        );
         let exists = true;
         if (!deployment)
         {
@@ -108,6 +113,11 @@ export class DeployService
         return deployment;
     }
 
+    public async getArguments(name: string) : Promise<any>
+    {
+        return await this._goCurrent.getArguments(this._projectFile.uri.fsPath, name);
+    }
+
     public async installUpdate(packageGroupName: string, instanceName: string, guid: string) : Promise<Deployment>
     {
         let projectFile = await this._projectFile.getData();
@@ -123,7 +133,7 @@ export class DeployService
         {
             let packages = await this.checkForUpdate(deployment);
             if (packages.length === 0)
-                break;
+                continue;
 
             updates.push({
                 "deploymentSetName": deployment.name,
