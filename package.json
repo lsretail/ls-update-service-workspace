@@ -1,9 +1,12 @@
 {
-    "name": "go-current.workspace",
+    "name": "go-current-workspace",
     "displayName": "LS Go Current - Workspace",
     "description": "LS Go Current - Workspace brings you the power of Go Current to your Visual Studio Code workspace.",
-    "version": "0.0.1",
-    "publisher": "LS Retail",
+    "version": "0.1.0-alpha",
+    "publisher": "lsretail",
+    "author": {
+        "name": "Team Thunderbolt"
+    },
     "engines": {
         "vscode": "^1.18.0"
     },
