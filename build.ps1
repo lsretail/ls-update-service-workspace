@@ -9,8 +9,11 @@
 
 param(
     [string] $GitCommit,
-    [string] $BuildNumber
+    [string] $BuildNumber,
+    [string] $Vsce
 )
+
+$ErrorActionPreference = 'stop'
 
 Import-Module GoCurrentServer
 
@@ -38,7 +41,19 @@ if ($GitCommit -and $BuildNumber)
     Set-Content -Value (ConvertTo-Json -InputObject $PackageJson) -Path (Join-Path $PSScriptRoot 'package.json')
 }
 
-vsce package
+if ($Vsce)
+{
+    $Output = & $Vsce package | Out-String
+}
+else
+{
+    $Output = & vsce package | Out-String
+}
+
+if ($LASTEXITCODE -ne 0)
+{
+    throw "vsce exited with ${LASTEXITCODE}: $Output"
+}
 
 if (Test-Path $PackageBackupPath)
 {
@@ -61,4 +76,3 @@ $Package = @{
 }
 
 New-GoPackage @Package -Force
-Import-GoPackage -Path (Get-Item (Join-path $PSScriptRoot '*.zip')).FullName
