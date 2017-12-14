@@ -40,17 +40,19 @@ if ($GitCommit -and $BuildNumber)
 
     Set-Content -Value (ConvertTo-Json -InputObject $PackageJson) -Path (Join-Path $PSScriptRoot 'package.json')
 }
-
+Push-Location
+Set-Location $PSScriptRoot
 if ($Vsce)
 {
-    $Output = & $Vsce package | Out-String
+    $Process = Start-Process $Vsce package -PassThru
 }
 else
 {
-    $Output = & vsce package | Out-String
+    $Process = Start-Process vsce package  -PassThru
 }
-
-if ($LASTEXITCODE -ne 0)
+$Process.WaitForExit()
+Pop-Location
+if ($Process.ExitCode -ne 0)
 {
     throw "vsce exited with ${LASTEXITCODE}: $Output"
 }

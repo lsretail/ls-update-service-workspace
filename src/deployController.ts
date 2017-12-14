@@ -39,7 +39,7 @@ export default class DeployController extends ExtensionController
         this._goCurrent = new GoCurrent(new PowerShell(true), this.context.asAbsolutePath("PowerShell\\GoCurrent.psm1"));
 
         this.registerFolderCommand("go-current.activate", () => {window.showInformationMessage("Go Current Activated")});
-        this.registerFolderCommand("go-current.deploy", () => this.experimental());
+        this.registerFolderCommand("go-current.deploy", () => this.deploy());
         this.registerFolderCommand("go-current.checkForUpdates", () => this.checkForUpdates());
         this.registerFolderCommand("go-current.update", () => this.update());
         this.registerFolderCommand("go-current.remove", () => this.remove());

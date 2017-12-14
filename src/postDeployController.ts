@@ -55,7 +55,7 @@ export class PostDeployController
                 if (packageInfo.Info.Server)
                     section.server = packageInfo.Info.Server
                 if (packageInfo.Info.ServiceInstance)
-                    section.server = packageInfo.Info.ServiceInstance;
+                    section.serverInstance = packageInfo.Info.ServerInstance;
                 if (packageInfo.Info.Authentication)
                     section.authentication = packageInfo.Info.Authentication;
             }
