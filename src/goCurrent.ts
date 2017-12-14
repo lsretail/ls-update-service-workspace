@@ -98,4 +98,15 @@ export class GoCurrent
     {
         return this._powerShell.executeCommandSafe("Test-CanInstall", true, {"ProjectFilePath": projectFilePath, "deploymentName": deploymentName})
     }
+
+    public getInstalledPackages(id: string, instanceName: string = undefined) : Promise<PackageInfo[]>
+    {
+        let param = {
+            'Id': id
+        };
+        if (instanceName)
+            param['InstanceName'] = instanceName;
+
+        return this._powerShell.executeCommandSafe("Get-InstalledPackages", true, param);
+    }
 }

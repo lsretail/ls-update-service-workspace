@@ -137,7 +137,7 @@ export class PowerShell
             let errorObj = JSON.parse(firstLine);
             if (Object.keys(errorObj).indexOf('message') >= 0)
             {
-                powerShellError = new PowerShellError(errorObj.message, rest, true);
+                powerShellError = new PowerShellError(errorObj.message, errorObj.scriptStackTrace, true, errorObj.type);
             }
         }
         catch
@@ -159,11 +159,13 @@ export class PowerShellError extends Error
 {
     public scriptStackTrace: string;
     public fromJson: boolean;
+    public type: string;
 
-    constructor(message: string, scriptStackTrace: string, fromJson: boolean)
+    constructor(message: string, scriptStackTrace: string, fromJson: boolean, type: string = 'unknown')
     {
         super(message);
         this.scriptStackTrace = scriptStackTrace;
         this.fromJson = fromJson;
+        this.type = type
     }
 }

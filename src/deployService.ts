@@ -19,6 +19,7 @@ export class DeployService
     private _projectFile: JsonData<ProjectFile>;
     private _workspaceData: JsonData<WorkspaceData>;
     private _onDidProjectFileChange = new EventEmitter<DeployService>();
+    private _onDidPackagesDeployed = new EventEmitter<PackageInfo[]>()
     private _disposable: Disposable;
 
     public constructor(projectFile: JsonData<ProjectFile>, workspaceData: JsonData<WorkspaceData>, goCurrent: GoCurrent)
@@ -40,6 +41,16 @@ export class DeployService
     private fireProjectFileChange(projectFile: JsonData<ProjectFile>)
     {
         this._onDidProjectFileChange.fire(this);
+    }
+
+    public get onDidPackagesDeployed()
+    {
+        return this._onDidPackagesDeployed.event;
+    }
+
+    private firePackagesDeployed(data: PackageInfo[])
+    {
+        this._onDidPackagesDeployed.fire(data);
     }
 
     public isActive() : Boolean
@@ -71,7 +82,6 @@ export class DeployService
 
     public async deployPackageGroup(packageGroup: PackageGroup, instanceName: string, deploymentGuid: string = undefined, argumentsUri: Uri = undefined) : Promise<Deployment>
     {
-        // TODO, check if instanceName is already taken
         let projectData = await this._workspaceData.getData();
         let deployment = DataHelpers.getEntryByProperty(projectData.deployments, "guid", deploymentGuid);
         var packagesInstalled = await this._goCurrent.installDeploymentSet(
@@ -110,6 +120,7 @@ export class DeployService
         if (!exists)
             projectData.deployments.push(deployment);
         this._workspaceData.save();
+        this.firePackagesDeployed(packagesInstalled);
         return deployment;
     }
 
@@ -160,9 +171,9 @@ export class DeployService
         return this._goCurrent.testCanInstall(this._projectFile.uri.fsPath, deploymentSetName);
     }
 
-    public experimental(deploymentSet: string) : Thenable<any>
+    public getInstalledPackages(id: string, instanceName: string = undefined) : Thenable<PackageInfo[]>
     {
-        return this._goCurrent.testIsInstance(this._projectFile.uri.fsPath, deploymentSet);
+        return this._goCurrent.getInstalledPackages(id, instanceName);
     }
 
     public dispose()

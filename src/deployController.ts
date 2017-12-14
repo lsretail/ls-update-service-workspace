@@ -23,15 +23,13 @@ import { constants } from 'os';
 import { UpdateAvailable } from './models/updateAvailable';
 import { resolve } from 'path';
 import { setTimeout } from 'timers';
-
-interface Dictionary<TValue> {
-    [Key: string]: TValue;
-}
+import { PostDeployController } from './postDeployController';
 
 export default class DeployController extends ExtensionController
 {
     private _goCurrent: GoCurrent
     private _deployServices: Map<string, DeployService> =  new Map<string, DeployService>();
+    private _postDeployControllers: Map<string, PostDeployController> =  new Map<string, PostDeployController>();
     private _goCurrentInstalled: boolean;
     private _disposables: Disposable[];
     private _updatesAvailable: Map<string, Array<UpdateAvailable>> = new Map<string, Array<UpdateAvailable>>();
@@ -40,15 +38,14 @@ export default class DeployController extends ExtensionController
     {
         this._goCurrent = new GoCurrent(new PowerShell(true), this.context.asAbsolutePath("PowerShell\\GoCurrent.psm1"));
 
-        this.registerFolderCommand("go-current.activate", () => {});
-        this.registerFolderCommand("go-current.deploy", () => this.deploy());
+        this.registerFolderCommand("go-current.activate", () => {window.showInformationMessage("Go Current Activated")});
+        this.registerFolderCommand("go-current.deploy", () => this.experimental());
         this.registerFolderCommand("go-current.checkForUpdates", () => this.checkForUpdates());
         this.registerFolderCommand("go-current.update", () => this.update());
         this.registerFolderCommand("go-current.remove", () => this.remove());
         this.registerFolderCommand("go-current.experimental", () => this.experimental());
         process.on('unhandledRejection', (reason) => {
-            if (!DeployController.handleError(reason))
-                window.showErrorMessage("Unhandled error occurred.");
+            DeployController.handleError(reason)
         });
 
         this._goCurrent.testGoCurrentInstalled().then(result => 
@@ -68,13 +65,20 @@ export default class DeployController extends ExtensionController
 
     private static handleError(reason: any)
     {
-        console.log('Reason: ' + reason);
-        if (reason instanceof PowerShellError && reason.fromJson)
+        console.log('Reason:');
+        console.log(reason);
+        if (reason instanceof PowerShellError && reason.fromJson && 
+            (reason.type === 'GoCurrent' || reason.type === 'User'))
         {
             window.showErrorMessage(reason.message);
             return true;
         }
         return false;
+    }
+
+    private static getWorkspaceKey(workspaceFolder: WorkspaceFolder)
+    {
+        return workspaceFolder.uri.path;
     }
 
     private onWorkspaceChanges(e: WorkspaceFoldersChangeEvent)
@@ -116,11 +120,15 @@ export default class DeployController extends ExtensionController
             return;
         let deployService = new DeployService(
             new JsonData<ProjectFile>(path.join(workspaceFolder.uri.fsPath, Constants.deploymentsFileName), true, new ProjectFile()),
-            new JsonData<WorkspaceData>(path.join(workspaceFolder.uri.fsPath, Constants.vscodeWorkspaceDirName+"\\"+Constants.projectDataFileName), true, new WorkspaceData()),
+            new JsonData<WorkspaceData>(path.join(workspaceFolder.uri.fsPath, Constants.goCurrentWorkspaceDirName+"\\"+Constants.projectDataFileName), true, new WorkspaceData()),
             this._goCurrent
         );
         deployService.onDidProjectFileChange(this.onProjecFileChange, this);
-        this._deployServices[workspaceFolder.uri.path] = deployService;
+        this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)] = deployService;
+
+        let postDeployController = new PostDeployController(workspaceFolder);
+        deployService.onDidPackagesDeployed(postDeployController.onPackagesDeployed, postDeployController);
+        this._postDeployControllers[DeployController.getWorkspaceKey(workspaceFolder)] = postDeployController;
     }
 
     private removeWorkspace(workspaceFolder: WorkspaceFolder)
@@ -249,9 +257,6 @@ export default class DeployController extends ExtensionController
 
     private async getOrShowInstanceNamePick(suggestedName: string) : Promise<string>
     {
-        if (!await this._goCurrent.testInstanceExists(suggestedName))
-            return suggestedName;
-
         let instanceName = "";
         let suggestedInstanceName = await this.getNonexistingInstanceName(suggestedName);
         let tries = 0;
@@ -427,7 +432,7 @@ export default class DeployController extends ExtensionController
             return
         let filePath = Uri.file(path.join(
             workspaceFolder.uri.fsPath,
-            Constants.vscodeWorkspaceDirName, 
+            Constants.goCurrentWorkspaceDirName, 
             Constants.argumentsFilename
         ));
         await fsHelpers.writeJson(filePath.fsPath, packagesArguments);
@@ -458,8 +463,6 @@ export default class DeployController extends ExtensionController
 
     private async experimental()
     {
-        let deployService: DeployService = this._deployServices[workspace.workspaceFolders[0].uri.path];
-        await this.getArguments(workspace.workspaceFolders[0], deployService, "Developments")
     }
 
     public displose()

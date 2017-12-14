@@ -6,5 +6,6 @@ export interface PackageInfo
     Version: string;
     InstanceName: string;
     Subscription: string;
-    SelectedPackage: string;
+    SelectedPackageInfo: string;
+    Info: any
 }

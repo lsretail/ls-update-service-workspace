@@ -12,17 +12,22 @@ catch
 
 function Invoke-ErrorHandler($Error)
 {
+    $Type = 'unknown'
     if (($Error.Exception -is [LSRetail.GoCurrent.Common.Exceptions.UpdaterException]) -or 
         $Error.Exception -is [System.ServiceModel.FaultException])
     {
-        Write-JsonError $Error.Exception.Message
+        $Type = 'GoCurrent'
     }
+
+    Write-JsonError $Error.Exception.Message $Error.ScriptStackTrace $Type
 }
 
-function Write-JsonError($Message)
+function Write-JsonError($Message, $ScriptStackTrace, $Type)
 {
     $Data = @{
         'message' = $Message
+        'type' = $Type
+        'scriptStackTrace' = $ScriptStackTrace
     }
     throw (ConvertTo-Json $Data -Compress)
 }
@@ -32,20 +37,23 @@ function Test-GoCurrentInstalled()
     return ConvertTo-Json $_GoCurrentInstalled
 }
 
-function Install-Perform()
+function Install-AsAdmin()
 {
     param(
         $ProjectFilePath,
         $DeploymentName,
         $InstanceName,
-        $ArgumentsFilePath
+        $ArgumentsFilePath,
+        $OutputPath
     )
     if ([string]::IsNullOrEmpty($ArgumentsFilePath))
     {
         $ArgumentsFilePath = $null
     }
     $DeploymentSet = GetDeployment -ProjectFilePath $ProjectFilePath -DeploymentName $DeploymentName
-    $deploymentSet.Packages | Install-GoPackage -InstanceName $InstanceName -Subscription ([Guid]::Empty) -Parameters $ArgumentsFilePath
+    $Result = @($deploymentSet.Packages | Install-GoPackage -InstanceName $InstanceName -Subscription ([Guid]::Empty) -Parameters $ArgumentsFilePath)
+
+    Set-Content -Value (ConvertTo-Json $Result -Depth 100 -Compress) -Path $OutputPath
 }
 
 function Install-DeploymentSet()
@@ -57,17 +65,20 @@ function Install-DeploymentSet()
         $ArgumentsFilePath
     )
 
+    $OutputPath = [System.IO.Path]::GetTempFileName()
     $DeploymentSet = GetDeployment -ProjectFilePath $ProjectFilePath -DeploymentName $DeploymentName
     $Updates = @($DeploymentSet.packages | Get-GoAvailableUpdates -InstanceName $InstanceName -Subscription ([Guid]::Empty) | Where-Object { $_.SelectedPackage -eq $null})
-    $Command = "`$ErrorActionPreference='stop';trap{Write-Host `$_ -ForegroundColor Red;Write-Host `$_.ScriptStackTrace -ForegroundColor Red;pause;};Import-Module (Join-Path '$PSScriptRoot' 'GoCurrent.psm1');Install-Perform '$ProjectFilePath' '$DeploymentName' '$InstanceName' '$ArgumentsFilePath';"
-    $Process = Start-Process powershell $Command -Verb runas -PassThru
+    $Command = "`$ErrorActionPreference='stop';trap{Write-Host `$_ -ForegroundColor Red;Write-Host `$_.ScriptStackTrace -ForegroundColor Red;pause;};Import-Module (Join-Path '$PSScriptRoot' 'GoCurrent.psm1');Install-AsAdmin '$ProjectFilePath' '$DeploymentName' '$InstanceName' '$ArgumentsFilePath' '$OutputPath';"
+    $Process = Start-Process powershell $Command -Verb runas -PassThru 
 
     $Process.WaitForExit()
     if ($Process.ExitCode -ne 0)
     {
-        Write-JsonError "Exception occured while installing package group `"$DeploymentName`".";
+        Write-JsonError "Exception occured while installing package group `"$DeploymentName`"." -Type 'User'
     }
-    return (ConvertTo-Json $Updates)
+    $Data = Get-Content $OutputPath -Raw
+    Remove-Item $OutputPath
+    return $Data
 }
 
 function Get-AvailableUpdates()
@@ -108,7 +119,7 @@ function GetDeployment($ProjectFilePath, $DeploymentName)
             return $Set
         }
     }
-    Write-JsonError "Package group `"$DeploymentName`" does not exists in project file."
+    Write-JsonError "Package group `"$DeploymentName`" does not exists in project file." -Type 'User'
 }
 
 function Test-InstanceExists($InstanceName)
@@ -141,4 +152,9 @@ function Get-Arguments($ProjectFilePath, $DeploymentName)
     $DeploymentSet = GetDeployment -ProjectFilePath $ProjectFilePath -DeploymentName $DeploymentName
     $Arguments = $DeploymentSet.packages | Get-GoArguments -Subscription ([Guid]::Empty)
     return ConvertTo-Json $Arguments
+}
+
+function Get-InstalledPackages($Id, $InstanceName)
+{
+    return ConvertTo-Json @(Get-GoInstalledPackages -Id $Id -InstanceName $InstanceName) -Compress
 }

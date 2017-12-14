@@ -101,6 +101,7 @@
     },
     "dependencies": {
         "node-powershell": "^3.3.1",
-        "then-fs": "2.0"
+        "then-fs": "2.0",
+        "uuid": "3.1.0"
     }
 }
