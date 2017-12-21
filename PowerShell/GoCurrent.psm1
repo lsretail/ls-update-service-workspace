@@ -29,7 +29,7 @@ function Write-JsonError($Message, $ScriptStackTrace, $Type)
         'type' = $Type
         'scriptStackTrace' = $ScriptStackTrace
     }
-    throw (ConvertTo-Json $Data -Compress)
+    throw (ConvertTo-Json $Data -Compress)+"|||"
 }
 
 function Test-GoCurrentInstalled()
@@ -64,10 +64,8 @@ function Install-DeploymentSet()
         $InstanceName,
         $ArgumentsFilePath
     )
-
     $OutputPath = [System.IO.Path]::GetTempFileName()
     $DeploymentSet = GetDeployment -ProjectFilePath $ProjectFilePath -DeploymentName $DeploymentName
-    $Updates = @($DeploymentSet.packages | Get-GoAvailableUpdates -InstanceName $InstanceName -Subscription ([Guid]::Empty) | Where-Object { $_.SelectedPackage -eq $null})
     $Command = "`$ErrorActionPreference='stop';trap{Write-Host `$_ -ForegroundColor Red;Write-Host `$_.ScriptStackTrace -ForegroundColor Red;pause;};Import-Module (Join-Path '$PSScriptRoot' 'GoCurrent.psm1');Install-AsAdmin '$ProjectFilePath' '$DeploymentName' '$InstanceName' '$ArgumentsFilePath' '$OutputPath';"
     $Process = Start-Process powershell $Command -Verb runas -PassThru 
 

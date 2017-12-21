@@ -91,23 +91,27 @@ export class PowerShell
     {
         if (this._inExecution > 0)
         {
-            this._inExecution++;
             return new Promise((resolve, reject) => {
                 let fun = iDontCare => {
                     this.executeCommand(commandName, parseJson, ...args).then(data => {
                         this._inExecution--;
+                        console.log(`Removing "${commandName}" to promise queue (${this._inExecution}).`);
                         resolve(data);
                     }, error => {
                         this._inExecution--;
+                        console.log(`Removing "${commandName}" to promise queue (${this._inExecution}).`);
                         reject(error);
                     });
                 };
+                console.log(`Adding command "${commandName}" to promise queue (${this._inExecution}).`);
+                this._inExecution++;
                 this._promiseOrder.then(fun, fun);
             });
         }
         else
         {
             this._inExecution++;
+            console.log(`Adding command "${commandName}" to promise queue (${this._inExecution}).`);
             let decrease = argument => {
                 this._inExecution--;
                 return argument;
@@ -127,21 +131,23 @@ export class PowerShell
 
     private processError(error: string)
     {
-        let split = error.split('\n');
-        let firstLine = split[0];
-        split.splice(0, 1);
-        let rest = split.join('\n');
-        let powerShellError = new PowerShellError(firstLine, rest, false);
+        let powerShellError;
         try
         {
-            let errorObj = JSON.parse(firstLine);
+            let ble = error.split('|||')[0].split('\r\n').join('');
+            let errorObj = JSON.parse(ble);
             if (Object.keys(errorObj).indexOf('message') >= 0)
             {
                 powerShellError = new PowerShellError(errorObj.message, errorObj.scriptStackTrace, true, errorObj.type);
             }
         }
-        catch
+        catch (e)
         {
+            let split = error.split('\n');
+            let firstLine = split[0];
+            split.splice(0, 1);
+            let rest = split.join('\n');
+            powerShellError = new PowerShellError(firstLine, rest, false);
         }
         throw powerShellError; 
     }
