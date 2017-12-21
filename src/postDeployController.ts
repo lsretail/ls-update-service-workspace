@@ -51,13 +51,21 @@ export class PostDeployController
         {
             if (section.type === "al")
             {
-                found = true;
-                if (packageInfo.Info.Server)
+                if (packageInfo.Info.Server && section.server !== packageInfo.Info.Server)
+                {
                     section.server = packageInfo.Info.Server
-                if (packageInfo.Info.ServiceInstance)
+                    found = true;
+                }
+                if (packageInfo.Info.ServiceInstance && section.serverInstance !== packageInfo.Info.ServerInstance)
+                {
                     section.serverInstance = packageInfo.Info.ServerInstance;
-                if (packageInfo.Info.Authentication)
+                    found = true;
+                }
+                if (packageInfo.Info.Authentication && section.authentication !== packageInfo.Info.Authentication)
+                {
                     section.authentication = packageInfo.Info.Authentication;
+                    found = true;
+                }
             }
         }
         if (found)
