@@ -23,13 +23,9 @@ export class PostDeployController
             if (packageInfo.Id === 'nav-al')
                 this.processVsExtension(packageInfo);
 
-            if ('Type' in packageInfo.Info)
+            if (packageInfo.Info && 'Type' in packageInfo.Info && packageInfo.Info.Type.inclues("nav-server"))
             {
-                for (let type of packageInfo.Info.Type)
-                {
-                    if (type === 'nav-server')
-                        this.processNavServer(packageInfo);
-                }
+                this.processNavServer(packageInfo);
             }
         }
     }
@@ -56,7 +52,7 @@ export class PostDeployController
                     section.server = packageInfo.Info.Server
                     found = true;
                 }
-                if (packageInfo.Info.ServiceInstance && section.serverInstance !== packageInfo.Info.ServerInstance)
+                if (packageInfo.Info.ServerInstance && section.serverInstance !== packageInfo.Info.ServerInstance)
                 {
                     section.serverInstance = packageInfo.Info.ServerInstance;
                     found = true;
@@ -64,6 +60,11 @@ export class PostDeployController
                 if (packageInfo.Info.Authentication && section.authentication !== packageInfo.Info.Authentication)
                 {
                     section.authentication = packageInfo.Info.Authentication;
+                    found = true;
+                }
+                if (packageInfo.Info.ServerConfig && packageInfo.Info.ServerConfig.DeveloperServicesPort && section.port !== packageInfo.Info.ServerConfig.DeveloperServicesPort)
+                {
+                    section.port = packageInfo.Info.ServerConfig.DeveloperServicesPort;
                     found = true;
                 }
             }

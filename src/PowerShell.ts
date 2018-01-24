@@ -95,11 +95,11 @@ export class PowerShell
                 let fun = iDontCare => {
                     this.executeCommand(commandName, parseJson, ...args).then(data => {
                         this._inExecution--;
-                        console.log(`Removing "${commandName}" to promise queue (${this._inExecution}).`);
+                        console.log(`Removing "${commandName}" from promise queue (${this._inExecution}).`);
                         resolve(data);
                     }, error => {
                         this._inExecution--;
-                        console.log(`Removing "${commandName}" to promise queue (${this._inExecution}).`);
+                        console.log(`Removing "${commandName}" from promise queue (${this._inExecution}).`);
                         reject(error);
                     });
                 };
