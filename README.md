@@ -1,6 +1,6 @@
 # Go Current Workspace README
 
-*Go Current Workspace* brings you the power of Go Current to your Visual Studio Code workspace.
+*Go Current Workspace* brings you the power of Go Current to your workspace in Visual Studio Code.
 
 ## Features
 
@@ -41,8 +41,7 @@ Easily install Go Current packages relevant to your project.
 
 ## Requirements
 
-* Go Current client needs to be installed on the computer.
-* *TODO: add a section describing those and how to install and configure them.*
+* Go Current client needs to be installed on the computer - which is installed with the extension.
 
 ## Extension Settings
 
@@ -50,27 +49,14 @@ No settings at the moment.
 
 ## Known Issues
 
-No known issues at the moment.
+* Nothing happens when GC Workspace commands are issued in VSCode.
+
+  * Workaround: Restart VSCode.
 
 ## Release Notes
 
-### 0.1.0-alpha
+### 0.1.0
 
-* Install and update package groups, defined on project level.
+* Initial release.
+* Able to install, update and remove package groups, defined on project level.
 
------------------------------------------------------------------------------------------------------------
-
-## Working with Markdown
-
-**Note:** You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on OSX or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+CMD+V` on OSX or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux) or `Cmd+Space` (OSX) to see a list of Markdown snippets
-
-### For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**

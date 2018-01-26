@@ -212,9 +212,9 @@ export default class DeployController extends ExtensionController
 
     private async showDeployWithService(deployService: DeployService, workspaceFolder: WorkspaceFolder)
     {
-        let deploymentSets = await deployService.getDeploymentSets();
+        let packageGroups = await deployService.getPackageGroups();
         let picks: QuickPickItemPayload<PackageGroup>[] = [];
-        for (let entry of deploymentSets)
+        for (let entry of packageGroups)
         {
             if (await deployService.canInstall(entry.name))
                 picks.push({
@@ -315,7 +315,7 @@ export default class DeployController extends ExtensionController
                 if (entry.instanceName)
                     instanceName = "("+ entry.instanceName + ")";
                 picks.push({
-                    "label": entry.deploymentSetName, 
+                    "label": entry.packageGroupName, 
                     "description": instanceName,
                     "detail": entry.packages.map(p => p.id + " v" + p.version).join(', '),
                     "payload": workspaceFolder,
@@ -333,7 +333,7 @@ export default class DeployController extends ExtensionController
                 this.installUpdate(this._deployServices[result.payload.uri.path], update).then(success => {
                     if (success)
                     {
-                        let idx = this._updatesAvailable[result.payload.uri.path].findIndex(u => u.deploymentSetName === result.payload2.deploymentSetName && u.instanceName === result.payload2.instanceName);
+                        let idx = this._updatesAvailable[result.payload.uri.path].findIndex(u => u.packageGroupName === result.payload2.packageGroupName && u.instanceName === result.payload2.instanceName);
                         if (idx > -1)
                             this._updatesAvailable[result.payload.uri.path].splice(idx, 1);
                     }
@@ -350,12 +350,13 @@ export default class DeployController extends ExtensionController
         for (let workspaceId in this._deployServices)
         {
             this._updatesAvailable[workspaceId] = new Array<UpdateAvailable>();
-            this._deployServices[workspaceId].checkForUpdates().then(updates =>
+            let deployService: DeployService = this._deployServices[workspaceId];
+            deployService.checkForUpdates().then(updates =>
             {
                 for (let update of updates)
                 {
                     let packages = update.packages.map(p => `${p.id} v${p.version}`).join(', ');
-                    window.showInformationMessage(`Update available for "${update.deploymentSetName}" (${packages})`, ...buttons,).then(result => 
+                    window.showInformationMessage(`Update available for "${update.packageGroupName}" (${packages})`, ...buttons,).then(result => 
                     {
                         if (result === Constants.buttonUpdate)
                         {
@@ -363,7 +364,7 @@ export default class DeployController extends ExtensionController
                         }
                         else
                         {
-                            if (!this._updatesAvailable[workspaceId].find(i => i.deploymentSetName === update.deploymentSetName && i.instanceName === update.instanceName))
+                            if (!this._updatesAvailable[workspaceId].find(i => i.packageGroupName === update.packageGroupName && i.instanceName === update.instanceName))
                             {
                                 this._updatesAvailable[workspaceId].push(update);
                                 commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, true);
@@ -379,7 +380,7 @@ export default class DeployController extends ExtensionController
     {
         try
         {
-            let deployment = await deployService.installUpdate(update.deploymentSetName, update.instanceName, update.guid);
+            let deployment = await deployService.installUpdate(update.packageGroupName, update.instanceName, update.guid);
             window.showInformationMessage(`Package group "${deployment.name}" updated: ` + deployment.lastUpdated.map(p => `${p.id} v${p.version}`).join(', '))
             return true;
         }
@@ -389,12 +390,10 @@ export default class DeployController extends ExtensionController
         }
     }
 
-    private remove()
+    private async remove()
     {
-        this.showWorkspaceFolderPick().then(workspaceFolder => 
-        {
-            this.removeWithService(this._deployServices[workspaceFolder.uri.path]);
-        });
+        let workspaceFolder = await this.showWorkspaceFolderPick();
+        let removedName = await this.removeWithService(this._deployServices[workspaceFolder.uri.path]);
     }
 
     private removeWithService(deployService: DeployService)
@@ -416,11 +415,12 @@ export default class DeployController extends ExtensionController
             }
             var options: QuickPickOptions = {};
             options.placeHolder = "Select deployment set to remove"
-            window.showQuickPick(picks, options).then(selectedDeployment =>
+            window.showQuickPick(picks, options).then(async selectedDeployment =>
             {
                 if (!selectedDeployment)
                     return;
-                deployService.removeDeployment(selectedDeployment.payload.guid);
+                let removedName = await deployService.removeDeployment(selectedDeployment.payload.guid);
+                window.showInformationMessage(`Package group "${removedName}" removed.`);
             });
         });
     }

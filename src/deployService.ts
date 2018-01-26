@@ -58,7 +58,7 @@ export class DeployService
         return this._projectFile.exists();
     }
 
-    public getDeploymentSets() : Thenable<Array<PackageGroup>>
+    public getPackageGroups() : Thenable<Array<PackageGroup>>
     {
         return this._projectFile.getData().then(projectFile => {
             return projectFile.devPackageGroups;
@@ -72,19 +72,21 @@ export class DeployService
         });
     }
 
-    public removeDeployment(guid: string)
+    public async removeDeployment(guid: string) : Promise<string>
     {
-        this._workspaceData.getData().then(workspaceData => {
-            DataHelpers.removeEntryByProperty(workspaceData.deployments, "guid", guid);
-            this._workspaceData.save();
-        });
+        let removedName = await this._goCurrent.removeDeployment(this._workspaceData.uri.fsPath, guid);
+            
+        let workspaceData = await this._workspaceData.getData();
+        DataHelpers.removeEntryByProperty(workspaceData.deployments, "guid", guid);
+        this._workspaceData.save();
+        return removedName
     }
 
     public async deployPackageGroup(packageGroup: PackageGroup, instanceName: string, deploymentGuid: string = undefined, argumentsUri: Uri = undefined) : Promise<Deployment>
     {
         let projectData = await this._workspaceData.getData();
         let deployment = DataHelpers.getEntryByProperty(projectData.deployments, "guid", deploymentGuid);
-        var packagesInstalled = await this._goCurrent.installDeploymentSet(
+        var packagesInstalled = await this._goCurrent.installPackageGroup(
             this._projectFile.uri.fsPath,
             packageGroup.name,
             instanceName,
@@ -132,8 +134,8 @@ export class DeployService
     public async installUpdate(packageGroupName: string, instanceName: string, guid: string) : Promise<Deployment>
     {
         let projectFile = await this._projectFile.getData();
-        let deploymentSet = DataHelpers.getEntryByProperty(projectFile.devPackageGroups, "name", packageGroupName)
-        return this.deployPackageGroup(deploymentSet, instanceName, guid);
+        let packageGroup = DataHelpers.getEntryByProperty(projectFile.devPackageGroups, "name", packageGroupName)
+        return this.deployPackageGroup(packageGroup, instanceName, guid);
     }
 
     public async checkForUpdates() : Promise<Array<UpdateAvailable>>
@@ -147,7 +149,7 @@ export class DeployService
                 continue;
 
             updates.push({
-                "deploymentSetName": deployment.name,
+                "packageGroupName": deployment.name,
                 "instanceName": deployment.instanceName,
                 "guid": deployment.guid,
                 "packages": packages.map(p => { return {"id": p.Id, "version": p.Version}})
@@ -161,14 +163,14 @@ export class DeployService
         return this._goCurrent.getAvailableUpdates(this._projectFile.uri.fsPath, deployment.name, deployment.instanceName)
     }
 
-    public isInstance(deploymentSetName: string) : Promise<boolean>
+    public isInstance(packageGroupName: string) : Promise<boolean>
     {
-        return this._goCurrent.testIsInstance(this._projectFile.uri.fsPath, deploymentSetName);
+        return this._goCurrent.testIsInstance(this._projectFile.uri.fsPath, packageGroupName);
     }
 
-    public canInstall(deploymentSetName: string) : Promise<boolean>
+    public canInstall(packageGroupName: string) : Promise<boolean>
     {
-        return this._goCurrent.testCanInstall(this._projectFile.uri.fsPath, deploymentSetName);
+        return this._goCurrent.testCanInstall(this._projectFile.uri.fsPath, packageGroupName);
     }
 
     public getInstalledPackages(id: string, instanceName: string = undefined) : Thenable<PackageInfo[]>

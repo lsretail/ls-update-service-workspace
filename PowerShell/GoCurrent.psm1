@@ -37,11 +37,33 @@ function Test-GoCurrentInstalled()
     return ConvertTo-Json $_GoCurrentInstalled
 }
 
+function Invoke-AsAdmin()
+{
+    param(
+        [string] $Command,
+        [string] $Arguments,
+        [string] $ExceptionText
+    )
+    $OutputPath = [System.IO.Path]::GetTempFileName()
+    $Command = "`$ErrorActionPreference='stop';trap{Write-Host `$_ -ForegroundColor Red;Write-Host `$_.ScriptStackTrace -ForegroundColor Red;pause;};Import-Module (Join-Path '$PSScriptRoot' 'GoCurrent.psm1');$Command -OutputPath '$OutputPath' $Arguments;"
+    $Process = Start-Process powershell $Command -Verb runas -PassThru 
+
+    $Process.WaitForExit()
+    if ($Process.ExitCode -ne 0)
+    {
+        Write-JsonError $ExceptionText -Type 'User'
+    }
+    $Data = Get-Content $OutputPath -Raw
+    Remove-Item $OutputPath
+    return $Data
+
+}
+
 function Install-AsAdmin()
 {
     param(
         $ProjectFilePath,
-        $DeploymentName,
+        $PackageGroupName,
         $InstanceName,
         $ArgumentsFilePath,
         $OutputPath
@@ -50,32 +72,25 @@ function Install-AsAdmin()
     {
         $ArgumentsFilePath = $null
     }
-    $DeploymentSet = GetDeployment -ProjectFilePath $ProjectFilePath -DeploymentName $DeploymentName
-    $Result = @($deploymentSet.Packages | Install-GoPackage -InstanceName $InstanceName -Subscription ([Guid]::Empty) -Parameters $ArgumentsFilePath)
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName
+    $Result = @($PackageGroup.Packages | Install-GoPackage -InstanceName $InstanceName -Subscription ([Guid]::Empty) -Parameters $ArgumentsFilePath)
 
     Set-Content -Value (ConvertTo-Json $Result -Depth 100 -Compress) -Path $OutputPath
 }
 
-function Install-DeploymentSet()
+function Install-PackageGroup()
 {
     param(
         $ProjectFilePath,
-        $DeploymentName,
+        $PackageGroupName,
         $InstanceName,
         $ArgumentsFilePath
     )
-    $OutputPath = [System.IO.Path]::GetTempFileName()
-    $DeploymentSet = GetDeployment -ProjectFilePath $ProjectFilePath -DeploymentName $DeploymentName
-    $Command = "`$ErrorActionPreference='stop';trap{Write-Host `$_ -ForegroundColor Red;Write-Host `$_.ScriptStackTrace -ForegroundColor Red;pause;};Import-Module (Join-Path '$PSScriptRoot' 'GoCurrent.psm1');Install-AsAdmin '$ProjectFilePath' '$DeploymentName' '$InstanceName' '$ArgumentsFilePath' '$OutputPath';"
-    $Process = Start-Process powershell $Command -Verb runas -PassThru 
+    $Command = 'Install-AsAdmin'
+    $Arguments = "'$ProjectFilePath' '$PackageGroupName' '$InstanceName' '$ArgumentsFilePath'"
+    $ExceptionText = "Exception occured while installing package group `"$PackageGroupName`"."
+    Invoke-AsAdmin -Command $Command -Arguments $Arguments -ExceptionText $ExceptionText
 
-    $Process.WaitForExit()
-    if ($Process.ExitCode -ne 0)
-    {
-        Write-JsonError "Exception occured while installing package group `"$DeploymentName`"." -Type 'User'
-    }
-    $Data = Get-Content $OutputPath -Raw
-    Remove-Item $OutputPath
     return $Data
 }
 
@@ -83,41 +98,32 @@ function Get-AvailableUpdates()
 {
     param(
         $ProjectFilePath,
-        $DeploymentName,
+        $PackageGroupName,
         $InstanceName
     )
-    $DeploymentSet = GetDeployment -ProjectFilePath $ProjectFilePath -DeploymentName $DeploymentName
-    $Updates = @($DeploymentSet.packages | Get-GoAvailableUpdates -InstanceName $InstanceName -Subscription ([Guid]::Empty) | Where-Object { $_.SelectedPackage -eq $null})
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName
+    $Updates = @($PackageGroup.packages | Get-GoAvailableUpdates -InstanceName $InstanceName -Subscription ([Guid]::Empty) | Where-Object { $_.SelectedPackage -eq $null})
     return (ConvertTo-Json $Updates)
 }
 
-function Remove-DeploymentSet()
+function Test-IsInstance($ProjectFilePath, $PackageGroupName)
 {
-    param(
-        $ProjectFilePath,
-        $DeploymentName,
-        $InstanceName
-    )
-}
-
-function Test-IsInstance($ProjectFilePath, $DeploymentName)
-{
-    $DeploymentSet = GetDeployment -ProjectFilePath $ProjectFilePath -DeploymentName $DeploymentName
-    $Result = $DeploymentSet.packages | Test-GoIsInstance -Subscription ([Guid]::Empty)
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName
+    $Result = $PackageGroup.packages | Test-GoIsInstance -Subscription ([Guid]::Empty)
     return (ConvertTo-Json $Result)
 }
 
-function GetDeployment($ProjectFilePath, $DeploymentName)
+function GetPackageGroup($ProjectFilePath, $PackageGroupName)
 {
     $ProjectFile = Get-Content -Path $ProjectFilePath | ConvertFrom-Json
     foreach ($Set in $ProjectFile.devPackageGroups)
     {
-        if ($Set.Name -eq $DeploymentName)
+        if ($Set.Name -eq $PackageGroupName)
         {
             return $Set
         }
     }
-    Write-JsonError "Package group `"$DeploymentName`" does not exists in project file." -Type 'User'
+    Write-JsonError "Package group `"$PackageGroupName`" does not exists in project file." -Type 'User'
 }
 
 function Test-InstanceExists($InstanceName)
@@ -125,11 +131,11 @@ function Test-InstanceExists($InstanceName)
     return ConvertTo-Json (Test-GoInstanceExists -Instancename $InstanceName)
 }
 
-function Test-CanInstall($ProjectFilePath, $DeploymentName)
+function Test-CanInstall($ProjectFilePath, $PackageGroupName)
 {
-    $DeploymentSet = GetDeployment -ProjectFilePath $ProjectFilePath -DeploymentName $DeploymentName
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName
     $CanInstall = $false
-    foreach ($Package in $DeploymentSet.packages)
+    foreach ($Package in $PackageGroup.packages)
     {
         $First = Get-GoInstalledPackages -Id $Package.id | Select-Object -First 1
         if (!$First)
@@ -145,14 +151,77 @@ function Test-CanInstall($ProjectFilePath, $DeploymentName)
     return ConvertTo-Json $CanInstall
 }
 
-function Get-Arguments($ProjectFilePath, $DeploymentName)
+function Get-Arguments($ProjectFilePath, $PackageGroupName)
 {
-    $DeploymentSet = GetDeployment -ProjectFilePath $ProjectFilePath -DeploymentName $DeploymentName
-    $Arguments = $DeploymentSet.packages | Get-GoArguments -Subscription ([Guid]::Empty)
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName
+    $Arguments = $PackageGroup.packages | Get-GoArguments -Subscription ([Guid]::Empty)
     return ConvertTo-Json $Arguments
 }
 
 function Get-InstalledPackages($Id, $InstanceName)
 {
     return ConvertTo-Json @(Get-GoInstalledPackages -Id $Id -InstanceName $InstanceName) -Compress
+}
+
+function GetDeployment()
+{
+    param(
+        $WorkspaceDataPath,
+        $DeploymentGuid
+    )
+
+    $WorkspaceData = Get-Content -Path $WorkspaceDataPath | ConvertFrom-Json
+    foreach ($Set in $WorkspaceData.deployments)
+    {
+        if ($Set.guid -eq $DeploymentGuid)
+        {
+            return $Set
+        }
+    }
+    Write-JsonError "Deployment `"$DeploymentGuid`" does not exists workspace data file." -Type 'User'
+
+}
+
+function Remove-AsAdmin()
+{
+    param(
+        $OutputPath,
+        $WorkspaceDataPath,
+        $DeploymentGuid
+    )
+
+    $Deployment = GetDeployment -WorkspaceDataPath $WorkspaceDataPath -DeploymentGuid $DeploymentGuid
+
+    if ((![string]::IsNullOrEmpty($Deployment.instanceName)) -and (Test-GoInstanceExists -InstanceName $Deployment.instanceName))
+    {
+        Remove-GoPackage -InstanceName $Deployment.instanceName
+    }
+
+    if ($Deployment.packages.Count -eq 0)
+    {
+        return
+    }
+
+    foreach ($Package in $Deployment.packages)
+    {
+        Write-Host $Package
+    }
+
+    $NotInstances = $Deployment.packages | Where-Object { !(Test-GoIsInstance -Subscription ([Guid]::Empty) -Id $_.id -Version $_.version)}
+    $NotInstances = $NotInstances | Where-Object { (Get-GoInstalledPackages -Id $_.id ) -ne $null }
+    $NotInstances | Remove-GoPackage
+
+    Set-Content -Value (ConvertTo-Json $Deployment.name -Depth 100 -Compress) -Path $OutputPath
+   }
+
+function Remove-Deployment()
+{
+    param(
+        $WorkspaceDataPath,
+        $DeploymentGuid
+    )
+    $Command = 'Remove-AsAdmin'
+    $Arguments = "'$WorkspaceDataPath' '$DeploymentGuid'"
+    $ExceptionText = "Exception occured while uninstalling packages."
+    Invoke-AsAdmin -Command $Command -Arguments $Arguments -ExceptionText $ExceptionText
 }

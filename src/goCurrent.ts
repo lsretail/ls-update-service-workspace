@@ -4,13 +4,28 @@ import {PackageInfo} from './interfaces/packageInfo';
 
 export class GoCurrent
 {
-    private _powerShell: PowerShell
+    private _modulePath: string;
+
+    private _powerShell: PowerShell;
+    private _powerShellLongRunning: PowerShell;
 
     constructor(powerShell: PowerShell, modulePath: string)
     {
         this._powerShell = powerShell;
         this._powerShell.addModuleFromPath(modulePath);
         this._powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
+        this._modulePath = modulePath;
+    }
+
+    private get longRunning()
+    {
+        if (!this._powerShellLongRunning)
+        {
+            this._powerShellLongRunning = new PowerShell();
+            this._powerShellLongRunning.addModuleFromPath(this._modulePath);
+            this._powerShellLongRunning.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
+        }
+        return this._powerShellLongRunning;
     }
 
     public getTestString(): Promise<string>
@@ -21,55 +36,44 @@ export class GoCurrent
         return this._powerShell.executeCommandSafe("Get-TestString", false, param);
     }
 
-    public installDeploymentSet(projectFilePath: string, deploymentSetName: string, instanceName: string, argumentsFilePath: string) : Promise<PackageInfo[]>
+    public installPackageGroup(projectFilePath: string, packageGroupName: string, instanceName: string, argumentsFilePath: string) : Promise<PackageInfo[]>
     {
         let param = {
             'ProjectFilePath': projectFilePath,
-            'DeploymentName': deploymentSetName,
+            'PackageGroupName': packageGroupName,
         }
         if (instanceName)
             param['InstanceName'] = instanceName;
         if (argumentsFilePath)
             param['ArgumentsFilePath'] = argumentsFilePath;
-        return this._powerShell.executeCommandSafe("Install-DeploymentSet", true, param);
+        return this.longRunning.executeCommandSafe("Install-PackageGroup", true, param);
     }
 
-    public updateDeploymentSet(projectFilePath: string, deploymentSetName: string, instanceName: string)
+    public getAvailableUpdates(projectFilePath: string, packageGroupName: string, instanceName: string)
     {
         let param = {
             'ProjectFilePath': projectFilePath,
-            'DeploymentSetName': deploymentSetName,
-            'InstanceName': instanceName
-        }
-        return this._powerShell.executeCommandSafe("Update-DeploymentSet", false, param);
-    }
-
-    public getAvailableUpdates(projectFilePath: string, deploymentSetName: string, instanceName: string)
-    {
-        let param = {
-            'ProjectFilePath': projectFilePath,
-            'DeploymentName': deploymentSetName,
+            'PackageGroupName': packageGroupName,
         }
         if (instanceName)
             param['InstanceName'] = instanceName;
         return this._powerShell.executeCommandSafe("Get-AvailableUpdates", true, param);
     }
 
-    public removeDeploymentSet(projectFilePath: string, deploymentSetName: string, instanceName: string)
+    public removeDeployment(workspaceDataPath: string, deploymentGuid: string) : Promise<any>
     {
         let param = {
-            'ProjectFilePath': projectFilePath,
-            'DeploymentName': deploymentSetName,
-            'InstanceName': instanceName
+            'WorkspaceDataPath': workspaceDataPath,
+            'DeploymentGuid': deploymentGuid,
         }
-        return this._powerShell.executeCommandSafe("Remove-DeploymentSet", false, param);
+        return this.longRunning.executeCommandSafe("Remove-Deployment", true, param);
     }
 
-    public getArguments(projectFilePath: string, deploymentSetName: string): Promise<any>
+    public getArguments(projectFilePath: string, packageGroupName: string): Promise<any>
     {
         let param = {
             'ProjectFilePath': projectFilePath,
-            'DeploymentName': deploymentSetName
+            'PackageGroupName': packageGroupName
         }
         return this._powerShell.executeCommandSafe("Get-Arguments", true, param);
     }
@@ -79,11 +83,11 @@ export class GoCurrent
         return this._powerShell.executeCommandSafe("Test-GoCurrentInstalled", true);
     }
 
-    public testIsInstance(projectFilePath: string, deploymentName: string) : Promise<any>
+    public testIsInstance(projectFilePath: string, packageGroupName: string) : Promise<any>
     {
         let param = {
             'ProjectFilePath': projectFilePath,
-            'DeploymentName': deploymentName
+            'PackageGroupName': packageGroupName
         };
 
         return this._powerShell.executeCommandSafe("Test-IsInstance", true, param);
@@ -94,9 +98,9 @@ export class GoCurrent
         return this._powerShell.executeCommandSafe("Test-InstanceExists", true, {"InstanceName": instanceName});
     }
 
-    public testCanInstall(projectFilePath: string, deploymentName: string): Promise<boolean>
+    public testCanInstall(projectFilePath: string, packageGroupName: string): Promise<boolean>
     {
-        return this._powerShell.executeCommandSafe("Test-CanInstall", true, {"ProjectFilePath": projectFilePath, "deploymentName": deploymentName})
+        return this._powerShell.executeCommandSafe("Test-CanInstall", true, {"ProjectFilePath": projectFilePath, "PackageGroupName": packageGroupName})
     }
 
     public getInstalledPackages(id: string, instanceName: string = undefined) : Promise<PackageInfo[]>

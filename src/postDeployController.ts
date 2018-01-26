@@ -23,7 +23,7 @@ export class PostDeployController
             if (packageInfo.Id === 'nav-al')
                 this.processVsExtension(packageInfo);
 
-            if (packageInfo.Info && 'Type' in packageInfo.Info && packageInfo.Info.Type.inclues("nav-server"))
+            if (packageInfo.Info && 'Type' in packageInfo.Info && packageInfo.Info.Type.includes("nav-server"))
             {
                 this.processNavServer(packageInfo);
             }

@@ -8,8 +8,8 @@
 #>
 
 param(
-    [string] $GitCommit,
-    [string] $BuildNumber,
+    [string] $GitCommit = 'aF1asdfasdfsdffsd2',
+    [string] $BuildNumber = 12,
     [string] $Vsce
 )
 
@@ -29,14 +29,7 @@ if ($GitCommit -and $BuildNumber)
 {
     Copy-Item $PackagePath $PackageBackupPath
     $GitCommit = $GitCommit.Substring(0, 8)
-    if ($PackageJson.Version.Contains("-"))
-    {
-        $PackageJson.Version = "$($PackageJson.Version).$BuildNumber+$GitCommit"
-    }
-    else
-    {
-        $PackageJson.Version = "$($PackageJson.Version)+$BuildNumber.$GitCommit"
-    }
+    $PackageJson.Version = "$($PackageJson.Version)+build-$BuildNumber-$GitCommit"
 
     Set-Content -Value (ConvertTo-Json -InputObject $PackageJson) -Path (Join-Path $PSScriptRoot 'package.json')
 }
@@ -65,7 +58,7 @@ if (Test-Path $PackageBackupPath)
 $Package = @{
     'Id' = 'go-current-workspace'
     'Name' = "LS Go Current Workspace"
-    'Version' = ($PackageJson.version -split '-')[0]
+    'Version' = (($PackageJson.version -split '-')[0] -split '\+')[0]
     'IncludePaths' = @(
         (Get-Item (Join-Path $PSScriptRoot "*-$($PackageJson.Version).vsix")),
         (Join-Path $PSScriptRoot 'package\*')

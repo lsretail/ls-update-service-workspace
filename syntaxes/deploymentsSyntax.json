@@ -15,7 +15,7 @@
                     "instanceName": {
                         "type": "string"
                     },
-                    "deploymentSet": {
+                    "packageGroupName": {
                         "type": "string"
                     },
                     "packages": {
