@@ -5,7 +5,7 @@ export class Constants
     static goCurrentExtensionActive = "go-current.active";
     static goCurrentDebug = "go-current.debug";
 
-    static deploymentsFileName = "go-current.json";
+    static deploymentsFileName = "gocurrent.json";
     static projectDataFileName = "data.json";
     static argumentsFilename = "arguments.json"
     static goCurrentWorkspaceDirName = ".gocurrent";

@@ -14,7 +14,7 @@
         "Other"
     ],
     "activationEvents": [
-        "workspaceContains:go-current.json",
+        "workspaceContains:gocurrent.json",
         "onCommand:go-current.activate"
     ],
     "main": "./out/src/extension",
@@ -72,7 +72,7 @@
         },
         "jsonValidation": [
             {
-                "fileMatch": "go-current.json",
+                "fileMatch": "gocurrent.json",
                 "url": "./syntaxes/projectFileSyntax.json"
             },
             {
