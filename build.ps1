@@ -2,20 +2,24 @@
     .SYNOPSIS
         Create extension and create Go Current package.
     .NOTES
-        Requires: 
+        Requires:
+        Node.js (npm)
         npm install -g vsce
         Go Current server
 #>
 
 param(
-    [string] $GitCommit = 'aF1asdfasdfsdffsd2',
-    [string] $BuildNumber = 12,
-    [string] $Vsce
+    [string] $GitCommit = $null,
+    [string] $BuildNumber = $null,
+    [string] $Vsce,
+    [string] $Npm
 )
+
+Write-Host "vsce: $Vsce"
+Write-Host "npm: $Npm"
 
 $ErrorActionPreference = 'stop'
 
-Import-Module GoCurrentServer
 
 Remove-Item (Join-Path $PSScriptRoot '*.vsix')
 Remove-Item (Join-Path $PSScriptRoot '*.zip')
@@ -23,44 +27,55 @@ Remove-Item (Join-Path $PSScriptRoot '*.zip')
 $PackageBackupPath = Join-Path $PSScriptRoot 'package.json.original'
 $PackagePath = (Join-Path $PSScriptRoot 'package.json')
 
-$PackageJson = ConvertFrom-Json -InputObject (Get-Content -Path $PackagePath -Raw)
+$PackageContent = (Get-Content -Path $PackagePath -Raw)
+$PackageJson = ConvertFrom-Json -InputObject $PackageContent
+$Version = $PackageJson.Version.Replace('+developer', '')
 
 if ($GitCommit -and $BuildNumber)
 {
     Copy-Item $PackagePath $PackageBackupPath
     $GitCommit = $GitCommit.Substring(0, 8)
-    $PackageJson.Version = "$($PackageJson.Version)+build-$BuildNumber-$GitCommit"
+    $Version = "$Version+build-$BuildNumber-$GitCommit"
 
-    Set-Content -Value (ConvertTo-Json -InputObject $PackageJson) -Path (Join-Path $PSScriptRoot 'package.json')
+    $NewPackageContent = $PackageContent.Replace([string]$PackageJson.version, [string]$Version)
+    Set-Content -Value $NewPackageContent -Path (Join-Path $PSScriptRoot 'package.json')
 }
 Push-Location
 Set-Location $PSScriptRoot
-if ($Vsce)
+if (!$Vsce)
 {
-    $Process = Start-Process $Vsce package -PassThru
+    $Vsce = 'vsce'
 }
-else
+if (!$Npm)
 {
-    $Process = Start-Process vsce package  -PassThru
+    $Npm = 'npm'
 }
+$Process = Start-Process $Npm install -PassThru
 $Process.WaitForExit()
-Pop-Location
 if ($Process.ExitCode -ne 0)
 {
-    throw "vsce exited with ${LASTEXITCODE}: $Output"
+    throw "npm exited with $($Process.ExitCode)."
 }
+$Process = Start-Process $Vsce package -PassThru
+$Process.WaitForExit()
+if ($Process.ExitCode -ne 0)
+{
+    throw "vsce exited with $($Process.ExitCode)."
+}
+Pop-Location
 
 if (Test-Path $PackageBackupPath)
 {
     Move-Item $PackageBackupPath $PackagePath -Force
 }
 
+Import-Module GoCurrentServer
 $Package = @{
     'Id' = 'go-current-workspace'
     'Name' = "LS Go Current Workspace"
-    'Version' = (($PackageJson.version -split '-')[0] -split '\+')[0]
+    'Version' = (($Version -split '-')[0] -split '\+')[0]
     'IncludePaths' = @(
-        (Get-Item (Join-Path $PSScriptRoot "*-$($PackageJson.Version).vsix")),
+        (Get-Item (Join-Path $PSScriptRoot "*.vsix")),
         (Join-Path $PSScriptRoot 'package\*')
     )
     'OutputDir' = $PSScriptRoot
