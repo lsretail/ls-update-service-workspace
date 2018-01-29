@@ -437,7 +437,12 @@ export default class DeployController extends ExtensionController
         ));
         await fsHelpers.writeJson(filePath.fsPath, packagesArguments);
         let document = await workspace.openTextDocument(filePath)
-        let currentDocument = window.activeTextEditor.document;
+        let currentDocument = undefined;
+        if (window.activeTextEditor)
+        {
+            currentDocument = window.activeTextEditor.document;
+        }
+
         let editor = await window.showTextDocument(document);
 
         let buttons: string[] = [Constants.buttonContinue, Constants.buttonCancel];

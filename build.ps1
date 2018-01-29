@@ -8,8 +8,8 @@
 #>
 
 param(
-    [string] $GitCommit = 'aF1asdfasdfsdffsd2',
-    [string] $BuildNumber = 12,
+    [string] $GitCommit = $null,
+    [string] $BuildNumber = $null,
     [string] $Vsce
 )
 

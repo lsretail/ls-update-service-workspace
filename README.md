@@ -51,7 +51,11 @@ No settings at the moment.
 
 * Nothing happens when GC Workspace commands are issued in VSCode.
 
-  * Workaround: Restart VSCode.
+    * Workaround: Restart VSCode.
+
+* Pressing cancel or close when providing arguments for package group will install the package group.
+
+    * Workaround: Press "no" when Windows asks for elevated privileges.
 
 ## Release Notes
 
