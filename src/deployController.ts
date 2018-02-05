@@ -59,8 +59,29 @@ export default class DeployController extends ExtensionController
             }
             this.addWorkspaces();
             workspace.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this);
+            this.checkForBaseUpdate();
             this.checkForUpdates();
         });
+    }
+
+    private async checkForBaseUpdate()
+    {
+        let buttons: string[] = [Constants.buttonUpdate, Constants.buttonLater];
+        var packages = await this._goCurrent.getAvailableBaseUpdates();
+        if (packages.length === 0)
+            return;
+        let packagesString = packages.map(p => `${p.Id} v${p.Version}`).join(', ');
+        let result = await window.showInformationMessage(`Update available for "Go Current" (${packagesString})`, ...buttons);
+        if (result === Constants.buttonUpdate)
+        {
+            let packages = await this._goCurrent.installBasePackages();
+            window.showInformationMessage("Updated: " + packages.map(p => `${p.Id} v${p.Version}`).join(', '));
+            let workspaceExtension = packages.filter(p => p.Id === 'go-current-workspace');
+            if (workspaceExtension.length === 1)
+            {
+                PostDeployController.processVsExtension(workspaceExtension[0]);
+            }
+        }
     }
 
     private static handleError(reason: any)
@@ -237,6 +258,8 @@ export default class DeployController extends ExtensionController
             instanceName = await this.getOrShowInstanceNamePick(workspaceFolder.name);
         }
         let argumentsObj = await this.getArguments(workspaceFolder, deployService, selectedSet.payload.name);
+        if (argumentsObj === undefined)
+            return;
 
         try
         {
@@ -257,6 +280,7 @@ export default class DeployController extends ExtensionController
 
     private async getOrShowInstanceNamePick(suggestedName: string) : Promise<string>
     {
+        suggestedName = suggestedName.replace(" ", "-").replace(".","-");
         let instanceName = "";
         let suggestedInstanceName = await this.getNonexistingInstanceName(suggestedName);
         let tries = 0;
@@ -429,7 +453,7 @@ export default class DeployController extends ExtensionController
     {
         let packagesArguments = await deployService.getArguments(name);
         if (Object.keys(packagesArguments).length === 0)
-            return
+            return null;
         let filePath = Uri.file(path.join(
             workspaceFolder.uri.fsPath,
             Constants.goCurrentWorkspaceDirName, 
@@ -448,6 +472,8 @@ export default class DeployController extends ExtensionController
         let buttons: string[] = [Constants.buttonContinue, Constants.buttonCancel];
         let result = await window.showInformationMessage("Arguments required, please fill the json document.", ...buttons);
 
+        await editor.document.save();
+
         if (result !== Constants.buttonContinue)
         {
             editor.hide();
@@ -455,7 +481,7 @@ export default class DeployController extends ExtensionController
                 window.showTextDocument(currentDocument);
             
             fsHelpers.unlink(filePath.fsPath);
-            return;
+            return undefined;
         }
         let p = fsHelpers.readJson<any>(filePath.fsPath);
 

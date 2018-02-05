@@ -2,6 +2,7 @@ $ErrorActionPreference = 'stop'
 
 try
 {
+    $env:PSModulePath = [System.Environment]::GetEnvironmentVariable("PSModulePath", "machine")
     Import-Module GoCurrent
     $_GoCurrentInstalled = $true
 }
@@ -46,7 +47,7 @@ function Invoke-AsAdmin()
     )
     $OutputPath = [System.IO.Path]::GetTempFileName()
     $Command = "`$ErrorActionPreference='stop';trap{Write-Host `$_ -ForegroundColor Red;Write-Host `$_.ScriptStackTrace -ForegroundColor Red;pause;};Import-Module (Join-Path '$PSScriptRoot' 'GoCurrent.psm1');$Command -OutputPath '$OutputPath' $Arguments;"
-    $Process = Start-Process powershell $Command -Verb runas -PassThru 
+    $Process = Start-Process powershell $Command -Verb runas -PassThru
 
     $Process.WaitForExit()
     if ($Process.ExitCode -ne 0)
@@ -202,11 +203,6 @@ function Remove-AsAdmin()
         return
     }
 
-    foreach ($Package in $Deployment.packages)
-    {
-        Write-Host $Package
-    }
-
     $NotInstances = $Deployment.packages | Where-Object { !(Test-GoIsInstance -Subscription ([Guid]::Empty) -Id $_.id -Version $_.version)}
     $NotInstances = $NotInstances | Where-Object { (Get-GoInstalledPackages -Id $_.id ) -ne $null }
     $NotInstances | Remove-GoPackage
@@ -224,4 +220,29 @@ function Remove-Deployment()
     $Arguments = "'$WorkspaceDataPath' '$DeploymentGuid'"
     $ExceptionText = "Exception occured while uninstalling packages."
     Invoke-AsAdmin -Command $Command -Arguments $Arguments -ExceptionText $ExceptionText
+}
+
+function Get-AvailableBaseUpdates()
+{
+    $Packages = @(
+        'go-current-wizard',
+        'go-current-workspace'
+    )
+    $Updates = @($Packages | Get-GoAvailableUpdates -Subscription ([Guid]::Empty) | Where-Object { $_.SelectedPackage -eq $null})
+    return (ConvertTo-Json $Updates)
+}
+
+function Install-BasePackages()
+{
+    Invoke-AsAdmin -Command 'Install-BaseAsAdmin'
+}
+
+function Install-BaseAsAdmin($OutputPath)
+{
+    $Packages = @(
+        'go-current-wizard',
+        'go-current-workspace'
+    )
+    $Result = @($Packages | Install-GoPackage -Subscription ([Guid]::Empty))
+    Set-Content -Value (ConvertTo-Json $Result -Depth 100 -Compress) -Path $OutputPath
 }

@@ -59,6 +59,12 @@ No settings at the moment.
 
 ## Release Notes
 
+### 0.1.1
+
+* Notify user when *go-current-wizard* and *go-current-workspace* is updated.
+* Spaces and dots removed in suggested instance name.
+* Bugfix: Canceling arguments user input now cancels instead of continuing installation.
+
 ### 0.1.0
 
 * Initial release.

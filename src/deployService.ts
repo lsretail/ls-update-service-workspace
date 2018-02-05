@@ -155,6 +155,7 @@ export class DeployService
                 "packages": packages.map(p => { return {"id": p.Id, "version": p.Version}})
             });
         }
+
         return updates;
     }
 

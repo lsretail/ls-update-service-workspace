@@ -3,9 +3,11 @@ $ErrorActionPreference = 'stop'
 
 function Install-Package()
 {
-    $Output = & code --install-extension (Get-Item (Join-Path $PSScriptRoot '*.vsix')).FullName | Out-String
+    $FilePath = (Get-Item (Join-Path $PSScriptRoot '*.vsix')).FullName
+    $Output = & code --install-extension $FilePath  | Out-String
     if ($LASTEXITCODE -ne 0)
     {
+        Write-Host "Was trying to install $FilePath"
         throw "Exit code was ${LASTEXITCODE}: $Output"
     }
 }

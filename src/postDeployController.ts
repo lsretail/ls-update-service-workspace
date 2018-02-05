@@ -21,7 +21,7 @@ export class PostDeployController
         for (let packageInfo of packages)
         {
             if (packageInfo.Id === 'nav-al')
-                this.processVsExtension(packageInfo);
+                PostDeployController.processVsExtension(packageInfo);
 
             if (packageInfo.Info && 'Type' in packageInfo.Info && packageInfo.Info.Type.includes("nav-server"))
             {
@@ -82,7 +82,7 @@ export class PostDeployController
         }
     }
 
-    private processVsExtension(packageInfo: PackageInfo)
+    public static processVsExtension(packageInfo: PackageInfo)
     {
         window.showInformationMessage(util.format(Resources.extensionUpdated, packageInfo.Id), Constants.buttonReloadWindow).then(result =>
         {

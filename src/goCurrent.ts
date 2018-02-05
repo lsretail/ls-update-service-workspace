@@ -60,6 +60,16 @@ export class GoCurrent
         return this._powerShell.executeCommandSafe("Get-AvailableUpdates", true, param);
     }
 
+    public installBasePackages() : Promise<PackageInfo[]>
+    {
+        return this._powerShell.executeCommandSafe("Install-BasePackages", true, {});
+    }
+
+    public getAvailableBaseUpdates() : Promise<PackageInfo[]>
+    {
+        return this._powerShell.executeCommandSafe("Get-AvailableBaseUpdates", true, {});
+    }
+
     public removeDeployment(workspaceDataPath: string, deploymentGuid: string) : Promise<any>
     {
         let param = {
