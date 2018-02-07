@@ -10,6 +10,7 @@ import {DataHelpers} from './dataHelpers'
 import {workspace, EventEmitter, Event, Disposable, Uri} from 'vscode';
 import {UpdateAvailable} from './models/updateAvailable';
 import {PackageInfo} from './interfaces/packageInfo';
+import { worker } from 'cluster';
 
 let uuid = require('uuid/v4');
 
@@ -20,6 +21,7 @@ export class DeployService
     private _workspaceData: JsonData<WorkspaceData>;
     private _onDidProjectFileChange = new EventEmitter<DeployService>();
     private _onDidPackagesDeployed = new EventEmitter<PackageInfo[]>()
+    private _onDidInstanceRemoved = new EventEmitter<string>();
     private _disposable: Disposable;
 
     public constructor(projectFile: JsonData<ProjectFile>, workspaceData: JsonData<WorkspaceData>, goCurrent: GoCurrent)
@@ -53,6 +55,16 @@ export class DeployService
         this._onDidPackagesDeployed.fire(data);
     }
 
+    public get onDidInstanceRemoved()
+    {
+        return this._onDidInstanceRemoved.event;
+    }
+
+    public fireInstanceRemoved(instanceName: string)
+    {
+        this._onDidInstanceRemoved.fire(instanceName);
+    }
+
     public isActive() : Boolean
     {
         return this._projectFile.exists();
@@ -77,8 +89,11 @@ export class DeployService
         let removedName = await this._goCurrent.removeDeployment(this._workspaceData.uri.fsPath, guid);
             
         let workspaceData = await this._workspaceData.getData();
+        let deployment = DataHelpers.getEntryByProperty(workspaceData.deployments, "guid", guid);
         DataHelpers.removeEntryByProperty(workspaceData.deployments, "guid", guid);
         this._workspaceData.save();
+        if (deployment)
+            this.fireInstanceRemoved(deployment.instanceName);
         return removedName
     }
 
@@ -177,6 +192,11 @@ export class DeployService
     public getInstalledPackages(id: string, instanceName: string = undefined) : Thenable<PackageInfo[]>
     {
         return this._goCurrent.getInstalledPackages(id, instanceName);
+    }
+
+    public getDeployedPackages(deploymentGuid: string) : Promise<PackageInfo[]>
+    {
+        return this._goCurrent.getDeployedPackages(this._workspaceData.uri.fsPath, deploymentGuid);
     }
 
     public dispose()

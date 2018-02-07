@@ -59,6 +59,10 @@ No settings at the moment.
 
 ## Release Notes
 
+### 0.2.0
+
+* New launch configuration are added to launch.json instead of updating existing and removed with the package.
+
 ### 0.1.1
 
 * Notify user when *go-current-wizard* and *go-current-workspace* is updated.

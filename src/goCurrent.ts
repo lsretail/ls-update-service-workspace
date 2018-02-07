@@ -123,4 +123,13 @@ export class GoCurrent
 
         return this._powerShell.executeCommandSafe("Get-InstalledPackages", true, param);
     }
+
+    public getDeployedPackages(workspaceDataPath: string, deploymentGuid: string) : Promise<PackageInfo[]>
+    {
+         let param = {
+            'WorkspaceDataPath': workspaceDataPath,
+            'DeploymentGuid': deploymentGuid,
+        }
+        return this._powerShell.executeCommandSafe("Get-DeployedPackages", true, param);
+    }
 }

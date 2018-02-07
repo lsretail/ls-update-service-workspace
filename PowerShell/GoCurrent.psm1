@@ -246,3 +246,34 @@ function Install-BaseAsAdmin($OutputPath)
     $Result = @($Packages | Install-GoPackage -Subscription ([Guid]::Empty))
     Set-Content -Value (ConvertTo-Json $Result -Depth 100 -Compress) -Path $OutputPath
 }
+
+function GetDeployedPackages()
+{
+    param(
+        $WorkspaceDataPath,
+        $DeploymentGuid
+    )
+    $Deployment = GetDeployment -WorkspaceDataPath $WorkspaceDataPath -DeploymentGuid $DeploymentGuid
+
+    if ((![string]::IsNullOrEmpty($Deployment.instanceName)) -and (Test-GoInstanceExists -InstanceName $Deployment.instanceName))
+    {
+        Get-GoInstalledPackages -InstanceName $Deployment.instanceName
+    }
+
+    if ($Deployment.packages.Count -eq 0)
+    {
+        return
+    }
+
+    $NotInstances = $Deployment.packages | Where-Object { !(Test-GoIsInstance -Subscription ([Guid]::Empty) -Id $_.id -Version $_.version)}
+    $NotInstances | Where-Object { (Get-GoInstalledPackages -Id $_.id ) -ne $null }
+}
+
+function Get-DeployedPackages()
+{
+    param(
+        $WorkspaceDataPath,
+        $DeploymentGuid
+    )
+    return (ConvertTo-Json @(GetDeployedPackages -WorkspaceDataPath $WorkspaceDataPath -DeploymentGuid $DeploymentGuid) -Depth 100 -Compress)
+}

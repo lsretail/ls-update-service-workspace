@@ -36,8 +36,10 @@ export default class DeployController extends ExtensionController
 
     public activate()
     {
-        this._goCurrent = new GoCurrent(new PowerShell(true), this.context.asAbsolutePath("PowerShell\\GoCurrent.psm1"));
+        let debug = false;
+        this._goCurrent = new GoCurrent(new PowerShell(debug), this.context.asAbsolutePath("PowerShell\\GoCurrent.psm1"));
 
+        commands.executeCommand("setContext", Constants.goCurrentDebug, debug);
         this.registerFolderCommand("go-current.activate", () => {window.showInformationMessage("Go Current Activated")});
         this.registerFolderCommand("go-current.deploy", () => this.deploy());
         this.registerFolderCommand("go-current.checkForUpdates", () => this.checkForUpdates());
@@ -149,6 +151,7 @@ export default class DeployController extends ExtensionController
 
         let postDeployController = new PostDeployController(workspaceFolder);
         deployService.onDidPackagesDeployed(postDeployController.onPackagesDeployed, postDeployController);
+        deployService.onDidInstanceRemoved(postDeployController.onInstanceRemoved, postDeployController);
         this._postDeployControllers[DeployController.getWorkspaceKey(workspaceFolder)] = postDeployController;
     }
 
@@ -417,36 +420,42 @@ export default class DeployController extends ExtensionController
     private async remove()
     {
         let workspaceFolder = await this.showWorkspaceFolderPick();
-        let removedName = await this.removeWithService(this._deployServices[workspaceFolder.uri.path]);
+        this.removeWithService(this._deployServices[workspaceFolder.uri.path]);
     }
 
-    private removeWithService(deployService: DeployService)
+    private async removeWithService(deployService: DeployService)
     {
-        deployService.getDeployments().then(deployments =>
+       let deployment = await this.showDeploymentsPicks(deployService, "Select a deployment to remove");
+
+        if (!deployment)
+            return;
+        let removedName = await deployService.removeDeployment(deployment.guid);
+        window.showInformationMessage(`Package group "${removedName}" removed.`);
+    }
+
+    private async showDeploymentsPicks(deployService: DeployService, placeholder: string = "Selected a deployment") : Promise<Deployment>
+    {
+        let deployments = await deployService.getDeployments();
+        let picks: QuickPickItemPayload<Deployment>[] = [];
+
+        for (let entry of deployments)
         {
-            let picks: QuickPickItemPayload<Deployment>[] = [];
-            for (let entry of deployments)
-            {
-                let instance = "";
-                if (entry.instanceName)
-                    instance = " (" + entry.instanceName + ")"
-                picks.push({
-                    "label": entry.name,
-                    "description": instance,
-                    "detail": entry.packages.map(p => `${p.id} v${p.version}`).join('\n'),
-                    "payload": entry
-                });
-            }
-            var options: QuickPickOptions = {};
-            options.placeHolder = "Select deployment set to remove"
-            window.showQuickPick(picks, options).then(async selectedDeployment =>
-            {
-                if (!selectedDeployment)
-                    return;
-                let removedName = await deployService.removeDeployment(selectedDeployment.payload.guid);
-                window.showInformationMessage(`Package group "${removedName}" removed.`);
+            let instance = "";
+            if (entry.instanceName)
+                instance = " (" + entry.instanceName + ")"
+            picks.push({
+                "label": entry.name,
+                "description": instance,
+                "detail": entry.packages.map(p => `${p.id} v${p.version}`).join('\n'),
+                "payload": entry
             });
-        });
+        }
+        var options: QuickPickOptions = {};
+        options.placeHolder = placeholder
+        let selected = await window.showQuickPick(picks, options);
+        if (!selected)
+            return;
+        return selected.payload;
     }
 
     private async getArguments(workspaceFolder: WorkspaceFolder, deployService: DeployService, name: string) : Promise<Uri>
@@ -494,6 +503,19 @@ export default class DeployController extends ExtensionController
 
     private async experimental()
     {
+        // This is an experimental command only for development / debuging
+        // Turn on by setting debug = true (in constructor) and invoke with ctrl+shif+p->Go Current: Experimental
+        // Don't forget to set debug = false before commiting.
+        let workspaceFolder = await this.showWorkspaceFolderPick();
+        let deployService: DeployService = this._deployServices[workspaceFolder.uri.path];
+        let deployment = await this.showDeploymentsPicks(deployService);
+        if (!deployment)
+            return;
+        let packages = await deployService.getDeployedPackages(deployment.guid);
+        let server = packages.filter(p => p.Id === 'nav-server')[0]
+        if (!server)
+            return;
+        PostDeployController.addAlLaunchConfig(server);
     }
 
     public displose()

@@ -1,5 +1,5 @@
 
-import {workspace, WorkspaceFolder, window, Uri, MessageOptions, commands} from 'vscode'
+import {workspace, WorkspaceFolder, window, Uri, MessageOptions, commands, ConfigurationTarget} from 'vscode'
 import { PackageInfo } from './interfaces/packageInfo';
 import * as path from 'path'
 import { Constants } from './constants';
@@ -25,9 +25,15 @@ export class PostDeployController
 
             if (packageInfo.Info && 'Type' in packageInfo.Info && packageInfo.Info.Type.includes("nav-server"))
             {
-                this.processNavServer(packageInfo);
+                PostDeployController.addAlLaunchConfig(packageInfo);
             }
         }
+    }
+
+    public onInstanceRemoved(instanceName: string)
+    {
+        if (instanceName)
+            PostDeployController.removeAlLaunchConfig(instanceName);
     }
 
     private processNavServer(packageInfo: PackageInfo)
@@ -80,6 +86,59 @@ export class PostDeployController
                 }
             });
         }
+    }
+
+    public static addAlLaunchConfig(packageInfo: PackageInfo)
+    {
+        const launchConfig = workspace.getConfiguration('launch');
+        let configurations: any[] = launchConfig['configurations'];
+        
+        let defaultValues: any;
+
+        if (configurations)
+            defaultValues = configurations.filter(s => s.type === 'al')[0];
+        else
+            configurations = [];
+
+        if (!defaultValues)
+            defaultValues = {};
+        if (!defaultValues.startupObjectId)
+            defaultValues.startupObjectId = 22;
+        if (!defaultValues.schemaUpdateMode)
+            defaultValues.schemaUpdateMode = "Synchronize";
+
+        let launch: any = {};
+
+        let info = packageInfo.Info;
+        launch.type = "al";
+        launch.request = "launch";
+        launch.name = packageInfo.InstanceName + " (Go Current)";
+        launch.server = info.Server;
+        if (info.Port)
+            launch.port = info.Port;
+        launch.serverInstance = info.ServerInstance;
+        launch.authentication = info.Authentication;
+        if (info.ServerConfig)
+            launch.port = parseInt(info.ServerConfig.DeveloperServicesPort);
+        launch.schemaUpdateMode = defaultValues.schemaUpdateMode;
+        launch.startupObjectId = defaultValues.startupObjectId;
+        configurations.push(launch);
+        launchConfig.update('configurations', configurations, false).then(result=>{
+            window.showInformationMessage(`Launch.json updated for package "${packageInfo.Id}".`);
+        }, error => {
+            window.showErrorMessage(`Error occurred while updating launch.json: ${error}`);
+        });
+    }
+
+    public static removeAlLaunchConfig(instanceName)
+    {
+        let configName = instanceName + " (Go Current)";
+        const launchConfig = workspace.getConfiguration('launch');
+        let configurations: any[] = launchConfig['configurations'];
+        configurations = configurations.filter(s => !(s.type === 'al' && s.name === configName));
+        launchConfig.update('configurations', configurations, false).then(result=>{}, error => {
+            window.showErrorMessage(`Error occurred while updating launch.json: ${error}`);
+        });
     }
 
     public static processVsExtension(packageInfo: PackageInfo)
