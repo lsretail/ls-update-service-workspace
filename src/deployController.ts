@@ -36,7 +36,7 @@ export default class DeployController extends ExtensionController
 
     public activate()
     {
-        let debug = false;
+        let debug = true;
         this._goCurrent = new GoCurrent(new PowerShell(debug), this.context.asAbsolutePath("PowerShell\\GoCurrent.psm1"));
 
         commands.executeCommand("setContext", Constants.goCurrentDebug, debug);
@@ -93,10 +93,16 @@ export default class DeployController extends ExtensionController
         if (reason instanceof PowerShellError && reason.fromJson && 
             (reason.type === 'GoCurrent' || reason.type === 'User'))
         {
+            console.log(reason.scriptStackTrace);
             window.showErrorMessage(reason.message);
             return true;
         }
-        return false;
+        else if (reason instanceof PowerShellError && reason.fromJson)
+        {
+            window.showErrorMessage(reason.message);
+            console.log(reason.scriptStackTrace);
+            return false;
+        }
     }
 
     private static getWorkspaceKey(workspaceFolder: WorkspaceFolder)
