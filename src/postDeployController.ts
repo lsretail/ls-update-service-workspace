@@ -20,10 +20,10 @@ export class PostDeployController
     {
         for (let packageInfo of packages)
         {
-            if (packageInfo.Id === 'nav-al')
+            if (packageInfo.Id === 'bc-al')
                 PostDeployController.processVsExtension(packageInfo);
 
-            if (packageInfo.Info && 'Type' in packageInfo.Info && packageInfo.Info.Type.includes("nav-server"))
+            if (packageInfo.Info && 'Type' in packageInfo.Info && packageInfo.Info.Type.includes("bc-server"))
             {
                 PostDeployController.addAlLaunchConfig(packageInfo);
             }
@@ -40,7 +40,7 @@ export class PostDeployController
     {
         if (
             !("Type" in packageInfo.Info) ||
-            !packageInfo.Info.Type.includes("nav-server") ||
+            !packageInfo.Info.Type.includes("bc-server") ||
             !("Server" in packageInfo.Info)
         )
         {

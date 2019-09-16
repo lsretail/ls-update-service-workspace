@@ -1,7 +1,7 @@
 {
     "name": "go-current-workspace",
-    "displayName": "LS Go Current - Workspace",
-    "description": "LS Go Current - Workspace brings you the power of Go Current to your Visual Studio Code workspace.",
+    "displayName": "Go Current - Workspace",
+    "description": "Go Current - Workspace brings you the power of Go Current to your Visual Studio Code workspace.",
     "version": "0.2.0+developer",
     "publisher": "lsretail",
     "repository": "https://bitbucket.lsretail.com/projects/GOC/repos/workspace",
@@ -23,7 +23,7 @@
         "commands": [
             {
                 "command": "go-current.deploy",
-                "title": "Deploy packages",
+                "title": "Install packages",
                 "category": "Go Current"
             },
             {
@@ -101,7 +101,7 @@
         "vscode": "^1.1.6"
     },
     "dependencies": {
-        "node-powershell": "^3.3.1",
+        "node-powershell": "^4.0.0",
         "then-fs": "2.0",
         "uuid": "3.1.0"
     }

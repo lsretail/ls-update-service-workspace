@@ -72,7 +72,7 @@ if (Test-Path $PackageBackupPath)
 Import-Module GoCurrentServer
 $Package = @{
     'Id' = 'go-current-workspace'
-    'Name' = "LS Go Current Workspace"
+    'Name' = "Go Current Workspace"
     'Version' = (($Version -split '-')[0] -split '\+')[0]
     'IncludePaths' = @(
         (Get-Item (Join-Path $PSScriptRoot "*.vsix")),
@@ -85,4 +85,4 @@ $Package = @{
     }
 }
 
-New-GoPackage @Package -Force
+New-GocsPackage @Package -Force

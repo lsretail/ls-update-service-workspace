@@ -36,7 +36,7 @@ export default class DeployController extends ExtensionController
 
     public activate()
     {
-        let debug = true;
+        let debug = false;
         this._goCurrent = new GoCurrent(new PowerShell(debug), this.context.asAbsolutePath("PowerShell\\GoCurrent.psm1"));
 
         commands.executeCommand("setContext", Constants.goCurrentDebug, debug);
@@ -518,7 +518,7 @@ export default class DeployController extends ExtensionController
         if (!deployment)
             return;
         let packages = await deployService.getDeployedPackages(deployment.guid);
-        let server = packages.filter(p => p.Id === 'nav-server')[0]
+        let server = packages.filter(p => p.Id === 'bc-server')[0]
         if (!server)
             return;
         PostDeployController.addAlLaunchConfig(server);

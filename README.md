@@ -4,7 +4,7 @@
 
 ## Features
 
-### Install development packages from VSCode
+### Install packages from VSCode
 Easily install Go Current packages relevant to your project.
 1. Create a *gocurrent.json* file in root of your workspace with the format:
     ```
@@ -53,19 +53,16 @@ No settings at the moment.
 
     * Workaround: Restart VSCode.
 
-* Pressing cancel or close when providing arguments for package group will install the package group.
-
-    * Workaround: Press "no" when Windows asks for elevated privileges.
-
 ## Release Notes
 
 ### 0.2.0
 
 * New launch configuration are added to launch.json instead of updating existing and removed with the package.
+* Adapted to new version of Go Current.
 
 ### 0.1.1
 
-* Notify user when *go-current-wizard* and *go-current-workspace* is updated.
+* Notify user when *go-current-client* and *go-current-workspace* is updated.
 * Spaces and dots removed in suggested instance name.
 * Bugfix: Canceling arguments user input now cancels instead of continuing installation.
 

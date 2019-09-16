@@ -14,7 +14,7 @@ catch
 function Invoke-ErrorHandler($Error)
 {
     $Type = 'unknown'
-    if (($Error.Exception -is [LSRetail.GoCurrent.Common.Exceptions.UpdaterException]) -or 
+    if (($Error.Exception -is [LSRetail.GoCurrent.Common.Exceptions.GoCurrentException]) -or 
         $Error.Exception -is [System.ServiceModel.FaultException])
     {
         $Type = 'GoCurrent'
@@ -74,7 +74,7 @@ function Install-AsAdmin()
         $ArgumentsFilePath = $null
     }
     $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName
-    $Result = @($PackageGroup.Packages | Install-GoPackage -InstanceName $InstanceName -Subscription ([Guid]::Empty) -Parameters $ArgumentsFilePath)
+    $Result = @($PackageGroup.Packages | Install-GocPackage -InstanceName $InstanceName -Arguments $ArgumentsFilePath)
 
     Set-Content -Value (ConvertTo-Json $Result -Depth 100 -Compress) -Path $OutputPath
 }
@@ -103,14 +103,14 @@ function Get-AvailableUpdates()
         $InstanceName
     )
     $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName
-    $Updates = @($PackageGroup.packages | Get-GoAvailableUpdates -InstanceName $InstanceName -Subscription ([Guid]::Empty) | Where-Object { $_.SelectedPackage -eq $null})
+    $Updates = @($PackageGroup.packages | Get-GocUpdates -InstanceName $InstanceName | Where-Object { $_.SelectedPackage -eq $null})
     return (ConvertTo-Json $Updates)
 }
 
 function Test-IsInstance($ProjectFilePath, $PackageGroupName)
 {
     $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName
-    $Result = $PackageGroup.packages | Test-GoIsInstance -Subscription ([Guid]::Empty)
+    $Result = $PackageGroup.packages | Test-GocIsInstance
     return (ConvertTo-Json $Result)
 }
 
@@ -129,7 +129,7 @@ function GetPackageGroup($ProjectFilePath, $PackageGroupName)
 
 function Test-InstanceExists($InstanceName)
 {
-    return ConvertTo-Json (Test-GoInstanceExists -Instancename $InstanceName)
+    return ConvertTo-Json (Test-GocInstanceExists -Instancename $InstanceName)
 }
 
 function Test-CanInstall($ProjectFilePath, $PackageGroupName)
@@ -138,7 +138,7 @@ function Test-CanInstall($ProjectFilePath, $PackageGroupName)
     $CanInstall = $false
     foreach ($Package in $PackageGroup.packages)
     {
-        $First = Get-GoInstalledPackages -Id $Package.id | Select-Object -First 1
+        $First = Get-GocInstalledPackage -Id $Package.id | Select-Object -First 1
         if (!$First)
         {
             $CanInstall = $true
@@ -155,13 +155,13 @@ function Test-CanInstall($ProjectFilePath, $PackageGroupName)
 function Get-Arguments($ProjectFilePath, $PackageGroupName)
 {
     $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName
-    $Arguments = $PackageGroup.packages | Get-GoArguments -Subscription ([Guid]::Empty)
+    $Arguments = $PackageGroup.packages | Get-GocArguments
     return ConvertTo-Json $Arguments
 }
 
 function Get-InstalledPackages($Id, $InstanceName)
 {
-    return ConvertTo-Json @(Get-GoInstalledPackages -Id $Id -InstanceName $InstanceName) -Compress
+    return ConvertTo-Json @(Get-GocInstalledPackage -Id $Id -InstanceName $InstanceName) -Compress
 }
 
 function GetDeployment()
@@ -193,9 +193,9 @@ function Remove-AsAdmin()
 
     $Deployment = GetDeployment -WorkspaceDataPath $WorkspaceDataPath -DeploymentGuid $DeploymentGuid
 
-    if ((![string]::IsNullOrEmpty($Deployment.instanceName)) -and (Test-GoInstanceExists -InstanceName $Deployment.instanceName))
+    if ((![string]::IsNullOrEmpty($Deployment.instanceName)) -and (Test-GocInstanceExists -InstanceName $Deployment.instanceName))
     {
-        Remove-GoPackage -InstanceName $Deployment.instanceName
+        Remove-GocPackage -InstanceName $Deployment.instanceName
     }
 
     if ($Deployment.packages.Count -eq 0)
@@ -203,12 +203,13 @@ function Remove-AsAdmin()
         return
     }
 
-    $NotInstances = $Deployment.packages | Where-Object { !(Test-GoIsInstance -Subscription ([Guid]::Empty) -Id $_.id -Version $_.version)}
-    $NotInstances = $NotInstances | Where-Object { (Get-GoInstalledPackages -Id $_.id ) -ne $null }
-    $NotInstances | Remove-GoPackage
+    #$NotInstances = $Deployment.packages | Where-Object { !(Test-GocIsInstance -Id $_.id -Version $_.version)}
+    $NotInstances = $Deployment.packages | Where-Object { !(Test-GocIsInstance -Id $_.id)}
+    $NotInstances = $NotInstances | Where-Object { (Get-GocInstalledPackage -Id $_.id ) -ne $null }
+    $NotInstances | Remove-GocPackage
 
     Set-Content -Value (ConvertTo-Json $Deployment.name -Depth 100 -Compress) -Path $OutputPath
-   }
+}
 
 function Remove-Deployment()
 {
@@ -225,10 +226,10 @@ function Remove-Deployment()
 function Get-AvailableBaseUpdates()
 {
     $Packages = @(
-        'go-current-wizard',
+        'go-current-client',
         'go-current-workspace'
     )
-    $Updates = @($Packages | Get-GoAvailableUpdates -Subscription ([Guid]::Empty) | Where-Object { $_.SelectedPackage -eq $null})
+    $Updates = @($Packages | Get-GocUpdates | Where-Object { $_.SelectedPackage -eq $null})
     return (ConvertTo-Json $Updates)
 }
 
@@ -240,10 +241,10 @@ function Install-BasePackages()
 function Install-BaseAsAdmin($OutputPath)
 {
     $Packages = @(
-        'go-current-wizard',
+        'go-current-client',
         'go-current-workspace'
     )
-    $Result = @($Packages | Install-GoPackage -Subscription ([Guid]::Empty))
+    $Result = @($Packages | Install-GocPackage)
     Set-Content -Value (ConvertTo-Json $Result -Depth 100 -Compress) -Path $OutputPath
 }
 
@@ -255,9 +256,9 @@ function GetDeployedPackages()
     )
     $Deployment = GetDeployment -WorkspaceDataPath $WorkspaceDataPath -DeploymentGuid $DeploymentGuid
 
-    if ((![string]::IsNullOrEmpty($Deployment.instanceName)) -and (Test-GoInstanceExists -InstanceName $Deployment.instanceName))
+    if ((![string]::IsNullOrEmpty($Deployment.instanceName)) -and (Test-GocInstanceExists -InstanceName $Deployment.instanceName))
     {
-        Get-GoInstalledPackages -InstanceName $Deployment.instanceName
+        Get-GocInstalledPackage -InstanceName $Deployment.instanceName
     }
 
     if ($Deployment.packages.Count -eq 0)
@@ -265,8 +266,10 @@ function GetDeployedPackages()
         return
     }
 
-    $NotInstances = $Deployment.packages | Where-Object { !(Test-GoIsInstance -Subscription ([Guid]::Empty) -Id $_.id -Version $_.version)}
-    $NotInstances | Where-Object { (Get-GoInstalledPackages -Id $_.id ) -ne $null }
+    # TODO
+    #$NotInstances = $Deployment.packages | Where-Object { !(Test-GocIsInstance -Id $_.id -Version $_.version)}
+    $NotInstances = $Deployment.packages | Where-Object { !(Test-GocIsInstance -Id $_.id)}
+    $NotInstances | Where-Object { (Get-GocInstalledPackage -Id $_.id ) -ne $null }
 }
 
 function Get-DeployedPackages()

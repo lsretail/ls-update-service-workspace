@@ -129,12 +129,12 @@ export class PowerShell
         }
     }
 
-    private processError(error: string)
+    private processError(error: any)
     {
         let powerShellError;
         try
         {
-            let ble = error.split('|||')[0].split('\r\n').join('');
+            let ble = error.message.split('|||')[0].split('\r\n').join('');
             let errorObj = JSON.parse(ble);
             if (Object.keys(errorObj).indexOf('message') >= 0)
             {
