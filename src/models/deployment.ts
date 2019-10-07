@@ -6,5 +6,4 @@ export class Deployment
     instanceName: string;
     name: string;
     packages: Array<Package> = [];
-    lastUpdated: Array<Package> = [];
 }

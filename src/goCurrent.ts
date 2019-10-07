@@ -13,7 +13,7 @@ export class GoCurrent
     {
         this._powerShell = powerShell;
         this._powerShell.addModuleFromPath(modulePath);
-        this._powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
+        this._powerShell.setRunWithNext("trap{if (Invoke-ErrorHandler $_) { continue };}");
         this._modulePath = modulePath;
     }
 
@@ -23,7 +23,7 @@ export class GoCurrent
         {
             this._powerShellLongRunning = new PowerShell();
             this._powerShellLongRunning.addModuleFromPath(this._modulePath);
-            this._powerShellLongRunning.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
+            this._powerShellLongRunning.setRunWithNext("trap{if (Invoke-ErrorHandler $_) { continue };}");
         }
         return this._powerShellLongRunning;
     }
@@ -46,17 +46,20 @@ export class GoCurrent
             param['InstanceName'] = instanceName;
         if (argumentsFilePath)
             param['ArgumentsFilePath'] = argumentsFilePath;
-        return this.longRunning.executeCommandSafe("Install-PackageGroup", true, param);
+        return this.longRunning.executeCommandSafe("Install-PackageGroupNew", true, param);
     }
 
-    public getAvailableUpdates(projectFilePath: string, packageGroupName: string, instanceName: string)
+    public getAvailableUpdates(projectFilePath: string, packageGroupName: string, instanceName: string, selectedPackages: string[])
     {
         let param = {
             'ProjectFilePath': projectFilePath,
             'PackageGroupName': packageGroupName,
+            'SelectedPackages': selectedPackages
         }
+        
         if (instanceName)
             param['InstanceName'] = instanceName;
+
         return this._powerShell.executeCommandSafe("Get-AvailableUpdates", true, param);
     }
 
@@ -113,6 +116,15 @@ export class GoCurrent
         return this._powerShell.executeCommandSafe("Test-CanInstall", true, {"ProjectFilePath": projectFilePath, "PackageGroupName": packageGroupName})
     }
 
+    public testIsInstalled(packages: string[], instanceName: string): Promise<boolean>
+    {
+        let args = {"Packages": packages};
+        if (instanceName)
+            args["InstanceName"] = instanceName;
+
+        return this._powerShell.executeCommandSafe("Test-IsInstalled", true, args)
+    }
+
     public getInstalledPackages(id: string, instanceName: string = undefined) : Promise<PackageInfo[]>
     {
         let param = {
@@ -131,5 +143,15 @@ export class GoCurrent
             'DeploymentGuid': deploymentGuid,
         }
         return this._powerShell.executeCommandSafe("Get-DeployedPackages", true, param);
+    }
+
+    public openGoCurrentWizard()
+    {
+        this._powerShell.executeCommandSafe("Invoke-OpenGoCurrentWizard", false);
+    }
+
+    public testBug() : Promise<any>
+    {
+        return this._powerShell.executeCommandSafe("Test-Bug", true);
     }
 }

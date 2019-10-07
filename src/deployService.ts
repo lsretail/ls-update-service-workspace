@@ -11,6 +11,7 @@ import {workspace, EventEmitter, Event, Disposable, Uri} from 'vscode';
 import {UpdateAvailable} from './models/updateAvailable';
 import {PackageInfo} from './interfaces/packageInfo';
 import { worker } from 'cluster';
+import { DeploymentResult } from './models/deploymentResult'
 
 let uuid = require('uuid/v4');
 
@@ -88,57 +89,83 @@ export class DeployService
     {
         let removedName = await this._goCurrent.removeDeployment(this._workspaceData.uri.fsPath, guid);
             
-        let workspaceData = await this._workspaceData.getData();
-        let deployment = DataHelpers.getEntryByProperty(workspaceData.deployments, "guid", guid);
-        DataHelpers.removeEntryByProperty(workspaceData.deployments, "guid", guid);
-        this._workspaceData.save();
-        if (deployment)
-            this.fireInstanceRemoved(deployment.instanceName);
+        await this.removeDeploymentFromData(guid);
+        
         return removedName
     }
 
-    public async deployPackageGroup(packageGroup: PackageGroup, instanceName: string, deploymentGuid: string = undefined, argumentsUri: Uri = undefined) : Promise<Deployment>
+    public async removeDeploymentFromData(guid: string) : Promise<void>
     {
-        let projectData = await this._workspaceData.getData();
-        let deployment = DataHelpers.getEntryByProperty(projectData.deployments, "guid", deploymentGuid);
+        let workspaceData = await this._workspaceData.getData();
+        let deployment = DataHelpers.getEntryByProperty(workspaceData.deployments, "guid", guid);
+        DataHelpers.removeEntryByProperty(workspaceData.deployments, "guid", guid);
+        await this._workspaceData.save();
+        if (deployment)
+            this.fireInstanceRemoved(deployment.instanceName);
+    }
+
+    public async deployPackageGroup(
+        packageGroup: PackageGroup, 
+        instanceName: string, 
+        deploymentGuid: string = undefined,
+        argumentsUri: Uri = undefined
+    ) : Promise<DeploymentResult>
+    {
+        let workspaceData = await this._workspaceData.getData();
+
+        let result: DeploymentResult = new DeploymentResult();
+        result.lastUpdated = [];
+        result.deployment = DataHelpers.getEntryByProperty(workspaceData.deployments, "guid", deploymentGuid);
+
         var packagesInstalled = await this._goCurrent.installPackageGroup(
             this._projectFile.uri.fsPath,
             packageGroup.name,
             instanceName,
             argumentsUri ? argumentsUri.fsPath : undefined
         );
+
+        if (packagesInstalled.length === 0)
+            return result;
+
         let exists = true;
-        if (!deployment)
+
+        if (!result.deployment)
         {
-            deployment = new Deployment();
-            deployment.guid = uuid();
-            deployment.name = packageGroup.name;
-            deployment.instanceName = instanceName;
+            result.deployment = new Deployment();
+            result.deployment.guid = uuid();
+            result.deployment.name = packageGroup.name;
+            result.deployment.instanceName = instanceName;
             exists = false;
         }
-        deployment.packages = [];
+
+        result.deployment.packages = [];
+
         for (let packageFromGroup of packageGroup.packages)
         {
             let version = packageFromGroup.version;
             let installed = DataHelpers.getEntryByProperty(packagesInstalled, "Id", packageFromGroup.id);
-            let lastInstalled = DataHelpers.getEntryByProperty(deployment.packages, "id", packageFromGroup.id);
+            let lastInstalled = DataHelpers.getEntryByProperty(result.deployment.packages, "id", packageFromGroup.id);
             if (installed)
                 version = installed.Version;
             else if (lastInstalled)
                 version = lastInstalled.version;
 
-            deployment.packages.push({'id': packageFromGroup.id, 'version': version});
+            if (installed || lastInstalled)
+                result.deployment.packages.push({'id': packageFromGroup.id, 'version': version});
         }
-        deployment.lastUpdated = [];
+
         for (let installed of packagesInstalled)
         {
-            deployment.lastUpdated.push({'id': installed.Id, 'version': installed.Version})
+            result.lastUpdated.push({'id': installed.Id, 'version': installed.Version})
         }
+
         if (!exists)
-            projectData.deployments.push(deployment);
+            workspaceData.deployments.push(result.deployment);
+
         this._workspaceData.save();
         this.firePackagesDeployed(packagesInstalled);
-        return deployment;
+
+        return result;
     }
 
     public async getArguments(name: string) : Promise<any>
@@ -146,7 +173,7 @@ export class DeployService
         return await this._goCurrent.getArguments(this._projectFile.uri.fsPath, name);
     }
 
-    public async installUpdate(packageGroupName: string, instanceName: string, guid: string) : Promise<Deployment>
+    public async installUpdate(packageGroupName: string, instanceName: string, guid: string) : Promise<DeploymentResult>
     {
         let projectFile = await this._projectFile.getData();
         let packageGroup = DataHelpers.getEntryByProperty(projectFile.devPackageGroups, "name", packageGroupName)
@@ -159,6 +186,12 @@ export class DeployService
         let updates = new Array<UpdateAvailable>();
         for (let deployment of deployments)
         {
+            let isInstalled = await this.isInstalled(deployment.packages.map((e) => e.id), deployment.instanceName);
+            if (!isInstalled)
+            {
+                await this.removeDeploymentFromData(deployment.guid);
+                continue
+            }
             let packages = await this.checkForUpdate(deployment);
             if (packages.length === 0)
                 continue;
@@ -176,7 +209,7 @@ export class DeployService
 
     public checkForUpdate(deployment: Deployment) : Promise<PackageInfo[]>
     {
-        return this._goCurrent.getAvailableUpdates(this._projectFile.uri.fsPath, deployment.name, deployment.instanceName)
+        return this._goCurrent.getAvailableUpdates(this._projectFile.uri.fsPath, deployment.name, deployment.instanceName, deployment.packages.map((e) => e.id));
     }
 
     public isInstance(packageGroupName: string) : Promise<boolean>
@@ -187,6 +220,11 @@ export class DeployService
     public canInstall(packageGroupName: string) : Promise<boolean>
     {
         return this._goCurrent.testCanInstall(this._projectFile.uri.fsPath, packageGroupName);
+    }
+
+    public isInstalled(packages: string[], instanceName: string) : Promise<boolean>
+    {
+        return this._goCurrent.testIsInstalled(packages, instanceName);
     }
 
     public getInstalledPackages(id: string, instanceName: string = undefined) : Thenable<PackageInfo[]>

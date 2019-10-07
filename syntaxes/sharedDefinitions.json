@@ -1,5 +1,4 @@
 {
-    "id": "Shared ",
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions": {
         "deploymentPackage": {
@@ -7,11 +6,15 @@
             "properties": {
                 "id": {
                     "type": "string",
-                    "description": "Package id"
+                    "description": "Specifies package id"
                 },
                 "version": {
                     "type": "string",
-                    "description": "Package version"
+                    "description": "Specifies package version"
+                },
+                "optional": {
+                    "type": "boolean",
+                    "description": "Specifies whether optional or not"
                 }
             }
         }

@@ -2,20 +2,20 @@
     "name": "go-current-workspace",
     "displayName": "Go Current - Workspace",
     "description": "Go Current - Workspace brings you the power of Go Current to your Visual Studio Code workspace.",
-    "version": "0.2.0+developer",
+    "version": "0.3.0+developer",
     "publisher": "lsretail",
     "repository": "https://bitbucket.lsretail.com/projects/GOC/repos/workspace",
     "author": {
         "name": "Team Thunderbolt"
     },
     "engines": {
-        "vscode": "^1.18.0"
+        "vscode": "^1.38.0"
     },
     "categories": [
         "Other"
     ],
     "activationEvents": [
-        "workspaceContains:gocurrent.json",
+        "workspaceContains:.gocurrent/gocurrent.json",
         "onCommand:go-current.activate"
     ],
     "main": "./out/src/extension",
@@ -33,7 +33,7 @@
             },
             {
                 "command": "go-current.update",
-                "title": "Updates available",
+                "title": "Updates available!",
                 "category": "Go Current"
             },
             {
@@ -44,6 +44,11 @@
             {
                 "command": "go-current.experimental",
                 "title": "Experimental",
+                "category": "Go Current"
+            },
+            {
+                "command": "go-current.openWizard",
+                "title": "Open",
                 "category": "Go Current"
             }
         ],
@@ -63,26 +68,30 @@
                 },
                 {
                     "command": "go-current.checkForUpdates",
-                    "when": "go-current.deploy.active && go-current.debug"
+                    "when": "go-current.deploy.active"
                 },
                 {
                     "command": "go-current.experimental",
                     "when": "go-current.deploy.active && go-current.debug"
+                },
+                {
+                    "command": "go-current.openWizard",
+                    "when": "go-current.deploy.active"
                 }
             ]
         },
         "jsonValidation": [
             {
-                "fileMatch": "gocurrent.json",
+                "fileMatch": ".gocurrent/gocurrent.json",
                 "url": "./syntaxes/projectFileSyntax.json"
             },
             {
                 "fileMatch": ".gocurrent/data.json",
-                "url": "./syntaxes/deploymentSyntax.json"
+                "url": "./syntaxes/deploymentsSyntax.json"
             },
             {
                 "fileMatch": ".gocurrent/arguments.json",
-                "url": "./syntaxes/parameterSyntax.json"
+                "url": "./syntaxes/argumentSyntax.json"
             }
         ]
     },

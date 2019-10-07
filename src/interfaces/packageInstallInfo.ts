@@ -1,6 +1,4 @@
-
-
-export interface PackageInfo
+export interface PackageInstallInfo
 {
     Id: string;
     Version: string;

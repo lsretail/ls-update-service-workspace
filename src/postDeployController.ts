@@ -6,6 +6,7 @@ import { Constants } from './constants';
 import { fsHelpers } from './fsHelpers';
 import Resources from './resources';
 import * as util from 'util'
+import { GoCurrent } from './GoCurrent';
 
 export class PostDeployController
 {
@@ -20,6 +21,9 @@ export class PostDeployController
     {
         for (let packageInfo of packages)
         {
+            if (packageInfo.Id === 'go-current-client')
+                PostDeployController.processGoCurrent();
+
             if (packageInfo.Id === 'bc-al')
                 PostDeployController.processVsExtension(packageInfo);
 
@@ -144,6 +148,15 @@ export class PostDeployController
     public static processVsExtension(packageInfo: PackageInfo)
     {
         window.showInformationMessage(util.format(Resources.extensionUpdated, packageInfo.Id), Constants.buttonReloadWindow).then(result =>
+        {
+            if (result === Constants.buttonReloadWindow)
+                commands.executeCommand("workbench.action.reloadWindow");
+        });
+    }
+
+    public static processGoCurrent()
+    {
+        window.showInformationMessage(Resources.goCurrentUpdated, Constants.buttonReloadWindow).then(result =>
         {
             if (result === Constants.buttonReloadWindow)
                 commands.executeCommand("workbench.action.reloadWindow");

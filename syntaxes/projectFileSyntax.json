@@ -9,6 +9,11 @@
             "type": "string",
             "description": "Id of Go Current package"
         },
+        "versionQueries": {
+            "type": "object",
+            "description": "Specifies reusable version queries. Reference with ${variableName}.",
+            "additionalProperties": true
+        },
         "devPackageGroups": {
             "type": "array",
             "description": "List of development deployments",
@@ -32,6 +37,9 @@
                         "items": {
                             "$ref": "./sharedDefinitions.json#definitions/deploymentPackage"
                         }
+                    },
+                    "arguments": {
+                        "$ref": "./argumentSyntax.json"
                     }
                 }
             }

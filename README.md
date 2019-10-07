@@ -6,7 +6,7 @@
 
 ### Install packages from VSCode
 Easily install Go Current packages relevant to your project.
-1. Create a *gocurrent.json* file in root of your workspace with the format:
+1. Create a *.gocurrent/gocurrent.json* file in root of your workspace with the format:
     ```
     {
         "devPackageGroups": [

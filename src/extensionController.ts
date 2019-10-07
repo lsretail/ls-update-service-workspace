@@ -21,9 +21,8 @@ export class ExtensionController
 
     registerFolderCommand(command: string, callback: (...args: any[]) => any, thisArg?: any)
     {
-        console.log(command);
         var disposable = vscode.commands.registerCommand(command, (...args) => {
-            if (!vscode.workspace.rootPath)
+            if (vscode.workspace.workspaceFolders.length === 0)
             {
                 return this.showNoRootPathWarning();
             }
