@@ -150,8 +150,15 @@ export default class DeployController extends ExtensionController
     {
         if (this._deployServices[workspaceFolder.uri.path])
             return;
+
+        let projectFilePath = path.join(workspaceFolder.uri.fsPath, Constants.projectFileName)
+        if (!fsHelpers.existsSync(projectFilePath))
+        {
+            projectFilePath = path.join(workspaceFolder.uri.fsPath, '.gocurrent', Constants.projectFileName)
+        }
+        
         let deployService = new DeployService(
-            new JsonData<ProjectFile>(path.join(workspaceFolder.uri.fsPath, Constants.deploymentsFileName), true, new ProjectFile()),
+            new JsonData<ProjectFile>(projectFilePath, true, new ProjectFile()),
             new JsonData<WorkspaceData>(path.join(workspaceFolder.uri.fsPath, Constants.goCurrentWorkspaceDirName+"\\"+Constants.projectDataFileName), true, new WorkspaceData()),
             this._goCurrent
         );
@@ -245,13 +252,13 @@ export default class DeployController extends ExtensionController
 
     private async showDeployWithService(deployService: DeployService, workspaceFolder: WorkspaceFolder)
     {
-        let packageGroups = await deployService.getPackageGroups();
+        let packageGroups = await deployService.getPackageGroupsResolved();
 
         let picks: QuickPickItemPayload<PackageGroup>[] = [];
 
         for (let entry of packageGroups)
         {
-            if (await deployService.canInstall(entry.name))
+            if (await deployService.canInstall(entry.id))
             {
                 picks.push({
                     "label": entry.name, 
@@ -269,7 +276,7 @@ export default class DeployController extends ExtensionController
             return;
 
         let instanceName = "";
-        if (await deployService.isInstance(selectedSet.payload.name))
+        if (await deployService.isInstance(selectedSet.payload.id))
         {
             instanceName = await this.getOrShowInstanceNamePick(workspaceFolder.name);
             if (!instanceName)
@@ -372,7 +379,7 @@ export default class DeployController extends ExtensionController
                 this.installUpdate(this._deployServices[result.payload.uri.path], update).then(success => {
                     if (success)
                     {
-                        let idx = this._updatesAvailable[result.payload.uri.path].findIndex(u => u.packageGroupName === result.payload2.packageGroupName && u.instanceName === result.payload2.instanceName);
+                        let idx = this._updatesAvailable[result.payload.uri.path].findIndex(u => u.packageGroupId === result.payload2.packageGroupId && u.instanceName === result.payload2.instanceName);
                         if (idx > -1)
                             this._updatesAvailable[result.payload.uri.path].splice(idx, 1);
                     }
@@ -403,7 +410,7 @@ export default class DeployController extends ExtensionController
                     }
                     else
                     {
-                        if (!this._updatesAvailable[workspaceId].find(i => i.packageGroupName === update.packageGroupName && i.instanceName === update.instanceName))
+                        if (!this._updatesAvailable[workspaceId].find(i => i.packageGroupId === update.packageGroupId && i.instanceName === update.instanceName))
                         {
                             this._updatesAvailable[workspaceId].push(update);
                             commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, true);
@@ -418,7 +425,7 @@ export default class DeployController extends ExtensionController
     {
         try
         {
-            let deploymentResult = await deployService.installUpdate(update.packageGroupName, update.instanceName, update.guid);
+            let deploymentResult = await deployService.installUpdate(update.packageGroupId, update.instanceName, update.guid);
             if (deploymentResult.lastUpdated.length > 0)
             {
                 window.showInformationMessage(`Package group "${deploymentResult.deployment.name}" updated: ` + deploymentResult.lastUpdated.map(p => `${p.id} v${p.version}`).join(', '));

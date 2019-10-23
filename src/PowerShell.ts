@@ -166,7 +166,7 @@ export class PowerShell
         }
         catch (e)
         {
-            let split = error.split('\n');
+            let split = error.message.split('\n');
             let firstLine = split[0];
             split.splice(0, 1);
             let rest = split.join('\n');

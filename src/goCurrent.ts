@@ -13,7 +13,7 @@ export class GoCurrent
     {
         this._powerShell = powerShell;
         this._powerShell.addModuleFromPath(modulePath);
-        this._powerShell.setRunWithNext("trap{if (Invoke-ErrorHandler $_) { continue };}");
+        this._powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
         this._modulePath = modulePath;
     }
 
@@ -23,7 +23,7 @@ export class GoCurrent
         {
             this._powerShellLongRunning = new PowerShell();
             this._powerShellLongRunning.addModuleFromPath(this._modulePath);
-            this._powerShellLongRunning.setRunWithNext("trap{if (Invoke-ErrorHandler $_) { continue };}");
+            this._powerShellLongRunning.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
         }
         return this._powerShellLongRunning;
     }
@@ -36,11 +36,11 @@ export class GoCurrent
         return this._powerShell.executeCommandSafe("Get-TestString", false, param);
     }
 
-    public installPackageGroup(projectFilePath: string, packageGroupName: string, instanceName: string, argumentsFilePath: string) : Promise<PackageInfo[]>
+    public installPackageGroup(projectFilePath: string, packageGroupId: string, instanceName: string, argumentsFilePath: string) : Promise<PackageInfo[]>
     {
         let param = {
             'ProjectFilePath': projectFilePath,
-            'PackageGroupName': packageGroupName,
+            'packageGroupId': packageGroupId,
         }
         if (instanceName)
             param['InstanceName'] = instanceName;
@@ -49,11 +49,11 @@ export class GoCurrent
         return this.longRunning.executeCommandSafe("Install-PackageGroupNew", true, param);
     }
 
-    public getAvailableUpdates(projectFilePath: string, packageGroupName: string, instanceName: string, selectedPackages: string[])
+    public getAvailableUpdates(projectFilePath: string, packageGroupId: string, instanceName: string, selectedPackages: string[])
     {
         let param = {
             'ProjectFilePath': projectFilePath,
-            'PackageGroupName': packageGroupName,
+            'packageGroupId': packageGroupId,
             'SelectedPackages': selectedPackages
         }
         
@@ -82,11 +82,11 @@ export class GoCurrent
         return this.longRunning.executeCommandSafe("Remove-Deployment", true, param);
     }
 
-    public getArguments(projectFilePath: string, packageGroupName: string): Promise<any>
+    public getArguments(projectFilePath: string, packageGroupId: string): Promise<any>
     {
         let param = {
             'ProjectFilePath': projectFilePath,
-            'PackageGroupName': packageGroupName
+            'packageGroupId': packageGroupId
         }
         return this._powerShell.executeCommandSafe("Get-Arguments", true, param);
     }
@@ -96,11 +96,11 @@ export class GoCurrent
         return this._powerShell.executeCommandSafe("Test-GoCurrentInstalled", true);
     }
 
-    public testIsInstance(projectFilePath: string, packageGroupName: string) : Promise<any>
+    public testIsInstance(projectFilePath: string, packageGroupId: string) : Promise<any>
     {
         let param = {
             'ProjectFilePath': projectFilePath,
-            'PackageGroupName': packageGroupName
+            'packageGroupId': packageGroupId
         };
 
         return this._powerShell.executeCommandSafe("Test-IsInstance", true, param);
@@ -111,9 +111,9 @@ export class GoCurrent
         return this._powerShell.executeCommandSafe("Test-InstanceExists", true, {"InstanceName": instanceName});
     }
 
-    public testCanInstall(projectFilePath: string, packageGroupName: string): Promise<boolean>
+    public testCanInstall(projectFilePath: string, packageGroupId: string): Promise<boolean>
     {
-        return this._powerShell.executeCommandSafe("Test-CanInstall", true, {"ProjectFilePath": projectFilePath, "PackageGroupName": packageGroupName})
+        return this._powerShell.executeCommandSafe("Test-CanInstall", true, {"ProjectFilePath": projectFilePath, "packageGroupId": packageGroupId})
     }
 
     public testIsInstalled(packages: string[], instanceName: string): Promise<boolean>

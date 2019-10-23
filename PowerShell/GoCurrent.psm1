@@ -1,5 +1,7 @@
 $ErrorActionPreference = 'stop'
 
+Import-Module (Join-Path $PSScriptRoot 'ProjectFile.psm1')
+
 Add-Type -AssemblyName 'System.ServiceModel'
 try
 {
@@ -66,7 +68,7 @@ function Install-AsAdmin()
 {
     param(
         $ProjectFilePath,
-        $PackageGroupName,
+        $PackageGroupId,
         $InstanceName,
         $ArgumentsFilePath,
         $OutputPath
@@ -75,7 +77,7 @@ function Install-AsAdmin()
     {
         $ArgumentsFilePath = $null
     }
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId
     $Result = @($PackageGroup.Packages | Install-GocPackage -InstanceName $InstanceName -Arguments $ArgumentsFilePath)
 
     Set-Content -Value (ConvertTo-Json $Result -Depth 100 -Compress) -Path $OutputPath
@@ -85,12 +87,12 @@ function Install-PackageGroupNew
 {
     param(
         $ProjectFilePath,
-        $PackageGroupName,
+        $PackageGroupId,
         $InstanceName,
         $ArgumentsJson
     )
 
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId
 
     return Install-Packages -InstanceName $InstanceName -Packages $PackageGroup.Packages -Arguments $PackageGroup.Arguments
 }
@@ -154,13 +156,13 @@ function Install-PackageGroup()
 {
     param(
         $ProjectFilePath,
-        $PackageGroupName,
+        $PackageGroupId,
         $InstanceName,
         $ArgumentsFilePath
     )
     $Command = 'Install-AsAdmin'
-    $Arguments = "'$ProjectFilePath' '$PackageGroupName' '$InstanceName' '$ArgumentsFilePath'"
-    $ExceptionText = "Exception occured while installing package group `"$PackageGroupName`"."
+    $Arguments = "'$ProjectFilePath' '$PackageGroupId' '$InstanceName' '$ArgumentsFilePath'"
+    $ExceptionText = "Exception occured while installing package group `"$PackageGroupId`"."
     Invoke-AsAdmin -Command $Command -Arguments $Arguments -ExceptionText $ExceptionText
 
     return $Data
@@ -170,11 +172,11 @@ function Get-AvailableUpdates()
 {
     param(
         $ProjectFilePath,
-        $PackageGroupName,
+        $PackageGroupId,
         $InstanceName,
         [string[]]$SelectedPackages
     )
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName -NoThrow
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -NoThrow
 
     if (!$PackageGroup)
     {
@@ -182,15 +184,15 @@ function Get-AvailableUpdates()
     }
 
     # We only want to check optional packages for updates if they where installed, here we filter them out:
-    $Packages = $PackageGroup.packages | Where-Object { !$_.optional -or $_.optional -and $SelectedPackages.Contains($_.id) }
+    $Packages = $PackageGroup.packages | Where-Object { (!$_.optional) -or ($_.optional -and $SelectedPackages.Contains($_.id)) }
 
     $Updates = @($Packages | Get-GocUpdates -InstanceName $InstanceName )
     return (ConvertTo-Json $Updates)
 }
 
-function Test-IsInstance($ProjectFilePath, $PackageGroupName)
+function Test-IsInstance($ProjectFilePath, $PackageGroupId)
 {
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName -NoThrow
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -NoThrow
     if (!$PackageGroup)
     {
         return (ConvertTo-Json $false)
@@ -205,26 +207,15 @@ function GetPackageGroup
         [Parameter(Mandatory = $true)]
         $ProjectFilePath,
         [Parameter(Mandatory = $true)]
-        $PackageGroupName,
+        $PackageGroupId,
         [switch] $NoThrow
     )
-    $ProjectFile = Get-Content -Path $ProjectFilePath | ConvertFrom-Json
-    foreach ($Set in $ProjectFile.devPackageGroups)
+    $Group = Get-PackageGroup -Id $PackageGroupId -Path $ProjectFilePath
+    if (!$Group -and !$NoThrow)
     {
-        if ($Set.Name -eq $PackageGroupName)
-        {
-            if ($ProjectFile.versionQueries)
-            {
-                ReplaceVariables -PackageGroup $Set -Variables $ProjectFile.versionQueries
-            }
-
-            return $Set
-        }
+        Write-JsonError "Package group `"$PackageGroupId`" does not exists in project file." -Type 'User'
     }
-    if (!$NoThrow)
-    {
-        Write-JsonError "Package group `"$PackageGroupName`" does not exists in project file." -Type 'User'
-    }
+    return $Group
 }
 
 function ReplaceVariables
@@ -247,9 +238,9 @@ function Test-InstanceExists($InstanceName)
     return ConvertTo-Json (Test-GocInstanceExists -Instancename $InstanceName)
 }
 
-function Test-CanInstall($ProjectFilePath, $PackageGroupName)
+function Test-CanInstall($ProjectFilePath, $PackageGroupId)
 {
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId
     foreach ($Package in $PackageGroup.packages)
     {
         $First = Get-GocInstalledPackage -Id $Package.id | Select-Object -First 1
@@ -266,7 +257,7 @@ function Test-CanInstall($ProjectFilePath, $PackageGroupName)
 
 function Test-IsInstalled($Packages, $InstanceName)
 {
-    <#$PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName -NoThrow
+    <#$PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -NoThrow
     if (!$PackageGroup)
     {
         return ConvertTo-Json $false
@@ -282,9 +273,9 @@ function Test-IsInstalled($Packages, $InstanceName)
     return ConvertTo-Json $false
 }
 
-function Get-Arguments($ProjectFilePath, $PackageGroupName)
+function Get-Arguments($ProjectFilePath, $PackageGroupId)
 {
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroup $PackageGroupName
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId
     $Arguments = $PackageGroup.packages | Get-GocArguments
     return ConvertTo-Json $Arguments
 }
@@ -430,9 +421,4 @@ function Get-GoCurrentWizardPath
 
     $_GoCWizardPath = Join-Path $Dir 'LSRetail.GoCurrent.Client.Wizard.exe'
     return $_GoCWizardPath
-}
-
-function Test-Bug
-{
-    Get-Content -Path "C:\temp\drasl\installer.json" -Raw
 }

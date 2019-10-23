@@ -7,25 +7,53 @@
     "properties": {
         "id": {
             "type": "string",
-            "description": "Id of Go Current package"
+            "description": "Specifies the GoC package Id.",
+            "minLength": 1
         },
-        "versionQueries": {
+        "name": {
+            "type": "string",
+            "description": "Specifies the GoC package name.",
+            "minLength": 1
+        },
+        "displayName": {
+            "type": "string",
+            "description": "Specifies the GoC package display name."
+        },
+        "dependencies": {
+            "type": "array",
+            "description": "Specifies dependencies for the package.",
+            "items": {
+                "$ref": "./sharedDefinitions.json#definitions/packageList"
+            }
+        },
+        "versionVariables": {
             "type": "object",
             "description": "Specifies reusable version queries. Reference with ${variableName}.",
-            "additionalProperties": true
+            "additionalProperties": {
+                "anyOf":[
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "$ref": "./sharedDefinitions.json#definitions/versionQueryResolver"
+                    }
+                ]
+            }
         },
         "devPackageGroups": {
             "type": "array",
             "description": "List of development deployments",
             "items": {
                 "type": "object",
-                "required":[
-                    "name"
-                ],
+                "required":["name", "id"],
                 "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Id of package group."
+                    },
                     "name": {
                         "type": "string",
-                        "description": "Name of deployment group"
+                        "description": "Name of package group"
                     },
                     "description": {
                         "type": "string",
@@ -35,7 +63,14 @@
                         "type": "array",
                         "description": "Packages in deployment group",
                         "items": {
-                            "$ref": "./sharedDefinitions.json#definitions/deploymentPackage"
+                            "anyOf":[
+                                {
+                                    "$ref": "./sharedDefinitions.json#definitions/packageList"
+                                },
+                                {
+                                    "$ref": "./sharedDefinitions.json#definitions/packageListRef"
+                                }
+                            ]
                         }
                     },
                     "arguments": {

@@ -8,6 +8,7 @@
             "type": "array",
             "items": {
                 "type": "object",
+                "required": ["guid", "id", "name"],
                 "properties": {
                     "guid": {
                         "type": "string"
@@ -15,14 +16,17 @@
                     "instanceName": {
                         "type": "string"
                     },
-                    "packageGroupName": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
                         "type": "string"
                     },
                     "packages": {
                         "type": "array",
                         "description": "Packages in deployment group",
                         "items": {
-                            "$ref": "./sharedDefinitions.json#definitions/deploymentPackage"
+                            "$ref": "./sharedDefinitions.json#definitions/packageList"
                         }
                     }
                 }

@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions": {
-        "deploymentPackage": {
+        "packageList": {
             "required": ["id", "version"],
             "properties": {
                 "id": {
@@ -15,6 +15,32 @@
                 "optional": {
                     "type": "boolean",
                     "description": "Specifies whether optional or not"
+                }
+            }
+        },
+        "packageListRef": {
+            "required": ["$ref"],
+            "properties": {
+                "$ref": {
+                    "type": "string",
+                    "description": "Reference to dependencies."
+                }
+            }
+        },
+        "versionQueryResolver": {
+            "required": ["id", "version"],
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                },
+                "resolverPath": {
+                    "type": "string"
+                },
+                "resolverFunction": {
+                    "type": "string"
                 }
             }
         }

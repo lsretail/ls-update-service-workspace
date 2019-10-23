@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to the "Go Current - Workspace" extension will be documented in this file.
 
+## [0.3.0] - 2019-09-16
+### Added
+- Added dependencies, package metadata, reference from package group to dependencies and more.
+
 ## [0.2.0] - 2019-09-16
 ### Changed
 - Adapted to new Go Current version.

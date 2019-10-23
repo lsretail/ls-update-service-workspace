@@ -78,6 +78,52 @@ export class DeployService
         });
     }
 
+    public getPackageGroupsResolved() : Thenable<Array<PackageGroup>>
+    {
+        return this._projectFile.getData().then(projectFile => {
+            let groups = new Array<PackageGroup>();
+            for (let group of projectFile.devPackageGroups)
+            {
+                let resolvedGroup = this.getPackageGroupResolved(projectFile, group.id)
+                groups.push(resolvedGroup);
+            }
+            return groups;
+        });
+    }
+
+    public getPackageGroupResolved(projectFile: ProjectFile, id: string) : PackageGroup
+    {
+        if (id == 'dependencies')
+        {
+            let dependencies = new PackageGroup();
+            dependencies.name = "Dependencies"
+            dependencies.id = "dependencies"
+            dependencies.packages = projectFile.dependencies;
+            return dependencies
+        }
+        for (let item of projectFile.devPackageGroups)
+        {
+            if (item.id !== id)
+                continue;
+            
+            let packages = new Array<Package>()
+            for (let packageEntry of item.packages)
+            {
+                if ((<any>packageEntry).$ref)
+                {
+                    let group = this.getPackageGroupResolved(projectFile, (<any>packageEntry).$ref);
+                    packages = packages.concat(group.packages);
+                }
+                else
+                {
+                    packages.push(packageEntry);
+                }
+            }      
+            item.packages = packages;      
+            return item;
+        }
+    }
+
     public getDeployments() : Thenable<Array<Deployment>>
     {
         return this._workspaceData.getData().then(workspaceData => {
@@ -119,7 +165,7 @@ export class DeployService
 
         var packagesInstalled = await this._goCurrent.installPackageGroup(
             this._projectFile.uri.fsPath,
-            packageGroup.name,
+            packageGroup.id,
             instanceName,
             argumentsUri ? argumentsUri.fsPath : undefined
         );
@@ -134,24 +180,22 @@ export class DeployService
             result.deployment = new Deployment();
             result.deployment.guid = uuid();
             result.deployment.name = packageGroup.name;
+            result.deployment.id = packageGroup.id;
             result.deployment.instanceName = instanceName;
+            result.deployment.packages = [];
             exists = false;
         }
 
-        result.deployment.packages = [];
-
         for (let packageFromGroup of packageGroup.packages)
         {
-            let version = packageFromGroup.version;
             let installed = DataHelpers.getEntryByProperty(packagesInstalled, "Id", packageFromGroup.id);
-            let lastInstalled = DataHelpers.getEntryByProperty(result.deployment.packages, "id", packageFromGroup.id);
-            if (installed)
-                version = installed.Version;
-            else if (lastInstalled)
-                version = lastInstalled.version;
+            let alreadyInstalled = DataHelpers.getEntryByProperty(result.deployment.packages, "id", packageFromGroup.id);
+            
+            if (installed && alreadyInstalled)
+                alreadyInstalled.version = installed.Version;
 
-            if (installed || lastInstalled)
-                result.deployment.packages.push({'id': packageFromGroup.id, 'version': version});
+            if (installed && !alreadyInstalled)
+                result.deployment.packages.push({'id': packageFromGroup.id, 'version': installed.Version, 'optional': packageFromGroup.optional});
         }
 
         for (let installed of packagesInstalled)
@@ -173,10 +217,10 @@ export class DeployService
         return await this._goCurrent.getArguments(this._projectFile.uri.fsPath, name);
     }
 
-    public async installUpdate(packageGroupName: string, instanceName: string, guid: string) : Promise<DeploymentResult>
+    public async installUpdate(packageGroupId: string, instanceName: string, guid: string) : Promise<DeploymentResult>
     {
         let projectFile = await this._projectFile.getData();
-        let packageGroup = DataHelpers.getEntryByProperty(projectFile.devPackageGroups, "name", packageGroupName)
+        let packageGroup = DataHelpers.getEntryByProperty(projectFile.devPackageGroups, "id", packageGroupId)
         return this.deployPackageGroup(packageGroup, instanceName, guid);
     }
 
@@ -197,6 +241,7 @@ export class DeployService
                 continue;
 
             updates.push({
+                "packageGroupId": deployment.id,
                 "packageGroupName": deployment.name,
                 "instanceName": deployment.instanceName,
                 "guid": deployment.guid,
@@ -209,17 +254,17 @@ export class DeployService
 
     public checkForUpdate(deployment: Deployment) : Promise<PackageInfo[]>
     {
-        return this._goCurrent.getAvailableUpdates(this._projectFile.uri.fsPath, deployment.name, deployment.instanceName, deployment.packages.map((e) => e.id));
+        return this._goCurrent.getAvailableUpdates(this._projectFile.uri.fsPath, deployment.id, deployment.instanceName, deployment.packages.map((e) => e.id));
     }
 
-    public isInstance(packageGroupName: string) : Promise<boolean>
+    public isInstance(packageGroupId: string) : Promise<boolean>
     {
-        return this._goCurrent.testIsInstance(this._projectFile.uri.fsPath, packageGroupName);
+        return this._goCurrent.testIsInstance(this._projectFile.uri.fsPath, packageGroupId);
     }
 
-    public canInstall(packageGroupName: string) : Promise<boolean>
+    public canInstall(packageGroupId: string) : Promise<boolean>
     {
-        return this._goCurrent.testCanInstall(this._projectFile.uri.fsPath, packageGroupName);
+        return this._goCurrent.testCanInstall(this._projectFile.uri.fsPath, packageGroupId);
     }
 
     public isInstalled(packages: string[], instanceName: string) : Promise<boolean>
