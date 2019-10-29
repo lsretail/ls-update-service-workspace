@@ -32,7 +32,7 @@ export default class DeployController extends ExtensionController
 
     public activate()
     {
-        let debug = true;
+        let debug = false;
         this._goCurrent = new GoCurrent(new PowerShell(debug), this.context.asAbsolutePath("PowerShell\\GoCurrent.psm1"));
 
         commands.executeCommand("setContext", Constants.goCurrentDebug, debug);

@@ -42,7 +42,9 @@ function GetPackageGroupFromObj
             'name' = 'Dependencies'
             'packages' = $ProjectFile.dependencies
         }
-        return New-Object psobject -Property $Obj
+        $Set = New-Object psobject -Property $Obj
+        ReplaceVariables -PackageGroup $Set -Variables $Variables -ResolveCache $ResolveCache -ProjectDir $ProjectDir
+        return $Set
     }
 
     foreach ($Set in $ProjectFile.devPackageGroups)
