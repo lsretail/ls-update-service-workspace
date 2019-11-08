@@ -56,7 +56,7 @@ function GetPackageGroupFromObj
             {
                 if ([bool]($Entry.PSObject.properties.name -contains '$ref'))
                 {
-                    $Out = GetPackageGroupFromObj -ProjectFile $ProjectFile -Id $Entry.'$ref' -ResolveCache $ResolveCache -Variables $Variables
+                    $Out = GetPackageGroupFromObj -ProjectFile $ProjectFile -Id $Entry.'$ref' -ResolveCache $ResolveCache -Variables $Variables -ProjectDir $ProjectDir
                     $Packages += $Out.Packages
                 }
                 else
