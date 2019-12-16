@@ -11,22 +11,26 @@ function Get-PackageGroup
         $Path,
         [Parameter(Mandatory = $true)]
         [Alias('PackageGroupId')]
-        $Id
+        $Id,
+        $Target
     )
     $ProjectDir = Split-Path $Path -Parent
     $ProjectFile = Get-Content -Path $Path -Raw | ConvertFrom-Json
-
-    GetPackageGroupFromObj -ProjectFile $ProjectFile -Id $Id -ProjectDir $ProjectDir
+    
+    GetPackageGroupFromObj -ProjectFile $ProjectFile -Id $Id -ProjectDir $ProjectDir -Target $Target
 }
 
 function GetPackageGroupFromObj
 {
-    param(
+     param(
+        [Parameter(Mandatory = $true)]
         $ProjectFile,
+        [Parameter(Mandatory = $true)]
         $Id,
         [hashtable] $Variables = $null,
         [hashtable] $ResolveCache = @{},
-        $ProjectDir
+        $ProjectDir,
+        $Target
     )
 
     if ($null -eq $Variables)
@@ -43,7 +47,7 @@ function GetPackageGroupFromObj
             'packages' = $ProjectFile.dependencies
         }
         $Set = New-Object psobject -Property $Obj
-        ReplaceVariables -PackageGroup $Set -Variables $Variables -ResolveCache $ResolveCache -ProjectDir $ProjectDir
+        ReplaceVariables -PackageGroup $Set -Variables $Variables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target
         return $Set
     }
 
@@ -56,7 +60,7 @@ function GetPackageGroupFromObj
             {
                 if ([bool]($Entry.PSObject.properties.name -contains '$ref'))
                 {
-                    $Out = GetPackageGroupFromObj -ProjectFile $ProjectFile -Id $Entry.'$ref' -ResolveCache $ResolveCache -Variables $Variables -ProjectDir $ProjectDir
+                    $Out = GetPackageGroupFromObj -ProjectFile $ProjectFile -Id $Entry.'$ref' -ResolveCache $ResolveCache -Variables $Variables -ProjectDir $ProjectDir -Target $Target
                     $Packages += $Out.Packages
                 }
                 else
@@ -65,7 +69,7 @@ function GetPackageGroupFromObj
                 }
             }
             $Set.packages = $Packages
-            ReplaceVariables -PackageGroup $Set -Variables $Variables -ResolveCache $ResolveCache -ProjectDir $ProjectDir
+            ReplaceVariables -PackageGroup $Set -Variables $Variables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target
             return $Set
         }
     }
@@ -77,9 +81,10 @@ function ReplaceVariables
         $PackageGroup,
         $Variables,
         [hashtable] $ResolveCache,
-        $ProjectDir
+        $ProjectDir,
+        $Target
     )
-
+    
     foreach ($Package in $PackageGroup.Packages)
     {
         $Matches = $_VariableRegex.Matches($Package.Version)
@@ -104,7 +109,15 @@ function ReplaceVariables
                 }
                 else 
                 {
-                    $Replacement = ResolveVariable -Id $VariableValue.Id -Version $VariableValue.Version -ResolverPath $VariableValue.ResolverPath -ResolverFunction $VariableValue.ResolverFunction -ProjectDir $ProjectDir
+                    $Arguments = @{
+                        Id = $VariableValue.Id 
+                        Version = $VariableValue.Version
+                        ResolverPath = $VariableValue.ResolverPath
+                        ResolverFunction = $VariableValue.ResolverFunction 
+                        ProjectDir = $ProjectDir
+                        Target = $Target
+                    }
+                    $Replacement = ResolveVariable @Arguments
                 }
             }
             
@@ -120,12 +133,14 @@ function ReplaceVariables
 function ResolveVariable
 {
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         $Id,
         $Version = "",
         $ResolverPath,
         $ResolverFunction,
-        $ProjectDir
+        $ProjectDir,
+        [Parameter(Mandatory = $false)]
+        $Target
     )
 
     if (!$ResolverPath)
@@ -138,7 +153,7 @@ function ResolveVariable
         $Path = [System.IO.Path]::Combine($ProjectDir, $ResolverPath)
         $Block = {
             Import-Module $Path -Force
-            . $ResolverFunction -ProjectDir $ProjectDir -Id $Id -Version $Version
+            . $ResolverFunction -ProjectDir $ProjectDir -Id $Id -Version $Version -Target $Target
         }
         & $Block
     }

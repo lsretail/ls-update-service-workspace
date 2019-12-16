@@ -42,12 +42,14 @@ if ($GitCommit -and $BuildNumber)
 }
 Push-Location
 Set-Location $PSScriptRoot
-if (!$Vsce)
+if (!$Vsce -or !(Test-Path $Vsce))
 {
+    Write-Host "Set global vsce"
     $Vsce = 'vsce'
 }
-if (!$Npm)
+if (!$Npm -or !(Test-Path $Npm))
 {
+    Write-Host "Set global npm"
     $Npm = 'npm'
 }
 $Process = Start-Process $Npm install -PassThru

@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to the "Go Current - Workspace" extension will be documented in this file.
 
+## [0.3.1] - 2019-12-16
+### Added
+- Version resolver now supports target configuration, i.e. for release, release candidate or development.
+
 ## [0.3.0] - 2019-09-16
 ### Added
 - Added dependencies, package metadata, reference from package group to dependencies and more.
