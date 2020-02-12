@@ -105,7 +105,7 @@ export class DeployService
         {
             if (item.id !== id)
                 continue;
-            
+
             let packages = new Array<Package>()
             for (let packageEntry of item.packages)
             {
@@ -118,7 +118,7 @@ export class DeployService
                 {
                     packages.push(packageEntry);
                 }
-            }      
+            }
             item.packages = packages;      
             return item;
         }
