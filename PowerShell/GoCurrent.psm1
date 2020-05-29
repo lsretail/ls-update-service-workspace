@@ -16,16 +16,19 @@ catch
 
 $_GoCWizardPath = $null
 
-function Invoke-ErrorHandler($Error)
+function Invoke-ErrorHandler
 {
+    param(
+        $ErrorObject
+    )
     $Type = 'unknown'
-    if (($Error.Exception -is [LSRetail.GoCurrent.Common.Exceptions.GoCurrentException]) -or 
-        $Error.Exception -is [System.ServiceModel.FaultException])
+    if (($ErrorObject.Exception -is [LSRetail.GoCurrent.Common.Exceptions.GoCurrentException]) -or 
+        $ErrorObject.Exception -is [System.ServiceModel.FaultException])
     {
         $Type = 'GoCurrent'
     }
 
-    Write-JsonError $Error.Exception.Message $Error.ScriptStackTrace $Type
+    Write-JsonError $ErrorObject.Exception.Message $ErrorObject.ScriptStackTrace $Type
 }
 
 function Write-JsonError($Message, $ScriptStackTrace, $Type)
@@ -83,26 +86,41 @@ function Install-AsAdmin()
     Set-Content -Value (ConvertTo-Json $Result -Depth 100 -Compress) -Path $OutputPath
 }
 
-function Install-PackageGroupNew
+function Install-PackageGroup
 {
     param(
         $ProjectFilePath,
         $PackageGroupId,
         $InstanceName,
-        $ArgumentsJson
+        $ArgumentsJson,
+        $Servers
     )
+
+    if (!$PackageGroupId)
+    {
+        if ($InstanceName -and (Test-GocInstanceExists -InstanceName $InstanceName))
+        {
+            $Packages = Get-GocInstalledPackage -InstanceName $InstanceName | Where-Object { $_.Selected }
+
+            return Install-Packages -InstanceName $InstanceName -Packages $Packages
+        }
+        return @()
+    }
 
     $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId
 
-    return Install-Packages -InstanceName $InstanceName -Packages $PackageGroup.Packages -Arguments $PackageGroup.Arguments
+    $Packages = $PackageGroup.Packages
+
+    return Install-Packages -InstanceName $InstanceName -Packages $Packages -Arguments $PackageGroup.Arguments
 }
 
 function Install-Packages
 {
     param(
         $InstanceName,
-        $Packages,
-        $Arguments
+        [Array] $Packages,
+        $Arguments,
+        [Array] $Servers
     )
     $ToUpdate = @($Packages | Get-GocUpdates -InstanceName $InstanceName)
 
@@ -119,6 +137,7 @@ function Install-Packages
                 Arguments = $Arguments
             }
         )
+        Servers = $Servers
     }
 
     $TempFilePath = (Join-Path $env:TEMP "GoCWorkspace\$([System.IO.Path]::GetRandomFileName())")
@@ -136,10 +155,10 @@ function Install-Packages
     Remove-Item $TempFilePath -Force -ErrorAction SilentlyContinue
     if ($Process.ExitCode -ne 0)
     {
+        
         throw "Error occurred while installing packages."
     }
 
-    #$Installed = @($ToUpdate | Get-GocInstalledPackage)
     $Installed = $ToUpdate | ForEach-Object {
         $InstalledPackage = $_ | Get-GocInstalledPackage
         if (!$InstalledPackage -or $InstalledPackage.Version -ne $_.Version)
@@ -152,41 +171,35 @@ function Install-Packages
     return (ConvertTo-Json $Installed -Depth 100 -Compress)
 }
 
-function Install-PackageGroup()
-{
-    param(
-        $ProjectFilePath,
-        $PackageGroupId,
-        $InstanceName,
-        $ArgumentsFilePath
-    )
-    $Command = 'Install-AsAdmin'
-    $Arguments = "'$ProjectFilePath' '$PackageGroupId' '$InstanceName' '$ArgumentsFilePath'"
-    $ExceptionText = "Exception occured while installing package group `"$PackageGroupId`"."
-    Invoke-AsAdmin -Command $Command -Arguments $Arguments -ExceptionText $ExceptionText
-
-    return $Data
-}
-
 function Get-AvailableUpdates()
 {
     param(
         $ProjectFilePath,
         $PackageGroupId,
-        $InstanceName,
-        [string[]]$SelectedPackages
+        $InstanceName
     )
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -NoThrow
+
+    if ($PackageGroupId)
+    {
+        $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -NoThrow
+    }
 
     if (!$PackageGroup)
     {
+        if ($InstanceName -and (Test-GocInstanceExists -InstanceName $InstanceName))
+        {
+            $Updates = @(Get-GocInstalledPackage -InstanceName $InstanceName | Where-Object { $_.Selected } | Get-GocUpdates)
+            return (ConvertTo-Json $Updates)
+        }
+
         return (ConvertTo-Json @())
     }
 
     # We only want to check optional packages for updates if they where installed, here we filter them out:
+    $SelectedPackages = $PackageGroup.packages | Get-GocInstalledPackage -InstanceName $InstanceName | ForEach-Object { $_.Id }
     $Packages = $PackageGroup.packages | Where-Object { (!$_.optional) -or ($_.optional -and $SelectedPackages.Contains($_.id)) }
 
-    $Updates = @($Packages | Get-GocUpdates -InstanceName $InstanceName )
+    $Updates = @($Packages | Get-GocUpdates -InstanceName $InstanceName)
     return (ConvertTo-Json $Updates)
 }
 
@@ -255,13 +268,18 @@ function Test-CanInstall($ProjectFilePath, $PackageGroupId)
     }    
 }
 
-function Test-IsInstalled($Packages, $InstanceName)
+function Test-IsInstalled
 {
-    <#$PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -NoThrow
-    if (!$PackageGroup)
+    param(
+        $Packages,
+        $InstanceName
+    )
+
+    if ($InstanceName)
     {
-        return ConvertTo-Json $false
-    }#>
+        return ConvertTo-Json (Test-GocInstanceExists -InstanceName $InstanceName)
+    }
+
     foreach ($Package in $Packages)
     {
         $Installed = $Package | Get-GocInstalledPackage -InstanceName $InstanceName
@@ -282,7 +300,7 @@ function Get-Arguments($ProjectFilePath, $PackageGroupId)
 
 function Get-InstalledPackages($Id, $InstanceName)
 {
-    return ConvertTo-Json @(Get-GocInstalledPackage -Id $Id -InstanceName $InstanceName) -Compress
+    return ConvertTo-Json @(Get-GocInstalledPackage -Id $Id -InstanceName $InstanceName) -Compress -Depth 100
 }
 
 function GetDeployment()
@@ -407,6 +425,11 @@ function Invoke-OpenGoCurrentWizard
     $WizardPath = Get-GoCurrentWizardPath
 
     & $WizardPath
+}
+
+function Get-Instances
+{
+    return ConvertTo-Json  @(Get-GocInstalledPackage | Where-Object { $_.InstanceName } | Group-Object -Property 'InstanceName' | Sort-Object -Property 'Name' | ForEach-Object { @(,$_.Group)}) -Depth 100 -Compress
 }
 
 function Get-GoCurrentWizardPath

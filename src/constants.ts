@@ -14,7 +14,10 @@ export class Constants
     static vscodeLaunchFileName = "launch.json";
 
     static goCurrentDeployActive = "go-current.deploy.active";
+    static goCurrentAlActive = "go-current.al.active";
     static goCurrentDeployUpdatesAvailable = "go-current.deploy.updatesAvailable";
+
+    static alProjectFileName = "app.json";
 
     static buttonUpdate = "Update now";
     static buttonLater = "Later";

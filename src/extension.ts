@@ -9,7 +9,6 @@ export function activate(context: vscode.ExtensionContext)
 
     let deployController = new DeployController(context);
     deployController.activate();
-    vscode.commands.executeCommand("setContext", Constants.goCurrentExtensionActive, true);
 }
 
 export function deactivate() {

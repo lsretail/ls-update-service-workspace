@@ -59,6 +59,15 @@
                         "type": "string",
                         "description": "Description of deployment group"
                     },
+                    "instanceName": {
+                        "type": "string",
+                        "description": "Specify an instance name for installation."
+
+                    },
+                    "instanceNameSuggestion": {
+                        "type": "string",
+                        "description": "Specify an instance name suggestion for installation."
+                    },
                     "packages": {
                         "type": "array",
                         "description": "Packages in deployment group",

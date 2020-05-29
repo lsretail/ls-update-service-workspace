@@ -9,10 +9,12 @@
 #>
 
 param(
-    [string] $GitCommit = $null,
-    [string] $BuildNumber = $null,
-    [string] $Vsce,
-    [string] $Npm
+    [string] $GitCommit = $env:bamboo_planRepository_revision,
+    [string] $BuildNumber = $env:bamboo.buildNumber,
+    [string] $Vsce = $env:bamboo_capability_system_builder_command_vsce,
+    [string] $Npm = $env:bamboo_capability_system_builder_command_npm,
+    [string] $Branch = $env:bamboo_planRepository_branch,
+    [string] $ReleaseBranch = 'master'
 )
 
 Write-Host "vsce: $Vsce"
@@ -20,6 +22,13 @@ Write-Host "npm: $Npm"
 
 $ErrorActionPreference = 'stop'
 
+function ConvertTo-PackageBranchName
+{
+    param(
+        $GitBranchName
+    )
+    return $GitBranchName.Replace('origin/', '').Replace('/', '-').Replace('_', '-').ToLower()
+}
 
 Remove-Item (Join-Path $PSScriptRoot '*.vsix')
 Remove-Item (Join-Path $PSScriptRoot '*.zip')
@@ -35,7 +44,17 @@ if ($GitCommit -and $BuildNumber)
 {
     Copy-Item $PackagePath $PackageBackupPath
     $GitCommit = $GitCommit.Substring(0, 8)
-    $Version = "$Version+build-$BuildNumber-$GitCommit"
+
+    if ($Branch -eq $ReleaseBranch)
+    {
+        $Version = "$Version+$GitCommit"
+    }
+    else
+    {
+        $BranchName = ConvertTo-PackageBranchName -GitBranchName $Branch
+        $Version = "$Version-dev.$BranchName.$BuildNumber+$GitCommit"
+    }
+    
 
     $NewPackageContent = $PackageContent.Replace([string]$PackageJson.version, [string]$Version)
     Set-Content -Value $NewPackageContent -Path (Join-Path $PSScriptRoot 'package.json')
@@ -75,7 +94,7 @@ Import-Module GoCurrentServer
 $Package = @{
     'Id' = 'go-current-workspace'
     'Name' = "Go Current Workspace"
-    'Version' = (($Version -split '-')[0] -split '\+')[0]
+    'Version' = $Version
     'IncludePaths' = @(
         (Get-Item (Join-Path $PSScriptRoot "*.vsix")),
         (Join-Path $PSScriptRoot 'package\*')
@@ -84,6 +103,7 @@ $Package = @{
     'Commands' = @{
         'Install' = 'Package.psm1:Install-Package'
         'Update' = 'Package.psm1:Install-Package'
+        'Remove' = 'Package.psm1:Remove-Package'
     }
 }
 

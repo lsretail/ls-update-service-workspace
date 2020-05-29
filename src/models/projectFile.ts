@@ -15,6 +15,8 @@ export class PackageGroup
     name: string;
     description: string;
     packages: Package[]
+    instanceName: string;
+    instanceNameSuggestion;
 }
 
 export class Package

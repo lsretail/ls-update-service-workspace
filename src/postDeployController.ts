@@ -1,5 +1,5 @@
 
-import {workspace, WorkspaceFolder, window, Uri, MessageOptions, commands, ConfigurationTarget} from 'vscode'
+import {workspace, WorkspaceFolder, window, Uri, MessageOptions, commands, ConfigurationTarget, WorkspaceConfiguration} from 'vscode'
 import { PackageInfo } from './interfaces/packageInfo';
 import * as path from 'path'
 import { Constants } from './constants';
@@ -29,7 +29,7 @@ export class PostDeployController
 
             if (packageInfo.Info && 'Type' in packageInfo.Info && packageInfo.Info.Type.includes("bc-server"))
             {
-                PostDeployController.addAlLaunchConfig(packageInfo);
+                PostDeployController.addAlLaunchConfig([packageInfo], this._workspaceFolder);
             }
         }
     }
@@ -92,9 +92,9 @@ export class PostDeployController
         }
     }
 
-    public static addAlLaunchConfig(packageInfo: PackageInfo)
+    public static addAlLaunchConfig(packageInfos: PackageInfo[], workspaceFolder: WorkspaceFolder): boolean
     {
-        const launchConfig = workspace.getConfiguration('launch');
+        const launchConfig = workspace.getConfiguration('launch', workspaceFolder.uri);
         let configurations: any[] = launchConfig['configurations'];
         
         let defaultValues: any;
@@ -109,29 +109,56 @@ export class PostDeployController
         if (!defaultValues.startupObjectId)
             defaultValues.startupObjectId = 22;
         if (!defaultValues.schemaUpdateMode)
-            defaultValues.schemaUpdateMode = "Synchronize";
+            defaultValues.schemaUpdateMode = "ForceSync";
 
-        let launch: any = {};
+        let updated = false;
 
-        let info = packageInfo.Info;
-        launch.type = "al";
-        launch.request = "launch";
-        launch.name = packageInfo.InstanceName + " (Go Current)";
-        launch.server = info.Server;
-        if (info.Port)
-            launch.port = info.Port;
-        launch.serverInstance = info.ServerInstance;
-        launch.authentication = info.Authentication;
-        if (info.ServerConfig)
-            launch.port = parseInt(info.ServerConfig.DeveloperServicesPort);
-        launch.schemaUpdateMode = defaultValues.schemaUpdateMode;
-        launch.startupObjectId = defaultValues.startupObjectId;
-        configurations.push(launch);
-        launchConfig.update('configurations', configurations, false).then(result=>{
-            window.showInformationMessage(`Launch.json updated for package "${packageInfo.Id}".`);
+        let instancesUpdated = []
+
+        for (let packageInfo of packageInfos)
+        {
+            // Check if exists
+            let exists = configurations.filter(s => s.type === 'al' && s.name.includes("(Go Current)") && s.serverInstance === packageInfo.Info.ServerInstance)
+            if (exists.length > 0)
+                continue;
+
+            updated = true;
+
+            let launch: any = {};
+
+            let info = packageInfo.Info;
+            launch.type = "al";
+            launch.request = "launch";
+            launch.name = packageInfo.InstanceName + " (Go Current)";
+            launch.server = info.Server;
+            if (info.Port)
+                launch.port = info.Port;
+            launch.serverInstance = info.ServerInstance;
+            launch.authentication = info.Authentication;
+
+            if (launch.authentication instanceof String && (<string>launch.authentication).toLowerCase() === "accesscontrolservice")
+            {
+                launch.authentication = "AAD";
+            }
+
+            if (info.ServerConfig)
+                launch.port = parseInt(info.ServerConfig.DeveloperServicesPort);
+
+            launch.schemaUpdateMode = defaultValues.schemaUpdateMode;
+            launch.startupObjectId = defaultValues.startupObjectId;
+            configurations.push(launch);
+    
+            instancesUpdated.push(packageInfo.InstanceName);
+        }
+
+        launchConfig.update('configurations', configurations, false).then(result => {
+            for (let instance of instancesUpdated)
+                window.showInformationMessage(`Launch.json updated for instance "${instance}".`);
         }, error => {
             window.showErrorMessage(`Error occurred while updating launch.json: ${error}`);
         });
+
+        return updated;
     }
 
     public static removeAlLaunchConfig(instanceName)

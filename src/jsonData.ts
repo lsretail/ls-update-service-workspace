@@ -6,6 +6,7 @@ import * as path from 'path'
 export class JsonData<TData>
 {
     private _uri: Uri;
+    private _saveCount: number = 0;
     private _dataCache: TData;
     private _defaultData: TData;
     private _watcher: FileSystemWatcher;
@@ -55,6 +56,12 @@ export class JsonData<TData>
 
     private onCreated(uri: Uri)
     {
+        if (this._saveCount > 0)
+        {
+            this._saveCount--;
+            this._onDidChange.fire(this);
+            return;
+        }
         this._existsCache = true;
         this._dataCache = null;
         this._onDidChange.fire(this);
@@ -62,6 +69,12 @@ export class JsonData<TData>
 
     private onChange(uri: Uri)
     {
+        if (this._saveCount > 0)
+        {
+            this._saveCount--;
+            this._onDidChange.fire(this);
+            return;
+        }
         this._existsCache = true;
         this._dataCache = null;
         this._onDidChange.fire(this);
@@ -114,7 +127,11 @@ export class JsonData<TData>
 
     public save(): Thenable<void>
     {
-        return fsHelpers.writeJson(this._uri.fsPath, this._dataCache);
+        if (this._dataCache)
+        {
+            this._saveCount++;
+            return fsHelpers.writeJson(this._uri.fsPath, this._dataCache);
+        }
     }
 
     public dispose()
