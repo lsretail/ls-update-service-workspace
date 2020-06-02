@@ -136,7 +136,7 @@ export class PostDeployController
             launch.serverInstance = info.ServerInstance;
             launch.authentication = info.Authentication;
 
-            if (launch.authentication instanceof String && (<string>launch.authentication).toLowerCase() === "accesscontrolservice")
+            if ((typeof launch.authentication ||launch.authentication instanceof String) && (<string>launch.authentication).toLowerCase() === "accesscontrolservice")
             {
                 launch.authentication = "AAD";
             }

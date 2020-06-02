@@ -43,6 +43,43 @@
                     "type": "string"
                 }
             }
+        },
+        "server": {
+            "type": "object",
+            "required": ["guid", "host", "port"],
+            "description": "Specify a Go Current server.",
+            "properties": {
+                "guid": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "host": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "port": {
+                    "type": "integer",
+                    "default": 16550
+                },
+                "useSsl": {
+                    "type": "boolean"
+                },
+                "identity": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
+        "servers": {
+            "type": "array",
+            "description": "Specify Go Current servers to connect to.",
+            "items": {
+                "$ref": "#definitions/server"
+            }
         }
     }
 }

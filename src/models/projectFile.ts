@@ -7,6 +7,7 @@ export class ProjectFile
     description: string;
     dependencies: Array<Package>;
     devPackageGroups: PackageGroup[];
+    servers: Server[];
 }
 
 export class PackageGroup
@@ -17,6 +18,7 @@ export class PackageGroup
     packages: Package[]
     instanceName: string;
     instanceNameSuggestion;
+    servers: Server[];
 }
 
 export class Package
@@ -24,4 +26,13 @@ export class Package
     id: string;
     version: string;
     optional?: boolean;
+}
+
+export class Server
+{
+    guid: string;
+    host: string;
+    port: number;
+    useSsl: boolean;
+    identity: string;
 }

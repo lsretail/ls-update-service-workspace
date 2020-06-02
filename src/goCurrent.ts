@@ -1,6 +1,7 @@
 
 import {PowerShell} from './PowerShell'
 import {PackageInfo} from './interfaces/packageInfo';
+import { Server } from './models/projectFile';
 
 export class GoCurrent
 {
@@ -21,7 +22,7 @@ export class GoCurrent
     {
         if (!this._powerShellLongRunning)
         {
-            this._powerShellLongRunning = new PowerShell();
+            this._powerShellLongRunning = new PowerShell(this._powerShell.isDebug);
             this._powerShellLongRunning.addModuleFromPath(this._modulePath);
             this._powerShellLongRunning.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
         }
@@ -44,7 +45,13 @@ export class GoCurrent
         return this._powerShell.executeCommandSafe("Get-TestString", false, param);
     }
 
-    public async installPackageGroup(projectFilePath: string, packageGroupId: string, instanceName: string, argumentsFilePath: string) : Promise<PackageInfo[]>
+    public async installPackageGroup(
+        projectFilePath: string,
+        packageGroupId: string,
+        instanceName: string,
+        argumentsFilePath: string,
+        servers: Server[]
+    ) : Promise<PackageInfo[]>
     {
         let param = {
             'ProjectFilePath': projectFilePath,
@@ -58,6 +65,9 @@ export class GoCurrent
 
         if (argumentsFilePath)
             param['ArgumentsFilePath'] = argumentsFilePath;
+
+        if (servers)
+            param['Servers'] = `'${JSON.stringify(servers)}'`;
 
         let powerShell = this.getNewPowerShell();
         try

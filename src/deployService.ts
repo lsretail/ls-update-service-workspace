@@ -176,11 +176,22 @@ export class DeployService
             await this._workspaceData.save();
         }
 
+        let servers = [];
+        if (packageGroup && packageGroup.servers)
+            servers = packageGroup.servers;
+        else
+        {
+            let globalServers = (await this._projectFile.getData()).servers;
+            if (globalServers)
+                servers = globalServers;
+        }
+
         var packagesInstalled = await this._goCurrent.installPackageGroup(
             this._projectFile.uri.fsPath,
             packageGroup ? packageGroup.id : undefined,
             instanceName,
-            argumentsUri ? argumentsUri.fsPath : undefined
+            argumentsUri ? argumentsUri.fsPath : undefined,
+            servers
         );
 
         if (packagesInstalled.length === 0)

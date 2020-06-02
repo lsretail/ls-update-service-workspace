@@ -36,6 +36,11 @@ export class PowerShell
         }
     }
 
+    public get isDebug()
+    {
+        return this._debug;
+    }
+
     public setPreCommand(command: string)
     {
         this._preCommand = command;

@@ -51,14 +51,14 @@ export default class DeployController extends ExtensionController
         this.registerFolderCommand("go-current.experimental", () => this.experimental());
         this.registerFolderCommand("go-current.openWizard", () => this.openWizard());
         this.registerFolderCommand("go-current.addInstanceToWorkspace", () => this.addInstanceToWorkspace());
-        this.registerFolderCommand("go-current.al.repopulateLaunchJson", () => this.RePopulateLaunchJson());
+        this.registerFolderCommand("go-current.al.repopulateLaunchJson", () => this.rePopulateLaunchJson());
         process.on('unhandledRejection', (reason) => {
             DeployController.handleError(reason)
         });
 
         vscode.commands.executeCommand("setContext", Constants.goCurrentExtensionActive, true);
 
-        this._goCurrent.testGoCurrentInstalled().then(async result => 
+        this._goCurrent.testGoCurrentInstalled().then(async result =>
         {
             this._goCurrentInstalled = result;
             if (!result)
@@ -644,7 +644,7 @@ export default class DeployController extends ExtensionController
         deployService.addPackagesAsDeployed(packages);
     }
 
-    private async RePopulateLaunchJson()
+    private async rePopulateLaunchJson()
     {
         let workspaceFolder = await this.showWorkspaceFolderPick();
         if (!workspaceFolder)

@@ -93,7 +93,7 @@ function Install-PackageGroup
         $PackageGroupId,
         $InstanceName,
         $ArgumentsJson,
-        $Servers
+        [string] $Servers
     )
 
     if (!$PackageGroupId)
@@ -111,7 +111,7 @@ function Install-PackageGroup
 
     $Packages = $PackageGroup.Packages
 
-    return Install-Packages -InstanceName $InstanceName -Packages $Packages -Arguments $PackageGroup.Arguments
+    return Install-Packages -InstanceName $InstanceName -Packages $Packages -Arguments $PackageGroup.Arguments -Servers $Servers
 }
 
 function Install-Packages
@@ -120,7 +120,7 @@ function Install-Packages
         $InstanceName,
         [Array] $Packages,
         $Arguments,
-        [Array] $Servers
+        [string] $Servers
     )
     $ToUpdate = @($Packages | Get-GocUpdates -InstanceName $InstanceName)
 
@@ -137,7 +137,18 @@ function Install-Packages
                 Arguments = $Arguments
             }
         )
-        Servers = $Servers
+    }
+
+    if ($Servers)
+    {
+        $Install.Servers = @()
+        ConvertFrom-Json $Servers | Foreach-Object { 
+            $_ | Foreach-Object { 
+                $Item = @{}; 
+                $Install.Servers += $Item
+                $_.PSObject.Properties | Foreach-Object { $Item[$_.Name] = $_.Value} 
+            }
+        }
     }
 
     $TempFilePath = (Join-Path $env:TEMP "GoCWorkspace\$([System.IO.Path]::GetRandomFileName())")
@@ -155,7 +166,6 @@ function Install-Packages
     Remove-Item $TempFilePath -Force -ErrorAction SilentlyContinue
     if ($Process.ExitCode -ne 0)
     {
-        
         throw "Error occurred while installing packages."
     }
 

@@ -84,9 +84,15 @@
                     },
                     "arguments": {
                         "$ref": "./argumentSyntax.json"
+                    },
+                    "servers": {
+                        "$ref": "./sharedDefinitions.json#definitions/servers"
                     }
                 }
             }
+        },
+        "servers": {
+            "$ref": "./sharedDefinitions.json#definitions/servers"
         }
     }
 }
