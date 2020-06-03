@@ -189,6 +189,7 @@ export default class DeployController extends ExtensionController
 
         this._alServices[DeployController.getWorkspaceKey(workspaceFolder)] = new AlService(
             deployService, 
+            this._goCurrent,
             fsHelpers.existsSync(path.join(workspaceFolder.uri.fsPath, Constants.alProjectFileName)),
             workspaceFolder
         );

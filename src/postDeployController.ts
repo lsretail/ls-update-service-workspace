@@ -92,7 +92,7 @@ export class PostDeployController
         }
     }
 
-    public static addAlLaunchConfig(packageInfos: PackageInfo[], workspaceFolder: WorkspaceFolder): boolean
+    public static async addAlLaunchConfig(packageInfos: PackageInfo[], workspaceFolder: WorkspaceFolder): Promise<boolean>
     {
         const launchConfig = workspace.getConfiguration('launch', workspaceFolder.uri);
         let configurations: any[] = launchConfig['configurations'];
@@ -151,12 +151,16 @@ export class PostDeployController
             instancesUpdated.push(packageInfo.InstanceName);
         }
 
-        launchConfig.update('configurations', configurations, false).then(result => {
+        try
+        {
+            await launchConfig.update('configurations', configurations, false);
             for (let instance of instancesUpdated)
                 window.showInformationMessage(`Launch.json updated for instance "${instance}".`);
-        }, error => {
+        }
+        catch (error)
+        {
             window.showErrorMessage(`Error occurred while updating launch.json: ${error}`);
-        });
+        }
 
         return updated;
     }
@@ -170,6 +174,25 @@ export class PostDeployController
         launchConfig.update('configurations', configurations, false).then(result=>{}, error => {
             window.showErrorMessage(`Error occurred while updating launch.json: ${error}`);
         });
+    }
+
+    public static async removeNonExisting(instanceNames: string[])
+    {
+        const launchConfig = workspace.getConfiguration('launch');
+        let configurations: any[] = launchConfig['configurations'];
+        
+        let configNames = instanceNames.map(i => `${i} (Go Current)`);
+
+        configurations = configurations.filter(s => !(s.type === 'al' && s.name.includes("(Go Current)") && !configNames.includes(s.name)));
+        
+        try
+        {
+            await launchConfig.update('configurations', configurations, false)
+        }
+        catch (error)
+        {
+            window.showErrorMessage(`Error occurred while updating launch.json: ${error}`);
+        }
     }
 
     public static processVsExtension(packageInfo: PackageInfo)
