@@ -2,12 +2,16 @@
     "name": "go-current-workspace",
     "displayName": "Go Current - Workspace",
     "description": "Go Current - Workspace brings you the power of Go Current to your Visual Studio Code workspace.",
-    "version": "0.3.3+developer",
+    "version": "0.4.0+developer",
     "publisher": "lsretail",
-    "repository": "https://bitbucket.lsretail.com/projects/GOC/repos/workspace",
+    "repository": {
+        "type": "git",
+        "url": "https://bitbucket.lsretail.com/projects/GOC/repos/workspace"
+    },
     "author": {
         "name": "Team Thunderbolt"
     },
+    "icon": "images/icon.png",
     "engines": {
         "vscode": "^1.38.0"
     },
@@ -88,8 +92,7 @@
                 {
                     "command": "go-current.openWizard",
                     "when": "go-current.deploy.active"
-                }
-                ,
+                },
                 {
                     "command": "go-current.addInstanceToWorkspace",
                     "when": "go-current.deploy.active"

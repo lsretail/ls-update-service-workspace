@@ -71,18 +71,26 @@ if (!$Npm -or !(Test-Path $Npm))
     Write-Host "Set global npm"
     $Npm = 'npm'
 }
-$Process = Start-Process $Npm install -PassThru
-$Process.WaitForExit()
-if ($Process.ExitCode -ne 0)
+
+$ErrorActionPreference = 'continue'
+
+& $Npm install | Write-Host
+
+if ($LASTEXITCODE -ne 0)
 {
-    throw "npm exited with $($Process.ExitCode)."
+    throw "npm exited with $LASTEXITCODE."
 }
-$Process = Start-Process $Vsce package -PassThru
-$Process.WaitForExit()
-if ($Process.ExitCode -ne 0)
+
+
+& $Vsce package --baseImagesUrl 'https://selfservice.lsretail.com/help/workspace' | Write-Host
+
+if ($LASTEXITCODE -ne 0)
 {
-    throw "vsce exited with $($Process.ExitCode)."
+    throw "vsce exited with $LASTEXITCODE."
 }
+
+$ErrorActionPreference = 'stop'
+
 Pop-Location
 
 if (Test-Path $PackageBackupPath)

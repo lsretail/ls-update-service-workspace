@@ -12,6 +12,8 @@
 3. A Go Current dialog will appear, you might be presented with some arguments and additional components.
 4. Click *Install* when ready.
 
+![Install Packages](./images/install-packages.gif)
+
 ### Check for Updates
 
 1. Open the *command palette (ctrl+p)->Go Current: Check for Updates*.
@@ -53,7 +55,6 @@ No settings at the moment.
 * New command *Re-populate launch.json*: Add any LS Central instances in the workspace to the *launch.json* file.
 * Now you can add a list of GoC servers to *gocurrent.json*, globally for the file or for each specific package group.
 * Plus minor enhancements and bugfixes.
-
 
 ### 0.2.0
 
