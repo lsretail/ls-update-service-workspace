@@ -10,6 +10,8 @@ import {EventEmitter, Event, Disposable, Uri} from 'vscode';
 import {UpdateAvailable} from './models/updateAvailable';
 import {PackageInfo} from './interfaces/packageInfo';
 import { DeploymentResult } from './models/deploymentResult'
+import GitHelpers from './helpers/gitHelpers'
+import { trace } from 'console'
 
 let uuid = require('uuid/v4');
 
@@ -18,16 +20,24 @@ export class DeployService
     private _goCurrent: GoCurrent;
     private _projectFile: JsonData<ProjectFile>;
     private _workspaceData: JsonData<WorkspaceData>;
+    private _workspacePath: string;
+
     private _onDidProjectFileChange = new EventEmitter<DeployService>();
     private _onDidPackagesDeployed = new EventEmitter<PackageInfo[]>()
     private _onDidInstanceRemoved = new EventEmitter<string>();
     private _disposable: Disposable;
 
-    public constructor(projectFile: JsonData<ProjectFile>, workspaceData: JsonData<WorkspaceData>, goCurrent: GoCurrent)
+    public constructor(
+        projectFile: JsonData<ProjectFile>, 
+        workspaceData: JsonData<WorkspaceData>, 
+        goCurrent: GoCurrent,
+        workspacePath: string
+    )
     {
         this._goCurrent = goCurrent;
         this._projectFile = projectFile;
         this._workspaceData = workspaceData;
+        this._workspacePath = workspacePath;
 
         let subscriptions: Disposable[] = [];
         this._projectFile.onDidChange(this.fireProjectFileChange, this, subscriptions);
@@ -151,8 +161,8 @@ export class DeployService
     public async deployPackageGroup(
         packageGroup: PackageGroup, 
         instanceName: string, 
+        target: string = undefined,
         deploymentGuid: string = undefined,
-        argumentsUri: Uri = undefined
     ) : Promise<DeploymentResult>
     {
         let workspaceData = await this._workspaceData.getData();
@@ -170,6 +180,7 @@ export class DeployService
             result.deployment.name = packageGroup.name;
             result.deployment.id = packageGroup.id;
             result.deployment.instanceName = instanceName;
+            result.deployment.target = target;
             result.deployment.packages = [];
             exists = false;
             workspaceData.deployments.push(result.deployment);
@@ -190,7 +201,8 @@ export class DeployService
             this._projectFile.uri.fsPath,
             packageGroup ? packageGroup.id : undefined,
             instanceName,
-            argumentsUri ? argumentsUri.fsPath : undefined,
+            result.deployment.target,
+            GitHelpers.getBranchName(this._workspacePath),
             servers
         );
 
@@ -260,16 +272,15 @@ export class DeployService
         return true;
     }
 
-    public async getArguments(name: string) : Promise<any>
-    {
-        return await this._goCurrent.getArguments(this._projectFile.uri.fsPath, name);
-    }
-
-    public async installUpdate(packageGroupId: string, instanceName: string, guid: string) : Promise<DeploymentResult>
+    public async installUpdate(
+        packageGroupId: string, 
+        instanceName: string, 
+        guid: string
+    ) : Promise<DeploymentResult>
     {
         let projectFile = await this._projectFile.getData();
         let packageGroup = DataHelpers.getEntryByProperty(projectFile.devPackageGroups, "id", packageGroupId)
-        return this.deployPackageGroup(packageGroup, instanceName, guid);
+        return this.deployPackageGroup(packageGroup, instanceName, undefined, guid);
     }
 
     public async checkForUpdates() : Promise<Array<UpdateAvailable>>
@@ -317,7 +328,7 @@ export class DeployService
 
     public checkForUpdate(deployment: Deployment) : Promise<PackageInfo[]>
     {
-        return this._goCurrent.getAvailableUpdates(this._projectFile.uri.fsPath, deployment.id, deployment.instanceName);
+        return this._goCurrent.getAvailableUpdates(this._projectFile.uri.fsPath, deployment.id, deployment.instanceName, GitHelpers.getBranchName(this._workspacePath), deployment.target);
     }
 
     public isInstance(packageGroupId: string) : Promise<boolean>

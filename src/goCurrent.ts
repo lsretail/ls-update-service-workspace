@@ -49,7 +49,8 @@ export class GoCurrent
         projectFilePath: string,
         packageGroupId: string,
         instanceName: string,
-        argumentsFilePath: string,
+        target: string,
+        branchName: string,
         servers: Server[]
     ) : Promise<PackageInfo[]>
     {
@@ -63,8 +64,11 @@ export class GoCurrent
         if (instanceName)
             param['InstanceName'] = instanceName;
 
-        if (argumentsFilePath)
-            param['ArgumentsFilePath'] = argumentsFilePath;
+        if (target)
+            param['Target'] = target;
+
+        if (branchName)
+            param['BranchName'] = branchName;
 
         if (servers)
             param['Servers'] = `'${JSON.stringify(servers)}'`;
@@ -81,7 +85,13 @@ export class GoCurrent
         }
     }
 
-    public getAvailableUpdates(projectFilePath: string, packageGroupId: string, instanceName: string)
+    public getAvailableUpdates(
+        projectFilePath: string, 
+        packageGroupId: string, 
+        instanceName: string,
+        branchName: string,
+        target: string
+    )
     {
         let param = {
             'ProjectFilePath': projectFilePath,
@@ -92,6 +102,12 @@ export class GoCurrent
 
         if (instanceName)
             param['InstanceName'] = instanceName;
+        
+        if (target)
+            param['Target'] = target;
+
+        if (branchName)
+            param['BranchName'] = branchName;
 
         return this._powerShell.executeCommandSafe("Get-AvailableUpdates", true, param);
     }
@@ -115,27 +131,29 @@ export class GoCurrent
         return this.longRunning.executeCommandSafe("Remove-Deployment", true, param);
     }
 
-    public getArguments(projectFilePath: string, packageGroupId: string): Promise<any>
-    {
-        let param = {
-            'ProjectFilePath': projectFilePath,
-            'packageGroupId': packageGroupId
-        }
-        return this._powerShell.executeCommandSafe("Get-Arguments", true, param);
-    }
-
     public testGoCurrentInstalled(): Promise<boolean>
     {
         return this._powerShell.executeCommandSafe("Test-GoCurrentInstalled", true);
     }
 
-    public testIsInstance(projectFilePath: string, packageGroupId: string) : Promise<any>
+    public testIsInstance(
+        projectFilePath: string,
+        packageGroupId: string,
+        target?: string,
+        branchName?: string
+    ) : Promise<any>
     {
         let param = {
             'ProjectFilePath': projectFilePath,
             'packageGroupId': packageGroupId
         };
 
+        if (target)
+            param['Target'] = target;
+
+        if (branchName)
+            param['BranchName'] = branchName;
+        
         return this._powerShell.executeCommandSafe("Test-IsInstance", true, param);
     }
 

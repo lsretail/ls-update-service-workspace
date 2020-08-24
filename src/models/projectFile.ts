@@ -18,6 +18,7 @@ export class PackageGroup
     packages: Package[]
     instanceName: string;
     instanceNameSuggestion;
+    target: string[];
     servers: Server[];
 }
 

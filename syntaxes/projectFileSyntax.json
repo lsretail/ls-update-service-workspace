@@ -30,14 +30,44 @@
             "type": "object",
             "description": "Specifies reusable version queries. Reference with ${variableName}.",
             "additionalProperties": {
-                "anyOf":[
+                "oneOf":[
                     {
-                        "type": "string"
+                        "$ref": "./sharedDefinitions.json#definitions/version"
                     },
                     {
                         "$ref": "./sharedDefinitions.json#definitions/versionQueryResolver"
+                    },
+                    {
+                        "$ref": "./sharedDefinitions.json#definitions/fromAppId"
+                    },
+                    {
+                        "$ref": "./sharedDefinitions.json#definitions/branchPriorityFilter"
                     }
                 ]
+            }
+        },
+        "compileModifiers": {
+            "type": "array",
+            "items": {
+                "anyOf":[
+                    {
+                        "$ref": "./sharedDefinitions.json#definitions/packageList"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "$ref": "./sharedDefinitions.json#definitions/packageList"
+                        }
+                    }
+                ]
+            }
+        },
+        "branchToPreReleaseLabelMap": {
+            "required": ["${currentBranch}"],
+            "default": { "${currentBranch}": "dev.branch.${CurrentBranch}", "master": "dev.${currentBranch}" },
+            "additionalProperties": {
+                "type": "string",
+                "default": "dev.${currentBranch}"
             }
         },
         "devPackageGroups": {
@@ -67,6 +97,13 @@
                     "instanceNameSuggestion": {
                         "type": "string",
                         "description": "Specify an instance name suggestion for installation."
+                    },
+                    "target": {
+                        "type": "array",
+                        "description": "Specify target configuration available for this group.",
+                        "items": {
+                            "type": "string"
+                        }
                     },
                     "packages": {
                         "type": "array",

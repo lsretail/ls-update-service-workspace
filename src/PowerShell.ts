@@ -103,8 +103,11 @@ export class PowerShell
         
         return this._shell.invoke().then(data =>
         {
-            //this.log("Data from command:");
-            //this.log(data);
+            if (this._debug)
+            {
+                this.log("Data from command:");
+                this.log(data);
+            }
             if (parseJson && data !== "")
                 return JSON.parse(data);
             else if (parseJson && data === "")

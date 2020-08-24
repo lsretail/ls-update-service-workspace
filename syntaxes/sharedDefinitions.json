@@ -2,21 +2,88 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "definitions": {
         "packageList": {
+            "type": "object",
             "required": ["id", "version"],
             "properties": {
                 "id": {
                     "type": "string",
-                    "description": "Specifies package id"
+                    "description": "Specifies package id",
+                    "pattern": "^[a-z0-9\/-]+$"
                 },
                 "version": {
-                    "type": "string",
-                    "description": "Specifies package version"
+                    "oneOf":[
+                        {
+                            "$ref": "#definitions/version"
+                        },
+                        {
+                            "$ref": "#definitions/versionTarget"
+                        },
+                        {
+                            "$ref": "#definitions/versionQueryResolver"
+                        },
+                        {
+                            "$ref": "#definitions/fromAppId"
+                        },
+                        {
+                            "$ref": "#definitions/branchPriorityFilter"
+                        }
+                    ]
                 },
                 "optional": {
                     "type": "boolean",
                     "description": "Specifies whether optional or not"
                 }
             }
+        },
+        "version": {
+            "default": "",
+            "type": "string",
+            "description": "Specifies package version",
+            "pattern": "^[a-zA-Z0-9+.<>=${}!-_^ ]*$"
+        },
+        "versionTarget": {
+            "type": "object",
+            "default": {"default": ""},
+            "required": ["default"],
+            "properties": {
+                "default": {
+                    "$ref": "#definitions/versionSelection"
+                },
+                "release": {
+                    "$ref": "#definitions/versionSelection"
+                },
+                "releaseCandidate":{
+                    "$ref": "#definitions/versionSelection"
+                },
+                "dev": {
+                    "$ref": "#definitions/versionSelection"
+                }
+            },
+            "additionalProperties": {
+                "$ref": "#definitions/versionSelection"
+            }
+        },
+        "versionSelection": {
+            "oneOf":[
+                {
+                    "type": "null",
+                    "description": "Skip package for target."
+                },
+                {
+                    "default": "",
+                    "type": "string",
+                    "description": "Specifies package version"
+                },
+                {
+                    "$ref": "#definitions/versionQueryResolver"
+                },
+                {
+                    "$ref": "#definitions/fromAppId"
+                },
+                {
+                    "$ref": "#definitions/branchPriorityFilter"
+                }
+            ]
         },
         "packageListRef": {
             "required": ["$ref"],
@@ -28,6 +95,8 @@
             }
         },
         "versionQueryResolver": {
+            "type": "object",
+            "default": {"id": "", "version": "" },
             "required": ["id", "version"],
             "properties": {
                 "id": {
@@ -41,6 +110,44 @@
                 },
                 "resolverFunction": {
                     "type": "string"
+                }
+            }
+        },
+        "fromAppId": {
+            "description": "Get version from app ID in app.json project file.",
+            "type": "object",
+            "default": { "fromAppId": "" },
+            "required": ["fromAppId"],
+            "properties": {
+                "fromAppId": {
+                    "type": "string",
+                    "description": "Specify app ID of dependency in app.json to extract version range."
+                },
+                "fromAppIdType": {
+                    "type": "string",
+                    "enum": ["version", "fromMinor", "fromMajor", "minorToNextMajor", "majorToNextMajor"],
+                    "default": "fromMinor",
+                    "description": "Type of version range to extract from the app version (default: fromMinor)."
+                },
+                "fromAppIdParts": {
+                    "type": "integer",
+                    "default": 4,
+                    "description": "Number of parts to use from version number (default: 4)"
+                }
+            }
+        },
+        "branchPriorityFilter": {
+            "description": "Specify a list of branches to create a prioritized version filter.",
+            "type": "object",
+            "default": { "branchPriorityFilter": ["${currentBranch}", "master"] },
+            "required": ["branchPriorityFilter"],
+            "properties": {
+                "branchPriorityFilter": {
+                    "type": "array",
+                    "default": ["${currentBranch}", "master"],
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

@@ -6,5 +6,6 @@ export class Deployment
     instanceName: string;
     id: string;
     name: string;
+    target: string;
     packages: Array<Package> = [];
 }

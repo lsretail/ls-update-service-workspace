@@ -54,6 +54,8 @@ No settings at the moment.
 * New command *Add Instance to Workspace*: Add any existing Go Current instance to your workspace. An instance could be an LS Central / Business Central instance.
 * New command *Re-populate launch.json*: Add any LS Central instances in the workspace to the *launch.json* file.
 * Now you can add a list of GoC servers to *gocurrent.json*, globally for the file or for each specific package group.
+* Installer not really installing the extension into VS Code.
+* Instances not added to the workspace if VS Code is closed during installation.
 * Plus minor enhancements and bugfixes.
 
 ### 0.2.0

@@ -22,6 +22,7 @@ import { UpdateAvailable } from './models/updateAvailable';
 import { PostDeployController } from './postDeployController';
 import { PackageInfo } from './interfaces/packageInfo';
 import { AlService } from './alService';
+import GitHelpers from './helpers/gitHelpers';
 
 export default class DeployController extends ExtensionController
 {
@@ -39,7 +40,7 @@ export default class DeployController extends ExtensionController
 
     public activate()
     {
-        let debug = false;
+        let debug = true;
         this._goCurrent = new GoCurrent(new PowerShell(debug), this.context.asAbsolutePath("PowerShell\\GoCurrent.psm1"));
 
         commands.executeCommand("setContext", Constants.goCurrentDebug, debug);
@@ -74,7 +75,7 @@ export default class DeployController extends ExtensionController
             workspace.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this);
 
             await this.checkForBaseUpdate();
-            await this.checkForUpdates();
+            await this.checkForUpdates(true);
         });
     }
 
@@ -177,7 +178,8 @@ export default class DeployController extends ExtensionController
         let deployService = new DeployService(
             new JsonData<ProjectFile>(projectFilePath, true, new ProjectFile()),
             new JsonData<WorkspaceData>(path.join(workspaceFolder.uri.fsPath, Constants.goCurrentWorkspaceDirName+"\\"+Constants.projectDataFileName), true, new WorkspaceData()),
-            this._goCurrent
+            this._goCurrent,
+            workspaceFolder.uri.fsPath
         );
         deployService.onDidProjectFileChange(this.onProjecFileChange, this);
         this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)] = deployService;
@@ -234,6 +236,28 @@ export default class DeployController extends ExtensionController
                 return true;
         }
         return false;
+    }
+
+    private async showTargetPicks(targets: string[]): Promise<string>
+    {
+        if (!targets || targets.length === 0)
+            return "default";
+
+        if (targets.length === 1)
+            return targets[0];
+        
+        let picks: QuickPickItem[] = [];
+        for (let target of targets)
+        {
+            picks.push({"label": target});
+        }
+
+        var options: QuickPickOptions = {};
+        options.placeHolder = "Select a target configuration."
+        let selected = await window.showQuickPick(picks, options);
+        if (!selected)
+            return;
+        return selected.label;
     }
 
     private showWorkspaceFolderPick(workspaceFolders: WorkspaceFolder[] = null, placeHolder = "Select workspace folder") : Thenable<WorkspaceFolder>
@@ -314,6 +338,11 @@ export default class DeployController extends ExtensionController
         if (!selectedSet)
             return;
 
+        let selectedTarget = await this.showTargetPicks(selectedSet.payload.target)
+
+        if (!selectedTarget)
+            return;
+
         let instanceName = "";
         if (await deployService.isInstance(selectedSet.payload.id))
         {
@@ -342,6 +371,7 @@ export default class DeployController extends ExtensionController
             let deploymentResult = await deployService.deployPackageGroup(
                 selectedSet.payload,
                 instanceName,
+                selectedTarget,
                 undefined
             );
             if (deploymentResult.lastUpdated.length > 0)
@@ -445,10 +475,11 @@ export default class DeployController extends ExtensionController
         });
     }
 
-    private async checkForUpdates()
+    private async checkForUpdates(silent: boolean = false)
     {
         let buttons: string[] = [Constants.buttonUpdate, Constants.buttonLater];
         commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
+        let anyUpdates = false;
         for (let workspaceId in this._deployServices)
         {
             this._updatesAvailable[workspaceId] = new Array<UpdateAvailable>();
@@ -457,6 +488,7 @@ export default class DeployController extends ExtensionController
             
             for (let update of updates)
             {
+                anyUpdates = true;
                 let message = `Updates available for "${update.packageGroupName}"`;
 
                 if (update.instanceName)
@@ -478,6 +510,11 @@ export default class DeployController extends ExtensionController
                     }
                 });
             }
+        }
+
+        if (!silent && !anyUpdates)
+        {
+            window.showInformationMessage("No updates available.");
         }
     }
 
@@ -576,7 +613,9 @@ export default class DeployController extends ExtensionController
 
     private async getArguments(workspaceFolder: WorkspaceFolder, deployService: DeployService, name: string) : Promise<Uri>
     {
-        let packagesArguments = await deployService.getArguments(name);
+        // Deprecated
+        // Keeping this for now, to showcase the text document functionality...
+        let packagesArguments = null;//await deployService.getArguments(name);
         if (Object.keys(packagesArguments).length === 0)
             return null;
         let filePath = Uri.file(path.join(
@@ -663,7 +702,7 @@ export default class DeployController extends ExtensionController
         // This is an experimental command only for development / debuging
         // Turn on by setting debug = true (in constructor) and invoke with ctrl+shif+p->Go Current: Experimental
         // Don't forget to set debug = false before commiting.
-        let workspaceFolder = await this.showWorkspaceFolderPick();
+        /*let workspaceFolder = await this.showWorkspaceFolderPick();
         let deployService: DeployService = this._deployServices[workspaceFolder.uri.path];
         let deployment = await this.showDeploymentsPicks(deployService);
         if (!deployment)
@@ -671,9 +710,24 @@ export default class DeployController extends ExtensionController
         let packages = await deployService.getDeployedPackages(deployment.guid);
         let server = packages.filter(p => p.Id === 'bc-server')[0]
         if (!server)
-            return;
+            return;*/
         //PostDeployController.addAlLaunchConfig(server);
+        // Import the git.d.ts file
+        
+
+
+        //const repository = api.repositories.filter(r => isDescendant(r.rootUri.fsPath, rootPath))[0];
+
+        var workspace = await this.showWorkspaceFolderPick()
+        let branchName = 'No branch'
+        if (workspace)
+            branchName = GitHelpers.getBranchName(workspace.uri.fsPath);
+
+        window.showInformationMessage(branchName);
+
     }
+
+    
 
     public displose()
     {

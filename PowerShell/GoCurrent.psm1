@@ -14,6 +14,14 @@ catch
     $_GoCurrentInstalled = $false
 }
 
+try {
+    Import-Module (Join-Path $PSScriptRoot "CheckAdmin.ps1")
+    $_isAdmin = $true
+}
+catch {
+    $_isAdmin = $false
+}
+
 $_GoCWizardPath = $null
 
 function Invoke-ErrorHandler
@@ -92,7 +100,8 @@ function Install-PackageGroup
         $ProjectFilePath,
         $PackageGroupId,
         $InstanceName,
-        $ArgumentsJson,
+        $BranchName,
+        $Target,
         [string] $Servers
     )
 
@@ -107,7 +116,7 @@ function Install-PackageGroup
         return @()
     }
 
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -BranchName $BranchName -Target $Target
 
     $Packages = $PackageGroup.Packages
 
@@ -186,12 +195,14 @@ function Get-AvailableUpdates()
     param(
         $ProjectFilePath,
         $PackageGroupId,
-        $InstanceName
+        $InstanceName,
+        $Target,
+        $BranchName
     )
 
     if ($PackageGroupId)
     {
-        $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -NoThrow
+        $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -Target $Target -BranchName $BranchName -NoThrow
     }
 
     if (!$PackageGroup)
@@ -213,9 +224,15 @@ function Get-AvailableUpdates()
     return (ConvertTo-Json $Updates)
 }
 
-function Test-IsInstance($ProjectFilePath, $PackageGroupId)
+function Test-IsInstance()
 {
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -NoThrow
+    param(
+        $ProjectFilePath,
+        $PackageGroupId,
+        $Target,
+        $BranchName
+    )
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -Target $Target -BranchName $BranchName -NoThrow
     if (!$PackageGroup)
     {
         return (ConvertTo-Json $false)
@@ -231,9 +248,11 @@ function GetPackageGroup
         $ProjectFilePath,
         [Parameter(Mandatory = $true)]
         $PackageGroupId,
+        $Target,
+        $BranchName,
         [switch] $NoThrow
     )
-    $Group = Get-PackageGroup -Id $PackageGroupId -Path $ProjectFilePath
+    $Group = Get-PackageGroup -Id $PackageGroupId -Path $ProjectFilePath -Target $Target -BranchName $BranchName
     if (!$Group -and !$NoThrow)
     {
         Write-JsonError "Package group `"$PackageGroupId`" does not exists in project file." -Type 'User'
@@ -261,9 +280,15 @@ function Test-InstanceExists($InstanceName)
     return ConvertTo-Json (Test-GocInstanceExists -Instancename $InstanceName)
 }
 
-function Test-CanInstall($ProjectFilePath, $PackageGroupId)
+function Test-CanInstall
 {
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId
+    param(
+        $ProjectFilePath, 
+        $PackageGroupId,
+        $Target,
+        $BranchName
+    )
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -Target $Target -BranchName $BranchName
     foreach ($Package in $PackageGroup.packages)
     {
         $First = Get-GocInstalledPackage -Id $Package.id | Select-Object -First 1
@@ -301,9 +326,15 @@ function Test-IsInstalled
     return ConvertTo-Json $false
 }
 
-function Get-Arguments($ProjectFilePath, $PackageGroupId)
+function Get-Arguments
 {
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId
+    param(
+        $ProjectFilePath, 
+        $PackageGroupId,
+        $Target,
+        $BranchName
+    )
+    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -Target $Target -BranchName $BranchName
     $Arguments = $PackageGroup.packages | Get-GocArguments
     return ConvertTo-Json $Arguments
 }
