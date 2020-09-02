@@ -8,7 +8,7 @@ export class DataHelpers
         return this.getEntryByProperty<PackageGroup>(sets, "name", name);
     }
 
-    public static getEntryByProperty<TType>(list: Array<TType>, property: string, value: any) : TType
+    public static getEntryByProperty<TType>(list: readonly TType[], property: string, value: any) : TType
     {
         for (let entry of list)
         {

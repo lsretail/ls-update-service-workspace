@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'stop'
 
 Import-Module (Join-Path $PSScriptRoot 'ProjectFile.psm1')
+Import-Module (Join-Path $PSScriptRoot 'ErrorHandling.psm1')
 
 Add-Type -AssemblyName 'System.ServiceModel'
 try
@@ -14,47 +15,14 @@ catch
     $_GoCurrentInstalled = $false
 }
 
-try {
-    Import-Module (Join-Path $PSScriptRoot "CheckAdmin.ps1")
-    $_isAdmin = $true
-}
-catch {
-    $_isAdmin = $false
-}
-
 $_GoCWizardPath = $null
-
-function Invoke-ErrorHandler
-{
-    param(
-        $ErrorObject
-    )
-    $Type = 'unknown'
-    if (($ErrorObject.Exception -is [LSRetail.GoCurrent.Common.Exceptions.GoCurrentException]) -or 
-        $ErrorObject.Exception -is [System.ServiceModel.FaultException])
-    {
-        $Type = 'GoCurrent'
-    }
-
-    Write-JsonError $ErrorObject.Exception.Message $ErrorObject.ScriptStackTrace $Type
-}
-
-function Write-JsonError($Message, $ScriptStackTrace, $Type)
-{
-    $Data = @{
-        'message' = $Message
-        'type' = $Type
-        'scriptStackTrace' = $ScriptStackTrace
-    }
-    throw (ConvertTo-Json $Data -Compress)+"|||"
-}
 
 function Test-GoCurrentInstalled()
 {
     return ConvertTo-Json $_GoCurrentInstalled
 }
 
-function Invoke-AsAdmin()
+function Invoke-AsAdminOld()
 {
     param(
         [string] $Command,
@@ -398,7 +366,7 @@ function Remove-Deployment()
     $Command = 'Remove-AsAdmin'
     $Arguments = "'$WorkspaceDataPath' '$DeploymentGuid'"
     $ExceptionText = "Exception occured while uninstalling packages."
-    Invoke-AsAdmin -Command $Command -Arguments $Arguments -ExceptionText $ExceptionText
+    Invoke-AsAdminOld -Command $Command -Arguments $Arguments -ExceptionText $ExceptionText
 }
 
 function Get-AvailableBaseUpdates()

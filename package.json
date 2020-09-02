@@ -1,8 +1,8 @@
 {
     "name": "go-current-workspace",
-    "displayName": "Go Current - Workspace",
-    "description": "Go Current - Workspace brings you the power of Go Current to your Visual Studio Code workspace.",
-    "version": "0.4.0+developer",
+    "displayName": "Go Current Workspace",
+    "description": "Go Current Workspace brings you the power of Go Current to your Visual Studio Code workspace.",
+    "version": "0.5.0+developer",
     "publisher": "lsretail",
     "repository": {
         "type": "git",
@@ -13,7 +13,7 @@
     },
     "icon": "images/icon.png",
     "engines": {
-        "vscode": "^1.38.0"
+        "vscode": "^1.48.0"
     },
     "categories": [
         "Other"
@@ -21,11 +21,16 @@
     "activationEvents": [
         "workspaceContains:.gocurrent/gocurrent.json",
         "workspaceContains:gocurrent.json",
-        "onCommand:go-current.activate"
+        "onCommand:go-current.newProject"
     ],
     "main": "./out/src/extension",
     "contributes": {
         "commands": [
+            {
+                "command": "go-current.newProject",
+                "title": "Go!",
+                "category": "Go Current"
+            },
             {
                 "command": "go-current.deploy",
                 "title": "Install Packages",
@@ -48,7 +53,7 @@
             },
             {
                 "command": "go-current.experimental",
-                "title": "Experimental",
+                "title": "Experimental, run at your own risk!",
                 "category": "Go Current"
             },
             {
@@ -65,10 +70,24 @@
                 "command": "go-current.al.repopulateLaunchJson",
                 "title": "Re-populate launch.json",
                 "category": "Go Current AL"
+            },
+            {
+                "command": "go-current.al.unpublishApp",
+                "title": "Unpublish App",
+                "category": "Go Current AL"
+            },
+            {
+                "command": "go-current.al.upgradeData",
+                "title": "Start App Data Upgrade",
+                "category": "Go Current AL"
             }
         ],
         "menus": {
             "commandPalette": [
+                {
+                    "command": "go-current.newProject",
+                    "when": "!go-current.deploy.active && workspaceFolderCount || go-current.deploy.hasInactiveWorkspaces"
+                },
                 {
                     "command": "go-current.deploy",
                     "when": "go-current.deploy.active"
@@ -100,6 +119,14 @@
                 {
                     "command": "go-current.al.repopulateLaunchJson",
                     "when": "go-current.al.active"
+                },
+                {
+                    "command": "go-current.al.unpublishApp",
+                    "when": "go-current.al.active"
+                },
+                {
+                    "command": "go-current.al.upgradeData",
+                    "when": "go-current.al.active"
                 }
             ]
         },
@@ -120,21 +147,38 @@
                 "fileMatch": ".gocurrent/arguments.json",
                 "url": "./syntaxes/argumentSyntax.json"
             }
-        ]
+        ],
+        "configuration": {
+            "title": "Go Current Workspace",
+            "properties": {
+                "go-current-workspace.debug": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable debug mode on activation (reload required)."
+                }
+            }
+        }
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
+        "lint": "eslint src --ext ts",
         "watch": "tsc -watch -p ./",
-        "postinstall": "node ./node_modules/vscode/bin/install",
-        "test": "npm run compile && node ./node_modules/vscode/bin/test"
+        "pretest": "npm run compile && npm run lint",
+        "test": "node ./out/test/runTest.js"
     },
     "devDependencies": {
-        "@types/mocha": "^2.2.44",
-        "@types/node": "^7.0.46",
-        "mocha": "^3.5.3",
-        "typescript": "^2.6.1",
-        "vscode": "^1.1.6"
+        "@types/vscode": "^1.48.0",
+        "@types/glob": "^7.1.3",
+        "@types/mocha": "^8.0.0",
+        "@types/node": "^14.0.27",
+        "eslint": "^7.6.0",
+        "@typescript-eslint/eslint-plugin": "^3.8.0",
+        "@typescript-eslint/parser": "^3.8.0",
+        "glob": "^7.1.6",
+        "mocha": "^8.0.1",
+        "typescript": "^3.8.3",
+        "vscode-test": "^1.4.0"
     },
     "dependencies": {
         "node-powershell": "^4.0.0",

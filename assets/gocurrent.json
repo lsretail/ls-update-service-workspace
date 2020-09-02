@@ -1,0 +1,65 @@
+{
+    "id": "your-app-name",
+    "dependencies": [
+        {
+            "id": "bc-system-symbols",
+            "version": {
+                "fromAppId": "platform",
+                "fromAppIdParts": 3,
+                "fromAppIdType": "fromMajor"
+            }
+        },
+        {
+            "id": "bc-system-application",
+            "version": {
+                "fromAppId": "63ca2fa4-4f03-4f2b-a480-172fef340d3f",
+                "fromAppIdParts": 3,
+                "fromAppIdType": "fromMinor"
+            }
+        },
+        {
+            "id": "bc-base-application",
+            "version": {
+                "fromAppId": "437dbf0e-84ff-417a-965d-ed2bb9650972",
+                "fromAppIdParts": 3,
+                "fromAppIdType": "fromMinor"
+            }
+        },
+        {
+            "id": "ls-central-app",
+            "version": {
+                "fromAppId": "837549ae-2e5b-44de-be89-24a3665a0547",
+                "fromAppIdParts": 3,
+                "fromAppIdType": "fromMinor"
+            }
+        }
+    ],
+    "devPackageGroups": [
+        {
+            "id": "149ede3e-02b8-45ab-8793-8adb2bf6f190",
+            "name": "LS Central",
+            "description": "Install a new LS Central instance on your computer.",
+            "packages": [
+                {
+                    "id": "ls-central-demo-database",
+                    "version": "^-"
+                },
+                {
+                    "$ref": "dependencies"
+                },
+                {
+                    "id": "bc-web-client",
+                    "version": ""
+                }
+            ],
+            "arguments": {
+                "bc-server": {
+                    "AllowForceSync": "true",
+                    "DeveloperServicesEnabled": "true",
+                    "AllowSessionCallSuspendWhenWriteTransactionStarted": "true",
+                    "PublicWebBaseUrl": "http://localhost:8080/${Package.InstanceName}/"
+                }
+            }
+        }
+    ]
+}

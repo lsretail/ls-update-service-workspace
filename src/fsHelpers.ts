@@ -52,6 +52,16 @@ export class fsHelpers
         return thenfs.existsSync(path);
     }
 
+    public static mkdirSync(dir: string)
+    {
+        fs.mkdirSync(dir);
+    }
+
+    public static copySync(src: fs.PathLike, dest: fs.PathLike)
+    {
+        fs.copyFileSync(src, dest)
+    }
+
     public static unlink(path: string) : Promise<void>
     {
         return new Promise((resolve, reject) => {

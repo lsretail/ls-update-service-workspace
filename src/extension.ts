@@ -13,5 +13,6 @@ export function activate(context: vscode.ExtensionContext)
 
 export function deactivate() {
     vscode.commands.executeCommand("setContext", Constants.goCurrentExtensionActive, false);
-    console.log("Deactivating...");
+    vscode.commands.executeCommand("setContext", Constants.goCurrentAlActive, false);
+    console.log("Deactivating Go Current Workspace...");
 }

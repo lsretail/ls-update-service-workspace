@@ -108,7 +108,10 @@ function GetPackageGroupFromObj
     if ($null -eq $Variables)
     {
         $Variables = @{}
-        $ProjectFile.versionVariables.PSObject.properties | ForEach-Object { $Variables[$_.Name] = $_.Value }
+        if ($ProjectFile.versionVariables)
+        {
+            $ProjectFile.versionVariables.PSObject.properties | ForEach-Object { $Variables[$_.Name] = $_.Value }
+        }
     }
 
     $Packages = New-Object -TypeName System.Collections.ArrayList

@@ -21,12 +21,20 @@ import * as path from 'path'
 import { UpdateAvailable } from './models/updateAvailable';
 import { PostDeployController } from './postDeployController';
 import { PackageInfo } from './interfaces/packageInfo';
-import { AlService } from './alService';
+import { AlService } from './alService/services/alService';
 import GitHelpers from './helpers/gitHelpers';
+import { AlPsService } from './alService/services/alPsService';
+import { get } from 'http';
+import { AppError } from './errors/AppError';
+import { constants } from 'os';
 
 export default class DeployController extends ExtensionController
 {
+    private _powerShell: PowerShell;
     private _goCurrent: GoCurrent
+    private _alUtils: AlPsService;
+
+    private _debug: boolean = false;
 
     private _deployServices: Map<string, DeployService> =  new Map<string, DeployService>();
     private _postDeployControllers: Map<string, PostDeployController> =  new Map<string, PostDeployController>();
@@ -40,19 +48,28 @@ export default class DeployController extends ExtensionController
 
     public activate()
     {
-        let debug = true;
-        this._goCurrent = new GoCurrent(new PowerShell(debug), this.context.asAbsolutePath("PowerShell\\GoCurrent.psm1"));
+        let config = vscode.workspace.getConfiguration('go-current-workspace')
+        if (config.has('debug'))
+        {
+            this._debug = config.get('debug');
+        }
+        
+        this._powerShell = new PowerShell(this._debug);
+        this._goCurrent = new GoCurrent(this._powerShell, this.context.asAbsolutePath("PowerShell\\GoCurrent.psm1"));
 
-        commands.executeCommand("setContext", Constants.goCurrentDebug, debug);
+        commands.executeCommand("setContext", Constants.goCurrentDebug, this._debug);
         this.registerFolderCommand("go-current.activate", () => {window.showInformationMessage("Go Current Activated")});
-        this.registerFolderCommand("go-current.deploy", () => this.deploy());
-        this.registerFolderCommand("go-current.checkForUpdates", () => this.checkForUpdates());
-        this.registerFolderCommand("go-current.update", () => this.update());
-        this.registerFolderCommand("go-current.remove", () => this.remove());
-        this.registerFolderCommand("go-current.experimental", () => this.experimental());
-        this.registerFolderCommand("go-current.openWizard", () => this.openWizard());
-        this.registerFolderCommand("go-current.addInstanceToWorkspace", () => this.addInstanceToWorkspace());
-        this.registerFolderCommand("go-current.al.repopulateLaunchJson", () => this.rePopulateLaunchJson());
+        this.registerCommand("go-current.newProject", () => this.newProject());
+        this.registerCommand("go-current.deploy", () => this.deploy());
+        this.registerCommand("go-current.checkForUpdates", () => this.checkForUpdates());
+        this.registerCommand("go-current.update", () => this.update());
+        this.registerCommand("go-current.remove", () => this.remove());
+        this.registerCommand("go-current.experimental", () => this.experimental());
+        this.registerCommand("go-current.openWizard", () => this.openWizard());
+        this.registerCommand("go-current.addInstanceToWorkspace", () => this.addInstanceToWorkspace());
+        this.registerCommand("go-current.al.repopulateLaunchJson", () => this.rePopulateLaunchJson());
+        this.registerCommand("go-current.al.unpublishApp", () => this.alUnpublishApp());
+        this.registerCommand("go-current.al.upgradeData", () => this.alUpgradeData());
         process.on('unhandledRejection', (reason) => {
             DeployController.handleError(reason)
         });
@@ -77,6 +94,15 @@ export default class DeployController extends ExtensionController
             await this.checkForBaseUpdate();
             await this.checkForUpdates(true);
         });
+    }
+
+    private getAlUtils() : AlPsService
+    {
+        if (!this._alUtils)
+        {
+            this._alUtils = new AlPsService(this._powerShell, this.context.asAbsolutePath("PowerShell\\AlPsService.psm1"))
+        }
+        return this._alUtils;
     }
 
     private async checkForBaseUpdate()
@@ -123,6 +149,11 @@ export default class DeployController extends ExtensionController
             console.log(reason.scriptStackTrace);
             return false;
         }
+        else if (reason instanceof AppError)
+        {
+            window.showErrorMessage(reason.message);
+            return true;
+        }
     }
 
     private static getWorkspaceKey(workspaceFolder: WorkspaceFolder)
@@ -136,39 +167,42 @@ export default class DeployController extends ExtensionController
         {
             this.addWorkspace(added);
         }
+
         if (e.added.length > 0)
-            this.checkForUpdates();
+            this.checkForUpdates(true);
 
         for (let removed of e.removed)
         {
             this.removeWorkspace(removed);
         }
-        commands.executeCommand("setContext", Constants.goCurrentDeployActive, this.isActive());
-        commands.executeCommand("setContext", Constants.goCurrentAlActive, this.isAlActive());
+
+        this.updateActiveServices();
     }
 
     private onProjecFileChange(deployService: DeployService)
     {
-        this.checkForUpdates();
+        this.checkForUpdates(true);
     }
 
     private addWorkspaces()
     {
         if (!workspace.workspaceFolders)
             return;
+
         for (let workspaceFolder of workspace.workspaceFolders)
         {
             this.addWorkspace(workspaceFolder);
+
         }
-        commands.executeCommand("setContext", Constants.goCurrentDeployActive, this.isActive());
-        commands.executeCommand("setContext", Constants.goCurrentAlActive, this.isAlActive());
+        this.updateActiveServices();
     }
 
     private addWorkspace(workspaceFolder: WorkspaceFolder)
-    {
-        if (this._deployServices[workspaceFolder.uri.path])
+    {        
+        if (this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)])
             return;
 
+        this.debugLog(`Adding workspace ${workspaceFolder.uri.fsPath}.`)
         let projectFilePath = path.join(workspaceFolder.uri.fsPath, Constants.projectFileName)
         if (!fsHelpers.existsSync(projectFilePath))
         {
@@ -191,8 +225,7 @@ export default class DeployController extends ExtensionController
 
         this._alServices[DeployController.getWorkspaceKey(workspaceFolder)] = new AlService(
             deployService, 
-            this._goCurrent,
-            fsHelpers.existsSync(path.join(workspaceFolder.uri.fsPath, Constants.alProjectFileName)),
+            this.getAlUtils(),
             workspaceFolder
         );
 
@@ -201,7 +234,7 @@ export default class DeployController extends ExtensionController
 
     private removeWorkspace(workspaceFolder: WorkspaceFolder)
     {
-        let workspaceId = workspaceFolder.uri.path;
+        let workspaceId = DeployController.getWorkspaceKey(workspaceFolder);
         if (this._deployServices[workspaceId])
         {
             this._deployServices[workspaceId].dispose();
@@ -213,15 +246,44 @@ export default class DeployController extends ExtensionController
         }
     }
 
+    private updateActiveServices()
+    {
+        let gocActive = this.isActive();
+        let alActive = this.isAlActive();
+
+        this.debugLog(`GoC service active: ${gocActive}`);
+        this.debugLog(`AL service active: ${alActive}`);
+        
+        commands.executeCommand("setContext", Constants.goCurrentDeployHasInactiveWorkspaces, this.hasInactiveDeploymentServices());
+        commands.executeCommand("setContext", Constants.goCurrentDeployActive, gocActive);
+        commands.executeCommand("setContext", Constants.goCurrentAlActive, alActive);
+    }
+
+    private hasInactiveDeploymentServices() : boolean
+    {
+        if (!this._goCurrentInstalled)
+            return false;
+
+        for (let workspaceKey in this._deployServices)
+        {
+            if (!this._deployServices[workspaceKey].isActive())
+                return true;
+        }
+
+        return false;
+    }
+
     private isActive() : Boolean
     {
         if (!this._goCurrentInstalled)
             return false;
+
         for (let workspaceKey in this._deployServices)
         {
             if (this._deployServices[workspaceKey].isActive())
                 return true;
         }
+
         return false;
     }
 
@@ -260,39 +322,68 @@ export default class DeployController extends ExtensionController
         return selected.label;
     }
 
-    private showWorkspaceFolderPick(workspaceFolders: WorkspaceFolder[] = null, placeHolder = "Select workspace folder") : Thenable<WorkspaceFolder>
+    private async showWorkspaceFolderPick(workspaceFolders: readonly WorkspaceFolder[] = null, placeHolder = "Select workspace folder") : Promise<WorkspaceFolder>
     {
         let picks: QuickPickItem[] = [];
         if (!workspaceFolders)
             workspaceFolders = workspace.workspaceFolders;
         for (let workspaceFolder of workspaceFolders)
         {
-            if (this._deployServices[workspaceFolder.uri.path] && this._deployServices[workspaceFolder.uri.path].isActive())
-                picks.push({"label": workspaceFolder.name, "description": workspaceFolder.uri.fsPath});
+            picks.push({"label": workspaceFolder.name, "description": workspaceFolder.uri.fsPath});
         }
 
         if (picks.length === 0)
         {
-            return Promise.reject(null)
+            return;
         }
         else if (picks.length === 1)
         {
             let workspaceFolder = DataHelpers.getEntryByProperty<WorkspaceFolder>(workspace.workspaceFolders, "name", picks[0].label);
-            return Promise.resolve(workspaceFolder);
+            return workspaceFolder;
         }
-        return new Promise<WorkspaceFolder>((resolve, reject) => {
-            let options: QuickPickOptions = {"placeHolder": placeHolder};
-            window.showQuickPick(picks, options).then(pick =>
-            {
-                if (!pick)
-                    reject(null);
-                else
-                    resolve(DataHelpers.getEntryByProperty<WorkspaceFolder>(workspace.workspaceFolders, "name", pick.label));
-            }, rejected => 
-            {
-                reject(rejected);
-            });
-        });
+        let options: QuickPickOptions = {"placeHolder": placeHolder};
+    
+        let pick = await window.showQuickPick(picks, options);
+        if (!pick)
+            return;
+
+        return DataHelpers.getEntryByProperty<WorkspaceFolder>(workspace.workspaceFolders, "name", pick.label)
+    }
+
+    private getActiveDeploymentWorkspaces(): WorkspaceFolder[]
+    {
+        let active: WorkspaceFolder[] = [];
+        for (let workspaceFolder of workspace.workspaceFolders)
+        {
+            if (this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)] &&
+                this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)].isActive())
+                active.push(workspaceFolder)
+        }
+        return active;
+    }
+
+    private getInactiveDeploymentWorkspaces(): WorkspaceFolder[]
+    {
+        let active: WorkspaceFolder[] = [];
+        for (let workspaceFolder of workspace.workspaceFolders)
+        {
+            if (!this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)] ||
+                !this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)].isActive())
+                active.push(workspaceFolder)
+        }
+        return active;
+    }
+
+    private getActiveAlWorkspaces(): WorkspaceFolder[]
+    {
+        let active: WorkspaceFolder[] = [];
+        for (let workspaceFolder of workspace.workspaceFolders)
+        {
+            if (this._alServices[DeployController.getWorkspaceKey(workspaceFolder)] &&
+                this._alServices[DeployController.getWorkspaceKey(workspaceFolder)].isActive())
+                active.push(workspaceFolder)
+        }
+        return active;
     }
 
     private anyUpdatesPending() : boolean
@@ -307,10 +398,19 @@ export default class DeployController extends ExtensionController
 
     private async deploy()
     {
-        let workspaceFolder = await this.showWorkspaceFolderPick();
+        let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveDeploymentWorkspaces());
         if (!workspaceFolder)
             return;
-        this.showDeployWithService(this._deployServices[workspaceFolder.uri.path], workspaceFolder);
+
+        try
+        {
+            await this.showDeployWithService(this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)], workspaceFolder);
+        }
+        catch (e)
+        {
+            if (!DeployController.handleError(e))
+                window.showErrorMessage("Error occurred while installing packages.");
+        }
     }
 
     private async showDeployWithService(deployService: DeployService, workspaceFolder: WorkspaceFolder)
@@ -368,12 +468,18 @@ export default class DeployController extends ExtensionController
 
         try
         {
-            let deploymentResult = await deployService.deployPackageGroup(
-                selectedSet.payload,
-                instanceName,
-                selectedTarget,
-                undefined
-            );
+            let deploymentResult = await window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: "Installation process started in a new window..."
+            }, async (progress, token) => {
+                return await deployService.deployPackageGroup(
+                    selectedSet.payload,
+                    instanceName,
+                    selectedTarget,
+                    undefined
+                );
+            });
+            
             if (deploymentResult.lastUpdated.length > 0)
                 window.showInformationMessage(`Package group "${deploymentResult.deployment.name}" installed: ` + deploymentResult.lastUpdated.map(p => `${p.id} v${p.version}`).join(', '))
         }
@@ -462,7 +568,7 @@ export default class DeployController extends ExtensionController
             if (this._updatesAvailable[result.payload.uri.path])
             {
                 let update = result.payload2;
-                this.installUpdate(this._deployServices[result.payload.uri.path], update).then(success => {
+                this.installUpdate(this._deployServices[DeployController.getWorkspaceKey(result.payload)], update).then(success => {
                     if (success)
                     {
                         let idx = this._updatesAvailable[result.payload.uri.path].findIndex(u => u.packageGroupId === result.payload2.packageGroupId && u.instanceName === result.payload2.instanceName);
@@ -533,18 +639,17 @@ export default class DeployController extends ExtensionController
         catch (e) 
         {
             DeployController.handleError(e);
-            //window.showErrorMessage(`${e}`);
         }
     }
 
     private async remove()
     {
-        let workspaceFolder = await this.showWorkspaceFolderPick();
+        let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveDeploymentWorkspaces());
 
         if (!workspaceFolder)
             return;
 
-        this.removeWithService(this._deployServices[workspaceFolder.uri.path]);
+        this.removeWithService(this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)]);
     }
 
     private async removeWithService(deployService: DeployService)
@@ -661,19 +766,37 @@ export default class DeployController extends ExtensionController
         this._goCurrent.openGoCurrentWizard();
     }
 
+    private async newProject()
+    {
+        let workspaceFolder = await this.showWorkspaceFolderPick(this.getInactiveDeploymentWorkspaces());
+
+        if (!workspaceFolder)
+            return
+        
+        let dir = path.join(workspaceFolder.uri.fsPath, Constants.goCurrentWorkspaceDirName);
+        let destPath = path.join(dir, Constants.projectFileName)
+        let srcPath = this.context.asAbsolutePath("assets\\gocurrent.json")
+
+        if (!fsHelpers.existsSync(dir))
+        {
+            fsHelpers.mkdirSync(dir);
+        }
+        fsHelpers.copySync(srcPath, destPath);
+    }
+
     public onDeploymentRemoved(instanceName: string)
     {
-        this.checkForUpdates();
+        this.checkForUpdates(true);
     }
 
     private async addInstanceToWorkspace()
     {
-        let workspaceFolder = await this.showWorkspaceFolderPick();
+        let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveDeploymentWorkspaces());
 
         if (!workspaceFolder)
             return;
 
-        let deployService: DeployService = this._deployServices[workspaceFolder.uri.path];
+        let deployService: DeployService = this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)];
         let existingInstances = await deployService.getDeployedInstances()
 
         let packages = await this.showInstancePicks(existingInstances);
@@ -686,7 +809,7 @@ export default class DeployController extends ExtensionController
 
     private async rePopulateLaunchJson()
     {
-        let workspaceFolder = await this.showWorkspaceFolderPick();
+        let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveDeploymentWorkspaces());
         if (!workspaceFolder)
             return;
         let workspaceKey = DeployController.getWorkspaceKey(workspaceFolder);
@@ -697,37 +820,100 @@ export default class DeployController extends ExtensionController
         alService.RePopulateLaunchJson();
     }
 
-    private async experimental()
+    private async showAlInstancePicks(alService: AlService): Promise<PackageInfo>
     {
-        // This is an experimental command only for development / debuging
-        // Turn on by setting debug = true (in constructor) and invoke with ctrl+shif+p->Go Current: Experimental
-        // Don't forget to set debug = false before commiting.
-        /*let workspaceFolder = await this.showWorkspaceFolderPick();
-        let deployService: DeployService = this._deployServices[workspaceFolder.uri.path];
-        let deployment = await this.showDeploymentsPicks(deployService);
-        if (!deployment)
-            return;
-        let packages = await deployService.getDeployedPackages(deployment.guid);
-        let server = packages.filter(p => p.Id === 'bc-server')[0]
-        if (!server)
-            return;*/
-        //PostDeployController.addAlLaunchConfig(server);
-        // Import the git.d.ts file
+        let instances = await alService.getInstances();
+
+        if (instances.length === 1)
+            return instances[0];
         
+        let picks: QuickPickItemPayload<PackageInfo>[] = [];
+        for (let instance of instances)
+        {
+            picks.push({"label": instance.InstanceName, payload: instance});
+        }
 
-
-        //const repository = api.repositories.filter(r => isDescendant(r.rootUri.fsPath, rootPath))[0];
-
-        var workspace = await this.showWorkspaceFolderPick()
-        let branchName = 'No branch'
-        if (workspace)
-            branchName = GitHelpers.getBranchName(workspace.uri.fsPath);
-
-        window.showInformationMessage(branchName);
-
+        var options: QuickPickOptions = {};
+        options.placeHolder = "Select an instance."
+        let selected = await window.showQuickPick(picks, options);
+        if (!selected)
+            return;
+        return selected.payload;
     }
 
-    
+    private async alUnpublishApp()
+    {
+        let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveAlWorkspaces());
+        if (!workspaceFolder)
+            return;
+        let workspaceKey = DeployController.getWorkspaceKey(workspaceFolder);
+
+        let alService: AlService = this._alServices[workspaceKey];
+        if (!alService.isActive())
+            return;
+        
+        let instance = await this.showAlInstancePicks(alService);
+
+        if (!instance)
+            return
+
+        await window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Unpublishing app..."
+        }, async (progress, token) => {
+            await alService.unpublishApp(instance.InstanceName);
+        });
+
+        window.showInformationMessage(`App unpublished.`);
+    }
+
+    private async alUpgradeData()
+    {
+        let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveAlWorkspaces());
+        if (!workspaceFolder)
+            return;
+        let workspaceKey = DeployController.getWorkspaceKey(workspaceFolder);
+
+        let alService: AlService = this._alServices[workspaceKey];
+        if (!alService.isActive())
+            return;
+        
+        let instance = await this.showAlInstancePicks(alService);
+
+        if (!instance)
+            return
+
+        let appsUpgraded = await window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: `Running data upgrade on "${instance.InstanceName}"...`
+        }, async (progress, token) => {
+            return await alService.upgradeData(instance.InstanceName);
+        });
+
+        if (!appsUpgraded || appsUpgraded.length === 0)
+        {
+            window.showInformationMessage("No apps required data upgrade.");
+        }
+        else
+        {
+            window.showInformationMessage(`Data upgraded for the following apps: ${appsUpgraded.join(', ')}.`);
+        }
+        
+    }
+
+    private async experimental()
+    {
+        let config = vscode.workspace.getConfiguration('go-current-workspace')
+        console.log("This is the experixmental shit");
+        vscode.window.showInformationMessage(config.get('debug').toString());
+        console.log(config);
+    }
+
+    private debugLog(value: string)
+    {
+        if (this._debug)
+            console.log('GoC: ' + value);
+    }
 
     public displose()
     {

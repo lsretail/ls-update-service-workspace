@@ -12,6 +12,7 @@ import {PackageInfo} from './interfaces/packageInfo';
 import { DeploymentResult } from './models/deploymentResult'
 import GitHelpers from './helpers/gitHelpers'
 import { trace } from 'console'
+import { AppError } from './errors/AppError'
 
 let uuid = require('uuid/v4');
 
@@ -120,6 +121,10 @@ export class DeployService
                 if ((<any>packageEntry).$ref)
                 {
                     let group = this.getPackageGroupResolved(projectFile, (<any>packageEntry).$ref);
+                    if (!group)
+                    {
+                        throw new AppError(`Package group "${item.name}" (${item.id}) has reference to "${(<any>packageEntry).$ref}" which does not exists.`);
+                    }
                     packages = packages.concat(group.packages);
                 }
                 else
