@@ -1,5 +1,25 @@
 $ErrorActionPreference = 'stop'
 
+
+function Get-AlAppJsonPath
+{
+    param(
+        $ProjectDir
+    )
+
+    $AppJsonPath = Join-Path $ProjectDir 'app.json'
+    if (!(Test-Path $AppJsonPath))
+    {
+        $AppJsonPath = (Join-Path ([System.IO.Path]::GetDirectoryName($ProjectDir)) 'app.json')
+    }
+
+    if (!(Test-Path $AppJsonPath))
+    {
+        throw "Cant find app.json file: $AppJsonPath"
+    }
+    return $AppJsonPath
+}
+
 function Get-VersionFromDependency
 {
     <#

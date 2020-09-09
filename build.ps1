@@ -54,7 +54,6 @@ if ($GitCommit -and $BuildNumber)
         $BranchName = ConvertTo-PackageBranchName -GitBranchName $Branch
         $Version = "$Version-dev.$BranchName.$BuildNumber+$GitCommit"
     }
-    
 
     $NewPackageContent = $PackageContent.Replace([string]$PackageJson.version, [string]$Version)
     Set-Content -Value $NewPackageContent -Path (Join-Path $PSScriptRoot 'package.json')

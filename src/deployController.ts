@@ -24,9 +24,7 @@ import { PackageInfo } from './interfaces/packageInfo';
 import { AlService } from './alService/services/alService';
 import GitHelpers from './helpers/gitHelpers';
 import { AlPsService } from './alService/services/alPsService';
-import { get } from 'http';
 import { AppError } from './errors/AppError';
-import { constants } from 'os';
 
 export default class DeployController extends ExtensionController
 {
@@ -67,14 +65,19 @@ export default class DeployController extends ExtensionController
         this.registerCommand("go-current.experimental", () => this.experimental());
         this.registerCommand("go-current.openWizard", () => this.openWizard());
         this.registerCommand("go-current.addInstanceToWorkspace", () => this.addInstanceToWorkspace());
+        this.registerCommand("go-current.newPackage", () => this.newPackage());
         this.registerCommand("go-current.al.repopulateLaunchJson", () => this.rePopulateLaunchJson());
         this.registerCommand("go-current.al.unpublishApp", () => this.alUnpublishApp());
         this.registerCommand("go-current.al.upgradeData", () => this.alUpgradeData());
+        this.registerCommand("go-current.al.downloadDependencies", () => this.alDownloadDependencies());
+        this.registerCommand("go-current.al.compileAndPackage", () => this.alCompileAndPackage());
         process.on('unhandledRejection', (reason) => {
             DeployController.handleError(reason)
         });
 
         vscode.commands.executeCommand("setContext", Constants.goCurrentExtensionActive, true);
+
+        this.addWorkspaces();
 
         this._goCurrent.testGoCurrentInstalled().then(async result =>
         {
@@ -84,10 +87,11 @@ export default class DeployController extends ExtensionController
                 console.warn("Go Current not installed!")
                 window.showWarningMessage("Go Current is not installed, extension will not load.");
                 commands.executeCommand("setContext", Constants.goCurrentExtensionActive, false);
+                commands.executeCommand("setContext", Constants.goCurrentAlActive, false);
+                commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
+                
                 return;
             }
-
-            this.addWorkspaces();
 
             workspace.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this);
 
@@ -206,7 +210,7 @@ export default class DeployController extends ExtensionController
         let projectFilePath = path.join(workspaceFolder.uri.fsPath, Constants.projectFileName)
         if (!fsHelpers.existsSync(projectFilePath))
         {
-            projectFilePath = path.join(workspaceFolder.uri.fsPath, '.gocurrent', Constants.projectFileName)
+            projectFilePath = path.join(workspaceFolder.uri.fsPath, Constants.goCurrentWorkspaceDirName, Constants.projectFileName)
         }
         
         let deployService = new DeployService(
@@ -782,6 +786,9 @@ export default class DeployController extends ExtensionController
             fsHelpers.mkdirSync(dir);
         }
         fsHelpers.copySync(srcPath, destPath);
+
+        // TODO
+        window.showInformationMessage("")
     }
 
     public onDeploymentRemoved(instanceName: string)
@@ -818,6 +825,11 @@ export default class DeployController extends ExtensionController
         if (!alService.isActive())
             return;
         alService.RePopulateLaunchJson();
+    }
+
+    private async newPackage()
+    {
+        
     }
 
     private async showAlInstancePicks(alService: AlService): Promise<PackageInfo>
@@ -901,10 +913,20 @@ export default class DeployController extends ExtensionController
         
     }
 
+    private async alDownloadDependencies() 
+    {
+        window.showWarningMessage("Not implemented.");
+    }
+
+    private async alCompileAndPackage()
+    {
+        window.showWarningMessage("Not implemented.");
+    }
+
     private async experimental()
     {
         let config = vscode.workspace.getConfiguration('go-current-workspace')
-        console.log("This is the experixmental shit");
+        console.log("This is the experimental stuff");
         vscode.window.showInformationMessage(config.get('debug').toString());
         console.log(config);
     }

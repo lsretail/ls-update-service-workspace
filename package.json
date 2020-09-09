@@ -80,6 +80,21 @@
                 "command": "go-current.al.upgradeData",
                 "title": "Start App Data Upgrade",
                 "category": "Go Current AL"
+            },
+            {
+                "command": "go-current.al.downloadDependencies",
+                "title": "Download dependencies (.alpackages + .netpackages)",
+                "category": "Go Current AL"
+            },
+            {
+                "command": "go-current.al.compileAndPackage",
+                "title": "Compile and create package",
+                "category": "Go Current AL"
+            },
+            {
+                "command": "go-current.newPackage",
+                "title": "Create package",
+                "category": "Go Current"
             }
         ],
         "menus": {
@@ -127,7 +142,20 @@
                 {
                     "command": "go-current.al.upgradeData",
                     "when": "go-current.al.active"
+                },
+                {
+                    "command": "go-current.al.downloadDependencies",
+                    "when": "go-current.al.active"
+                },
+                {
+                    "command": "go-current.al.compileAndPackage",
+                    "when": "go-current.al.active"
+                },
+                {
+                    "command": "go-current.newPackage",
+                    "when": "go-current.deploy.active"
                 }
+
             ]
         },
         "jsonValidation": [

@@ -220,7 +220,7 @@ function GetPackageGroup
         $BranchName,
         [switch] $NoThrow
     )
-    $Group = Get-PackageGroup -Id $PackageGroupId -Path $ProjectFilePath -Target $Target -BranchName $BranchName
+    $Group = Get-ProjectFilePackages -Id $PackageGroupId -Path $ProjectFilePath -Target $Target -BranchName $BranchName
     if (!$Group -and !$NoThrow)
     {
         Write-JsonError "Package group `"$PackageGroupId`" does not exists in project file." -Type 'User'

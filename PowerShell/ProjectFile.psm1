@@ -5,7 +5,15 @@ Import-Module (Join-Path $PSScriptRoot 'Utils.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'Branch.psm1') -Force
 
 $_VariableRegex = [regex]::new('\$\{(?<Name>[a-zA-Z0-9]*)\}')
-function Get-PackageGroup
+$_AlAppVersion = 'AlAppVersion'
+$_AlAppName = 'AlAppName'
+$_AlAppPublisher = 'AlAppPublisher'
+$_AlAppId = 'AlAppId'
+$_AlAppVariables = @($_AlAppVersion, $_AlAppName, $_AlAppPublisher, $_AlAppId)
+$_ReservedVariables = @('ProjectDir') + $_AlAppVariables
+
+
+function Get-ProjectFilePackages
 {
     param(
         [Parameter(Mandatory = $true)]
@@ -23,7 +31,16 @@ function Get-PackageGroup
     GetPackageGroupFromObj -ProjectFile $ProjectFile -Id $Id -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName
 }
 
-function Get-CompileModifiers
+function Get-ProjectFilePackage
+{
+    param(
+        [Parameter(Mandatory)]
+        $Path
+    )
+    
+}
+
+function Get-ProjectFileCompileModifiers
 {
     param(
         [Parameter(Mandatory = $true)]
@@ -40,8 +57,8 @@ function Get-CompileModifiers
         return
     }
 
-    $Variables = @{}
     $ProjectFile.versionVariables.PSObject.properties | ForEach-Object { $Variables[$_.Name] = $_.Value }
+    $Variables = @{}
     $ResolveCache = @{}
 
     $BranchToLabelMap = GetBranchLabelMap -ProjectFile $ProjectFile
@@ -52,7 +69,7 @@ function Get-CompileModifiers
         {
             $Packages = New-Object -TypeName System.Collections.ArrayList
             $Packages.AddRange($CompileModifiers) | Out-Null
-            ReplaceVariables -Packages $Packages -Variables $Variables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
+            Resolve-PackagesVersions -Packages $Packages -Variables $Variables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
             if ($Packages.Count -gt 0)
             {
                 @(,$Packages)
@@ -63,7 +80,7 @@ function Get-CompileModifiers
     {
         $Packages = New-Object -TypeName System.Collections.ArrayList
         $Packages.AddRange($ProjectFile.compileModifiers) | Out-Null
-        ReplaceVariables -Packages $Packages -Variables $Variables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
+        Resolve-PackagesVersions -Packages $Packages -Variables $Variables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
         $Packages
     }
 }
@@ -120,7 +137,7 @@ function GetPackageGroupFromObj
     if ($Id -imatch 'dependencies')
     {
         $Packages.AddRange($ProjectFile.dependencies) | Out-Null
-        ReplaceVariables -Packages $Packages -Variables $Variables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
+        Resolve-PackagesVersions -Packages $Packages -Variables $Variables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
 
         $Obj = @{
             'id' = 'dependencies'
@@ -152,17 +169,17 @@ function GetPackageGroupFromObj
             }
         }
         
-        ReplaceVariables -Packages $Packages -Variables $Variables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
+        Resolve-PackagesVersions -Packages $Packages -Variables $Variables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
         $Set.packages = $Packages
         return $Set
     }
 }
 
-function ReplaceVariables
+function Resolve-PackagesVersions
 {
     param(
         [System.Collections.ArrayList] $Packages,
-        $Variables,
+        [hashtable] $Variables,
         [hashtable] $ResolveCache,
         $ProjectDir,
         $Target,
@@ -174,7 +191,7 @@ function ReplaceVariables
     
     foreach ($Package in $Packages)
     {
-        $Package.Version = ResolveVersionTarget -Version $Package.Version -Target $Target
+        $Package.Version = Resolve-VersionTarget -Version $Package.Version -Target $Target
         
         if ($null -eq $Package.Version)
         {
@@ -199,7 +216,7 @@ function ReplaceVariables
                 }
                 elseif ($Variables.ContainsKey($Variable))
                 {
-                    $Replacement = ResolveVersionWithFunction -VersionValue $Variables[$Variable] -Target $Target -ProjectDir $ProjectDir -VariableName $Variable -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
+                    $Replacement = Resolve-VersionWithFunction -VersionValue $Variables[$Variable] -Target $Target -ProjectDir $ProjectDir -VariableName $Variable -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
                     $ResolveCache[$Variable] = $Replacement
                 }
                 
@@ -212,7 +229,7 @@ function ReplaceVariables
         }
         else
         {
-            $Package.Version = ResolveVersionWithFunction -VersionValue $Package.Version -Target $Target -ProjectDir $ProjectDir -PackageId $Package.Id -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
+            $Package.Version = Resolve-VersionWithFunction -VersionValue $Package.Version -Target $Target -ProjectDir $ProjectDir -PackageId $Package.Id -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
         }
     }
 
@@ -222,7 +239,51 @@ function ReplaceVariables
     }
 }
 
-function ResolveVersionTarget
+function Resolve-VariablesInString
+{
+    param(
+        $Value,
+        [hashtable] $Variables,
+        [hashtable] $ResolveCache,
+        $ProjectDir,
+        $Target,
+        $BranchName,
+        $BranchToLabelMap
+    )
+
+    $MatchList = $_VariableRegex.Matches($Value)
+
+    for ($Idx = $MatchList.Count - 1; $Idx -ge 0; $Idx--)
+    {
+        $Match = $MatchList[$Idx]
+        $VariableName = $Match.Groups['Name'].Value
+        $Replacement = $null
+
+        if ($ResolveCache.ContainsKey($VariableName))
+        {
+            $Replacement = $ResolveCache[$VariableName]
+        }
+        elseif ($_AlAppVariables.Contains($VariableName))
+        {
+            Resolve-AlAppVariables -ProjectDir $ProjectDir -ResolveCache $ResolveCache
+            $Replacement = $ResolveCache[$VariableName]
+        }
+        elseif ($Variables.ContainsKey($VariableName))
+        {
+            $Replacement = Resolve-VersionWithFunction -VersionValue $Variables[$VariableName] -Target $Target -ProjectDir $ProjectDir -VariableName $VariableName -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
+            $ResolveCache[$VariableName] = $Replacement
+        }
+        
+        if ($null -ne $Replacement)
+        {
+            $FromIdx = $Match.Index + $Match.Length
+            $Value = $Value.Substring(0, $Match.Index) + $Replacement + $Value.Substring($FromIdx, $Value.Length - $FromIdx) 
+        }
+    }
+    return $Value
+}
+
+function Resolve-VersionTarget
 {
     param(
         $Version,
@@ -248,7 +309,7 @@ function ResolveVersionTarget
     }
 }
 
-function ResolveVersionWithFunction
+function Resolve-VersionWithFunction
 {
     param(
         $PackageId,
@@ -277,7 +338,7 @@ function ResolveVersionWithFunction
         {
             $Arguments.FromAppIdType = 'fromMinor'
         }
-        return ResolveVariableFromAppJson @Arguments
+        return Resolve-VariableFromAppJson @Arguments
     }
     elseif ($null -ne $VersionValue.Id)
     {
@@ -289,11 +350,11 @@ function ResolveVersionWithFunction
             ProjectDir = $ProjectDir
             Target = $Target
         }
-        return ResolveVariable @Arguments
+        return Resolve-Variable @Arguments
     }
     elseif ($null -ne $VersionValue.BranchPriorityFilter)
     {
-        return ResolveVariableBranchFilter -BranchName $BranchName -BranchPriorityFilter $VersionValue.BranchPriorityFilter -BranchToLabelMap $BranchToLabelMap
+        return Resolve-VariableBranchFilter -BranchName $BranchName -BranchPriorityFilter $VersionValue.BranchPriorityFilter -BranchToLabelMap $BranchToLabelMap
     }
     else
     {
@@ -312,7 +373,7 @@ function ResolveVersionWithFunction
     }
 }
 
-function ResolveVariable
+function Resolve-Variable
 {
     param(
         [Parameter(Mandatory = $false)]
@@ -341,7 +402,7 @@ function ResolveVariable
     }
 }
 
-function ResolveVariableFromAppJson
+function Resolve-VariableFromAppJson
 {
     param(
         $FromAppId,
@@ -360,17 +421,7 @@ function ResolveVariableFromAppJson
         $FromAppIdParts = 4
     }
 
-    $AppJsonPath = Join-Path $ProjectDir 'app.json'
-    if (!(Test-Path $AppJsonPath))
-    {
-        $AppJsonPath = (Join-Path ([System.IO.Path]::GetDirectoryName($ProjectDir)) 'app.json')
-    }
-
-    if (!(Test-Path $AppJsonPath))
-    {
-        throw "Cant find app.json file: $AppJsonPath"
-    }
-
+    $AppJsonPath = Get-AlAppJsonPath -ProjectDir $ProjectDir
     $Version = Get-VersionFromDependency -AppJsonPath $AppJsonPath -AppId $FromAppId
     if (!$Version)
     {
@@ -391,7 +442,25 @@ function ResolveVariableFromAppJson
     return Get-VersionRangeFromVersion -Version $Version -Places $FromAppIdParts @Arguments
 }
 
-function ResolveVariableBranchFilter
+function Resolve-AlAppVariables
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable] $ResolveCache,
+        [Parameter(Mandatory = $true)]
+        $ProjectDir
+    )
+
+    $AppJsonPath = Get-AlAppJsonPath -ProjectDir $ProjectDir
+
+    $AppJson = Get-Content -Raw -Path $AppJsonPath | ConvertFrom-Json
+    $ResolveCache[$_AlAppId] = $AppJson.id
+    $ResolveCache[$_AlAppVersion] = $AppJson.version
+    $ResolveCache[$_AlAppPublisher] = $AppJson.publisher
+    $ResolveCache[$_AlAppName] = $AppJson.name
+}
+
+function Resolve-VariableBranchFilter
 {
     param(
         $BranchName,
@@ -423,4 +492,4 @@ function ResolveVariableBranchFilter
     ConvertTo-BranchPriorityPreReleaseFilter @Arguments 
 }
 
-Export-ModuleMember -Function '*-*'
+Export-ModuleMember -Function '*-ProjectFile*'
