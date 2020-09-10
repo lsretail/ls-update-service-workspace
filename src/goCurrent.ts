@@ -91,7 +91,8 @@ export class GoCurrent
         packageGroupId: string, 
         instanceName: string,
         branchName: string,
-        target: string
+        target: string,
+        servers: Server[]
     )
     {
         let param = {
@@ -109,6 +110,9 @@ export class GoCurrent
 
         if (branchName)
             param['BranchName'] = branchName;
+        
+        if (servers)
+            param['Servers'] = `'${JSON.stringify(servers)}'`;
 
         return this._powerShell.executeCommandSafe("Get-AvailableUpdates", true, param);
     }
@@ -140,8 +144,9 @@ export class GoCurrent
     public testIsInstance(
         projectFilePath: string,
         packageGroupId: string,
+        servers: Server[],
         target?: string,
-        branchName?: string
+        branchName?: string,
     ) : Promise<any>
     {
         let param = {
@@ -154,6 +159,9 @@ export class GoCurrent
 
         if (branchName)
             param['BranchName'] = branchName;
+        
+        if (servers)
+            param['Servers'] = `'${JSON.stringify(servers)}'`;
         
         return this._powerShell.executeCommandSafe("Test-IsInstance", true, param);
     }

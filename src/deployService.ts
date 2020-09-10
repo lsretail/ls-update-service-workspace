@@ -1,6 +1,6 @@
 "use strict"
 
-import {ProjectFile, PackageGroup, Package} from './models/projectFile'
+import {ProjectFile, PackageGroup, Package, Server} from './models/projectFile'
 import {Deployment} from './models/deployment'
 import {WorkspaceData} from './models/workspaceData'
 import {JsonData} from './jsonData'
@@ -137,6 +137,25 @@ export class DeployService
         }
     }
 
+    public getPackageGroup(projectFile: ProjectFile, id: string) : PackageGroup
+    {
+        if (id == 'dependencies')
+        {
+            let dependencies = new PackageGroup();
+            dependencies.name = "Dependencies"
+            dependencies.id = "dependencies"
+            dependencies.packages = projectFile.dependencies;
+            return dependencies
+        }
+        for (let item of projectFile.devPackageGroups)
+        {
+            if (item.id !== id)
+                continue;
+
+            return item;
+        }
+    }
+
     public getDeployments() : Thenable<Array<Deployment>>
     {
         return this._workspaceData.getData().then(workspaceData => {
@@ -192,15 +211,7 @@ export class DeployService
             await this._workspaceData.save();
         }
 
-        let servers = [];
-        if (packageGroup && packageGroup.servers)
-            servers = packageGroup.servers;
-        else
-        {
-            let globalServers = (await this._projectFile.getData()).servers;
-            if (globalServers)
-                servers = globalServers;
-        }
+        let servers = await this.getServers(packageGroup);
 
         var packagesInstalled = await this._goCurrent.installPackageGroup(
             this._projectFile.uri.fsPath,
@@ -241,6 +252,20 @@ export class DeployService
         this.firePackagesDeployed(packagesInstalled);
 
         return result;
+    }
+
+    private async getServers(packageGroup: PackageGroup): Promise<Server[]>
+    {
+        let servers: Server[] = [];
+        if (packageGroup && packageGroup.servers)
+            servers = packageGroup.servers;
+        else
+        {
+            let globalServers = (await this._projectFile.getData()).servers;
+            if (globalServers)
+                servers = globalServers;
+        }
+        return servers;
     }
 
     public async addPackagesAsDeployed(packages: PackageInfo[]): Promise<boolean>
@@ -290,7 +315,7 @@ export class DeployService
 
     public async checkForUpdates() : Promise<Array<UpdateAvailable>>
     {
-        let deployments = await this.getDeployments(); 
+        let deployments = await this.getDeployments();
         let updates = new Array<UpdateAvailable>();
         for (let deployment of deployments)
         {
@@ -323,7 +348,6 @@ export class DeployService
         return updates;
     }
 
-
     public async getDeployedInstances(): Promise<string[]>
     {
         let workspaceData = await this._workspaceData.getData();
@@ -331,14 +355,24 @@ export class DeployService
         return workspaceData.deployments.map(d => d.instanceName).filter(i => !!i);
     }
 
-    public checkForUpdate(deployment: Deployment) : Promise<PackageInfo[]>
+    public async checkForUpdate(deployment: Deployment) : Promise<PackageInfo[]>
     {
-        return this._goCurrent.getAvailableUpdates(this._projectFile.uri.fsPath, deployment.id, deployment.instanceName, GitHelpers.getBranchName(this._workspacePath), deployment.target);
+        let servers: Server[] = [];
+        if (deployment.id)
+        {
+            let packageGroup = this.getPackageGroup((await this._projectFile.getData()), deployment.id)
+            servers = await this.getServers(packageGroup);
+        }
+        
+        return await this._goCurrent.getAvailableUpdates(this._projectFile.uri.fsPath, deployment.id, deployment.instanceName, GitHelpers.getBranchName(this._workspacePath), deployment.target, servers);
     }
 
-    public isInstance(packageGroupId: string) : Promise<boolean>
+    public async isInstance(packageGroupId: string) : Promise<boolean>
     {
-        return this._goCurrent.testIsInstance(this._projectFile.uri.fsPath, packageGroupId);
+        let packageGroup = this.getPackageGroup((await this._projectFile.getData()), packageGroupId);
+        let servers = await this.getServers(packageGroup);
+        
+        return await this._goCurrent.testIsInstance(this._projectFile.uri.fsPath, packageGroupId, servers);
     }
 
     public canInstall(packageGroupId: string) : Promise<boolean>

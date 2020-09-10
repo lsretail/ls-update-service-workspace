@@ -153,7 +153,7 @@
         },
         "server": {
             "type": "object",
-            "required": ["guid", "host", "port"],
+            "required": ["host", "port"],
             "description": "Specify a Go Current server.",
             "properties": {
                 "guid": {

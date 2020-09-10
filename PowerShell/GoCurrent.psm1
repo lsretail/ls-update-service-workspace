@@ -21,7 +21,7 @@ function Get-GoCurrentVersion()
 {
     $HasRequiredVersion = $false
     $CurrentVersion = ''
-    $RequiredVersion = [Version]::Parse('0.0.0')
+    $RequiredVersion = [Version]::Parse('0.15.11')
     if ($_GoCurrentInstalled)
     {
         $CurrentVersion = ((Get-Module -Name 'GoCurrent') | Select-Object -First 1).Version
@@ -96,7 +96,7 @@ function Install-PackageGroup
         {
             $Packages = Get-GocInstalledPackage -InstanceName $InstanceName | Where-Object { $_.Selected }
 
-            return Install-Packages -InstanceName $InstanceName -Packages $Packages
+            return Install-Packages -InstanceName $InstanceName -Packages $Packages -Servers $Servers
         }
         return @()
     }
@@ -117,19 +117,9 @@ function Install-Packages
         [string] $Servers
     )
 
-    if ($Servers)
-    {
-        $ServersObj = @()
-        ConvertFrom-Json $Servers | Foreach-Object { 
-            $_ | Foreach-Object { 
-                $Item = @{}; 
-                $ServersObj += $Item
-                $_.PSObject.Properties | Foreach-Object { $Item[$_.Name] = $_.Value} 
-            }
-        }
-    }
+    $ServersObj = ConvertTo-ServersObj -Servers $Servers
 
-    $ToUpdate = @($Packages | Get-GocUpdates -InstanceName $InstanceName)
+    $ToUpdate = @($Packages | Get-GocUpdates -InstanceName $InstanceName -Server $ServersObj)
 
     $WizardPath = Get-GoCurrentWizardPath
 
@@ -144,10 +134,12 @@ function Install-Packages
                 Arguments = $Arguments
             }
         )
-        Servers = $ServersObj
     }
 
-    
+    if ($ServersObj)
+    {
+        $Install.Servers = $ServersObj
+    }
 
     $TempFilePath = (Join-Path $env:TEMP "GoCWorkspace\$([System.IO.Path]::GetRandomFileName())")
     [System.IO.Directory]::CreateDirectory((Split-Path $TempFilePath -Parent)) | Out-Null
@@ -179,6 +171,26 @@ function Install-Packages
     return (ConvertTo-Json $Installed -Depth 100 -Compress)
 }
 
+function ConvertTo-ServersObj
+{
+    param(
+        $Servers
+    )
+    if ($Servers)
+    {
+        $ServersObj = @()
+        ConvertFrom-Json $Servers | Foreach-Object { 
+            $_ | Foreach-Object { 
+                $Item = @{}; 
+                $ServersObj += $Item
+                $_.PSObject.Properties | Foreach-Object { $Item[$_.Name] = $_.Value} 
+            }
+        }
+        return @(,$ServersObj)
+    }
+    return @()
+}
+
 function Get-AvailableUpdates()
 {
     param(
@@ -186,8 +198,11 @@ function Get-AvailableUpdates()
         $PackageGroupId,
         $InstanceName,
         $Target,
-        $BranchName
+        $BranchName,
+        [string] $Servers
     )
+
+    $ServersObj = ConvertTo-ServersObj -Servers $Servers
 
     if ($PackageGroupId)
     {
@@ -198,7 +213,7 @@ function Get-AvailableUpdates()
     {
         if ($InstanceName -and (Test-GocInstanceExists -InstanceName $InstanceName))
         {
-            $Updates = @(Get-GocInstalledPackage -InstanceName $InstanceName | Where-Object { $_.Selected } | Get-GocUpdates)
+            $Updates = @(Get-GocInstalledPackage -InstanceName $InstanceName | Where-Object { $_.Selected } | Get-GocUpdates -Server $ServersObj)
             return (ConvertTo-Json $Updates)
         }
 
@@ -209,11 +224,11 @@ function Get-AvailableUpdates()
     $SelectedPackages = $PackageGroup.packages | Get-GocInstalledPackage -InstanceName $InstanceName | ForEach-Object { $_.Id }
     $Packages = $PackageGroup.packages | Where-Object { (!$_.optional) -or ($_.optional -and $SelectedPackages.Contains($_.id)) }
 
-    $Updates = @($Packages | Get-GocUpdates -InstanceName $InstanceName)
+    $Updates = @($Packages | Get-GocUpdates -InstanceName $InstanceName -Server $ServersObj)
     return (ConvertTo-Json $Updates)
 }
 
-function Test-IsInstance()
+function Test-IsInstance
 {
     param(
         $ProjectFilePath,
