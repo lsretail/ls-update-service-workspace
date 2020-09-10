@@ -17,9 +17,26 @@ catch
 
 $_GoCWizardPath = $null
 
-function Test-GoCurrentInstalled()
+function Get-GoCurrentVersion()
 {
-    return ConvertTo-Json $_GoCurrentInstalled
+    $HasRequiredVersion = $false
+    $CurrentVersion = ''
+    $RequiredVersion = [Version]::Parse('0.0.0')
+    if ($_GoCurrentInstalled)
+    {
+        $CurrentVersion = ((Get-Module -Name 'GoCurrent') | Select-Object -First 1).Version
+
+        $HasRequiredVersion = $CurrentVersion -ge $RequiredVersion
+        $CurrentVersion = $CurrentVersion.ToString()
+    }
+    $RequiredVersion = $RequiredVersion.ToString()
+
+    return ConvertTo-Json -Compress -InputObject @{
+        RequiredVersion = $RequiredVersion
+        CurrentVersion = $CurrentVersion
+        HasRequiredVersion = $HasRequiredVersion
+        IsInstalled = $_GoCurrentInstalled
+    }
 }
 
 function Invoke-AsAdminOld()
@@ -99,6 +116,19 @@ function Install-Packages
         $Arguments,
         [string] $Servers
     )
+
+    if ($Servers)
+    {
+        $ServersObj = @()
+        ConvertFrom-Json $Servers | Foreach-Object { 
+            $_ | Foreach-Object { 
+                $Item = @{}; 
+                $ServersObj += $Item
+                $_.PSObject.Properties | Foreach-Object { $Item[$_.Name] = $_.Value} 
+            }
+        }
+    }
+
     $ToUpdate = @($Packages | Get-GocUpdates -InstanceName $InstanceName)
 
     $WizardPath = Get-GoCurrentWizardPath
@@ -114,19 +144,10 @@ function Install-Packages
                 Arguments = $Arguments
             }
         )
+        Servers = $ServersObj
     }
 
-    if ($Servers)
-    {
-        $Install.Servers = @()
-        ConvertFrom-Json $Servers | Foreach-Object { 
-            $_ | Foreach-Object { 
-                $Item = @{}; 
-                $Install.Servers += $Item
-                $_.PSObject.Properties | Foreach-Object { $Item[$_.Name] = $_.Value} 
-            }
-        }
-    }
+    
 
     $TempFilePath = (Join-Path $env:TEMP "GoCWorkspace\$([System.IO.Path]::GetRandomFileName())")
     [System.IO.Directory]::CreateDirectory((Split-Path $TempFilePath -Parent)) | Out-Null

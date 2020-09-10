@@ -44,7 +44,7 @@ export default class DeployController extends ExtensionController
     private _updatesAvailable: Map<string, Array<UpdateAvailable>> = new Map<string, Array<UpdateAvailable>>();
 
 
-    public activate()
+    public async activate()
     {
         let config = vscode.workspace.getConfiguration('go-current-workspace')
         if (config.has('debug'))
@@ -77,27 +77,37 @@ export default class DeployController extends ExtensionController
 
         vscode.commands.executeCommand("setContext", Constants.goCurrentExtensionActive, true);
 
+        this._goCurrentInstalled = true;
+
         this.addWorkspaces();
 
-        this._goCurrent.testGoCurrentInstalled().then(async result =>
+        let gocVersion = await this._goCurrent.getGoCurrentVersion();
+        this._goCurrentInstalled = gocVersion.IsInstalled;
+
+        if (!this._goCurrentInstalled || !gocVersion.HasRequiredVersion)
         {
-            this._goCurrentInstalled = result;
-            if (!result)
+            if (!gocVersion.HasRequiredVersion)
+            {
+                window.showWarningMessage(`You do not have the required version of the Go Current client, v${gocVersion.RequiredVersion}, you have v${gocVersion.CurrentVersion}. Please update and reload your workspace.`);
+                console.warn(`You do not have the required version of the Go Current client, v${gocVersion.RequiredVersion}, you have v${gocVersion.CurrentVersion}. Please update and reload your workspace.`)
+            }
+            else
             {
                 console.warn("Go Current not installed!")
                 window.showWarningMessage("Go Current is not installed, extension will not load.");
-                commands.executeCommand("setContext", Constants.goCurrentExtensionActive, false);
-                commands.executeCommand("setContext", Constants.goCurrentAlActive, false);
-                commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
-                
-                return;
             }
-
+            
+            commands.executeCommand("setContext", Constants.goCurrentExtensionActive, false);
+            commands.executeCommand("setContext", Constants.goCurrentAlActive, false);
+            commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
+        }
+        else
+        {
             workspace.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this);
 
             await this.checkForBaseUpdate();
             await this.checkForUpdates(true);
-        });
+        }
     }
 
     private getAlUtils() : AlPsService

@@ -2,6 +2,7 @@
 import {PowerShell} from './PowerShell'
 import {PackageInfo} from './interfaces/packageInfo';
 import { Server } from './models/projectFile';
+import { GoCurrentVersion } from './interfaces/goCurrentVersion';
 
 export class GoCurrent
 {
@@ -131,9 +132,9 @@ export class GoCurrent
         return this.longRunning.executeCommandSafe("Remove-Deployment", true, param);
     }
 
-    public testGoCurrentInstalled(): Promise<boolean>
+    public getGoCurrentVersion(): Promise<GoCurrentVersion>
     {
-        return this._powerShell.executeCommandSafe("Test-GoCurrentInstalled", true);
+        return this._powerShell.executeCommandSafe("Get-GoCurrentVersion", true);
     }
 
     public testIsInstance(

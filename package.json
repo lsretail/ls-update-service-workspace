@@ -23,7 +23,7 @@
         "workspaceContains:gocurrent.json",
         "onCommand:go-current.newProject"
     ],
-    "main": "./out/src/extension",
+    "main": "./out/extension.js",
     "contributes": {
         "commands": [
             {
@@ -155,7 +155,6 @@
                     "command": "go-current.newPackage",
                     "when": "go-current.deploy.active"
                 }
-
             ]
         },
         "jsonValidation": [
