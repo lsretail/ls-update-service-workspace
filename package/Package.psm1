@@ -15,7 +15,9 @@ function Install-Package
 
     Write-Progress -Id 217 -Activity 'Installing Go Current Workspace' -Status "Installing" -PercentComplete 20
 
+    $ErrorActionPreference = 'continue'
     & $CodePath @Arguments | Write-Host
+    $ErrorActionPreference = 'stop'
 
     if ($LASTEXITCODE -ne 0)
     {
