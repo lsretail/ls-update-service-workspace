@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'stop'
 
-Import-Module (Join-Path $PSScriptRoot 'ProjectFile.psm1')
+Import-Module (Join-Path $PSScriptRoot 'ProjectFile.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'ErrorHandling.psm1')
 
 Add-Type -AssemblyName 'System.ServiceModel'
@@ -47,7 +47,7 @@ function Invoke-AsAdminOld()
         [string] $ExceptionText
     )
     $OutputPath = [System.IO.Path]::GetTempFileName()
-    $Command = "`$ErrorActionPreference='stop';trap{Write-Host `$_ -ForegroundColor Red;Write-Host `$_.ScriptStackTrace -ForegroundColor Red;pause;};Import-Module (Join-Path '$PSScriptRoot' 'GoCurrent.psm1');$Command -OutputPath '$OutputPath' $Arguments;"
+    $Command = "`$ErrorActionPreference='stop';trap{Write-Host `$_ -ForegroundColor Red;Write-Host `$_.ScriptStackTrace -ForegroundColor Red;pause;};Import-Module (Join-Path '$PSScriptRoot' 'DeployPsService.psm1');$Command -OutputPath '$OutputPath' $Arguments;"
     $Process = Start-Process powershell $Command -Verb runas -PassThru
 
     $Process.WaitForExit()
@@ -106,6 +106,20 @@ function Install-PackageGroup
     $Packages = $PackageGroup.Packages
 
     return Install-Packages -InstanceName $InstanceName -Packages $Packages -Arguments $PackageGroup.Arguments -Servers $Servers
+}
+
+function Install-PackagesJson
+{
+    param(
+        $InstanceName,
+        $Packages,
+        $Servers,
+        $Arguments
+    )
+
+    $Packages = ConvertFrom-Json $Packages
+
+    return Install-Packages -Servers $Servers -InstanceName $InstanceName -Packages $Packages
 }
 
 function Install-Packages
@@ -191,6 +205,30 @@ function ConvertTo-ServersObj
     return @()
 }
 
+function Test-PackageAvailable
+{
+    param(
+        $PackageId,
+        $Servers
+    )
+
+    $ServersObj = ConvertTo-ServersObj -Servers $Servers
+
+    try
+    {
+        Get-GocPackage -Id $PackageId -VersionQuery "" -Server $ServersObj | Out-Null
+    }
+    catch
+    {
+        if ($_.Exception -is [LSRetail.GoCurrent.Common.Exceptions.NoPackageInRangeException])
+        {
+            return (ConvertTo-Json $false -Compress)
+        }
+        throw
+    }
+    return (ConvertTo-Json $true -Compress)
+}
+
 function Get-AvailableUpdates()
 {
     param(
@@ -214,10 +252,10 @@ function Get-AvailableUpdates()
         if ($InstanceName -and (Test-GocInstanceExists -InstanceName $InstanceName))
         {
             $Updates = @(Get-GocInstalledPackage -InstanceName $InstanceName | Where-Object { $_.Selected } | Get-GocUpdates -Server $ServersObj)
-            return (ConvertTo-Json $Updates)
+            return (ConvertTo-Json $Updates -Compress -Depth 100)
         }
 
-        return (ConvertTo-Json @())
+        return (ConvertTo-Json @() -Compress)
     }
 
     # We only want to check optional packages for updates if they where installed, here we filter them out:
@@ -225,7 +263,7 @@ function Get-AvailableUpdates()
     $Packages = $PackageGroup.packages | Where-Object { (!$_.optional) -or ($_.optional -and $SelectedPackages.Contains($_.id)) }
 
     $Updates = @($Packages | Get-GocUpdates -InstanceName $InstanceName -Server $ServersObj)
-    return (ConvertTo-Json $Updates)
+    return (ConvertTo-Json $Updates -Compress -Depth 100)
 }
 
 function Test-IsInstance
@@ -239,10 +277,10 @@ function Test-IsInstance
     $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -Target $Target -BranchName $BranchName -NoThrow
     if (!$PackageGroup)
     {
-        return (ConvertTo-Json $false)
+        return (ConvertTo-Json $false -Compress)
     }
     $Result = $PackageGroup.packages | Test-GocIsInstance
-    return (ConvertTo-Json $Result)
+    return (ConvertTo-Json $Result -Compress -Depth 100)
 }
 
 function GetPackageGroup
@@ -281,7 +319,7 @@ function ReplaceVariables
 
 function Test-InstanceExists($InstanceName)
 {
-    return ConvertTo-Json (Test-GocInstanceExists -Instancename $InstanceName)
+    return ConvertTo-Json (Test-GocInstanceExists -Instancename $InstanceName) -Depth 100 -Compress
 }
 
 function Test-CanInstall
@@ -298,11 +336,11 @@ function Test-CanInstall
         $First = Get-GocInstalledPackage -Id $Package.id | Select-Object -First 1
         if (!$First)
         {
-            return ConvertTo-Json $true
+            return ConvertTo-Json $true -Compress
         }
         elseif (![string]::IsNullOrEmpty($First.InstanceName))
         {
-            return ConvertTo-Json $true
+            return ConvertTo-Json $true -Compress
         } 
     }    
 }
@@ -316,7 +354,7 @@ function Test-IsInstalled
 
     if ($InstanceName)
     {
-        return ConvertTo-Json (Test-GocInstanceExists -InstanceName $InstanceName)
+        return ConvertTo-Json (Test-GocInstanceExists -InstanceName $InstanceName) -Compress
     }
 
     foreach ($Package in $Packages)
@@ -324,10 +362,10 @@ function Test-IsInstalled
         $Installed = $Package | Get-GocInstalledPackage -InstanceName $InstanceName
         if ($Installed)
         {
-            return ConvertTo-Json $true
+            return ConvertTo-Json $true -Compress
         }
     }
-    return ConvertTo-Json $false
+    return ConvertTo-Json $false -Compress
 }
 
 function Get-Arguments
@@ -340,7 +378,7 @@ function Get-Arguments
     )
     $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -Target $Target -BranchName $BranchName
     $Arguments = $PackageGroup.packages | Get-GocArguments
-    return ConvertTo-Json $Arguments
+    return ConvertTo-Json $Arguments -Compress -Depth 100
 }
 
 function Get-InstalledPackages($Id, $InstanceName)
@@ -412,7 +450,7 @@ function Get-AvailableBaseUpdates()
         'go-current-workspace'
     )
     $Updates = @($Packages | Get-GocUpdates)
-    return (ConvertTo-Json $Updates)
+    return (ConvertTo-Json $Updates -Compress -Depth 100)
 }
 
 function Install-BasePackages()
@@ -489,4 +527,15 @@ function Get-GoCurrentWizardPath
 
     $_GoCWizardPath = Join-Path $Dir 'LSRetail.GoCurrent.Client.Wizard.exe'
     return $_GoCWizardPath
+}
+
+function Get-Targets
+{
+    param(
+        [Parameter(Mandatory)]
+        $ProjectFilePath,
+        $Id,
+        $UseDevTarget = $false
+    )
+    return ConvertTo-Json -Depth 100 -Compress -InputObject @(Get-ProjectFileTargets -Path $ProjectFilePath -Id $Id -UseDevTarget:$UseDevTarget)
 }

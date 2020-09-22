@@ -8,7 +8,6 @@ export class PowerShell
     private _debug: boolean;
     private _shell: any;
     private _modulePaths: string[] = [];
-    private _isExecuting: boolean;
     private _inExecution: number = 0;
     private _promiseOrder: Promise<any>;
     private _preCommand: string;
@@ -28,8 +27,19 @@ export class PowerShell
         this._shell = new Shell({
             executionPolicy: 'Bypass',
             noProfile: true,
-            verbose: this._debug
+            verbose: this._debug,
+            nonInteractive: true
         });
+
+        this._shell.on('end', code => {
+            if (code > 0)
+            {
+                console.log(`PowerShell ended unexpectedly (exit code ${code}).`)}
+                this._shell = null;
+                this._initializeIfNecessary();
+            }
+        );
+        
         for (var path of this._modulePaths)
         {
             this._shell.addCommand(`Import-Module ${path} -DisableNameChecking`);
@@ -39,6 +49,19 @@ export class PowerShell
     public get isDebug()
     {
         return this._debug;
+    }
+
+    public getNewPowerShell() : PowerShell
+    {
+        let powerShell = new PowerShell(this.isDebug);
+        for (var path of this._modulePaths)
+        {
+            powerShell.addModuleFromPath(path);
+        }
+
+        if (this._preCommand)
+            powerShell.setPreCommand(this._preCommand);
+        return powerShell;
     }
 
     public setPreCommand(command: string)
@@ -92,7 +115,7 @@ export class PowerShell
         {
             newCommand = newCommand.addParameter(item);
         }
-        
+
         this._shell.addCommand(newCommand).then(value =>
         {
             this.log(value);
@@ -162,10 +185,12 @@ export class PowerShell
 
     private processError(error: any)
     {
+        let errorStart = '!!!'
+        let errorEnd = '|||'
         let powerShellError: PowerShellError;
         try
         {
-            let ble = error.message.split('|||')[0].split('\r\n').join('');
+            let ble = error.message.split(errorStart)[1].split(errorEnd)[0].split('\r\n').join('');
             let errorObj = JSON.parse(ble);
             if (Object.keys(errorObj).indexOf('message') >= 0)
             {

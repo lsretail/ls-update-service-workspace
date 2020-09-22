@@ -1,13 +1,13 @@
 'use strict';
 import * as vscode from 'vscode';
-import DeployController from './deployController'
+import Controller from './controller'
 import {Constants} from './constants'
 
 export function activate(context: vscode.ExtensionContext)
 {
     console.log('Activating Go Current Workspace!');
 
-    let deployController = new DeployController(context);
+    let deployController = new Controller(context);
     deployController.activate();
 }
 

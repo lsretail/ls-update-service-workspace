@@ -1,20 +1,20 @@
 "use strict"
 
-import {InputBoxOptions, QuickPickItem, QuickPickOptions, MessageOptions, WorkspaceFolder,
-    WorkspaceFolderPickOptions, WorkspaceFoldersChangeEvent, commands, window, Disposable, 
+import {InputBoxOptions, QuickPickItem, QuickPickOptions, WorkspaceFolder,
+    WorkspaceFoldersChangeEvent, commands, window, Disposable, 
     Uri, workspace} from 'vscode';
 import * as vscode from 'vscode'
 import {QuickPickItemPayload} from './interfaces/quickPickItemPayload'
 import {ExtensionController} from './extensionController'
 import {PowerShell, PowerShellError} from './PowerShell'
-import {GoCurrent} from './GoCurrent'
-import {ProjectFile, PackageGroup} from './models/projectFile'
+import {DeployPsService} from './deployService/services/deployPsService'
+import {ProjectFile, PackageGroup, Package} from './models/projectFile'
 import {Constants} from './constants'
 import {JsonData} from './jsonData'
 import {Deployment} from './models/deployment'
 import {WorkspaceData} from './models/workspaceData'
 import {DataHelpers} from './dataHelpers'
-import {DeployService} from './deployService'
+import {DeployService} from './deployService/services/deployService'
 
 import {fsHelpers} from './fsHelpers'
 import * as path from 'path'
@@ -25,12 +25,19 @@ import { AlService } from './alService/services/alService';
 import GitHelpers from './helpers/gitHelpers';
 import { AlPsService } from './alService/services/alPsService';
 import { AppError } from './errors/AppError';
+import { PackageService } from './packageService/services/packageService';
+import { PackagePsService } from './packageService/services/packagePsService';
+import { serialize } from 'v8';
+import Resources from './resources';
+import { AlExtensionService } from './packageService/services/alExtensionService';
 
-export default class DeployController extends ExtensionController
+export default class Controller extends ExtensionController
 {
     private _powerShell: PowerShell;
-    private _goCurrent: GoCurrent
-    private _alUtils: AlPsService;
+    private _deployPsService: DeployPsService;
+    private _alPsService: AlPsService;
+    private _alExtensionService: AlExtensionService;
+    private _packagePsService: PackagePsService;
 
     private _debug: boolean = false;
 
@@ -39,10 +46,12 @@ export default class DeployController extends ExtensionController
 
     private _alServices: Map<string, AlService> = new Map<string, AlService>();
 
+    private _packageServices: Map<string, PackageService> = new Map<string, PackageService>();
+
     private _goCurrentInstalled: boolean;
     private _disposables: Disposable[];
     private _updatesAvailable: Map<string, Array<UpdateAvailable>> = new Map<string, Array<UpdateAvailable>>();
-
+    private _outputChannel: vscode.OutputChannel = null;
 
     public async activate()
     {
@@ -53,7 +62,7 @@ export default class DeployController extends ExtensionController
         }
         
         this._powerShell = new PowerShell(this._debug);
-        this._goCurrent = new GoCurrent(this._powerShell, this.context.asAbsolutePath("PowerShell\\GoCurrent.psm1"));
+        this._deployPsService = new DeployPsService(this._powerShell, this.context.asAbsolutePath("PowerShell\\DeployPsService.psm1"));
 
         commands.executeCommand("setContext", Constants.goCurrentDebug, this._debug);
         this.registerFolderCommand("go-current.activate", () => {window.showInformationMessage("Go Current Activated")});
@@ -71,8 +80,9 @@ export default class DeployController extends ExtensionController
         this.registerCommand("go-current.al.upgradeData", () => this.alUpgradeData());
         this.registerCommand("go-current.al.downloadDependencies", () => this.alDownloadDependencies());
         this.registerCommand("go-current.al.compileAndPackage", () => this.alCompileAndPackage());
+        this.registerCommand("go-current.al.newPackage", () => this.alNewPackage());
         process.on('unhandledRejection', (reason) => {
-            DeployController.handleError(reason)
+            Controller.handleError(reason)
         });
 
         vscode.commands.executeCommand("setContext", Constants.goCurrentExtensionActive, true);
@@ -81,7 +91,7 @@ export default class DeployController extends ExtensionController
 
         this.addWorkspaces();
 
-        let gocVersion = await this._goCurrent.getGoCurrentVersion();
+        let gocVersion = await this._deployPsService.getGoCurrentVersion();
         this._goCurrentInstalled = gocVersion.IsInstalled;
 
         if (!this._goCurrentInstalled || !gocVersion.HasRequiredVersion)
@@ -110,26 +120,52 @@ export default class DeployController extends ExtensionController
         }
     }
 
-    private getAlUtils() : AlPsService
+    private getAlPsService() : AlPsService
     {
-        if (!this._alUtils)
+        if (!this._alPsService)
         {
-            this._alUtils = new AlPsService(this._powerShell, this.context.asAbsolutePath("PowerShell\\AlPsService.psm1"))
+            this._alPsService = new AlPsService(this._powerShell, this.context.asAbsolutePath("PowerShell\\AlPsService.psm1"));
         }
-        return this._alUtils;
+        return this._alPsService;
+    }
+
+    private getAlExtensionService(): AlExtensionService
+    {
+        if (!this._alExtensionService)
+            this._alExtensionService = new AlExtensionService();
+        
+        return this._alExtensionService;
+    }
+
+    private getPackagePsService() : PackagePsService
+    {
+        if (!this._packagePsService)
+        {
+            this._packagePsService = new PackagePsService(this._powerShell, this.context.asAbsolutePath("PowerShell\\PackagePsService.psm1"));
+        }
+        return this._packagePsService;
+    }
+
+    private get outputChannel()
+    {
+        if (!this._outputChannel)
+        {
+            this._outputChannel = window.createOutputChannel("Go Current");
+        }
+        return this._outputChannel;
     }
 
     private async checkForBaseUpdate()
     {
         let buttons: string[] = [Constants.buttonUpdate, Constants.buttonLater];
-        var packages = await this._goCurrent.getAvailableBaseUpdates();
+        var packages = await this._deployPsService.getAvailableBaseUpdates();
         if (packages.length === 0)
             return;
         let packagesString = packages.map(p => `${p.Id} v${p.Version}`).join(', ');
         window.showInformationMessage(`Update available for "Go Current" (${packagesString})`, ...buttons).then(async result => {
             if (result === Constants.buttonUpdate)
             {
-                let packages = await this._goCurrent.installBasePackages();
+                let packages = await this._deployPsService.installBasePackages();
                 window.showInformationMessage("Updated: " + packages.map(p => `${p.Id} v${p.Version}`).join(', '));
                 let workspaceExtension = packages.filter(p => p.Id === 'go-current-workspace');
                 let clientUpdated = packages.filter(p => p.Id === 'go-current-client');
@@ -168,6 +204,24 @@ export default class DeployController extends ExtensionController
             window.showErrorMessage(reason.message);
             return true;
         }
+    }
+
+    private static getErrorMessage(reason: any): string
+    {
+        if (reason instanceof PowerShellError && reason.fromJson && 
+            (reason.type === 'GoCurrent' || reason.type === 'User'))
+        {
+            return reason.message
+        }
+        else if (reason instanceof PowerShellError && reason.fromJson)
+        {
+            return reason.message
+        }
+        else if (reason instanceof AppError)
+        {
+            return reason.message
+        }
+        return "Error";
     }
 
     private static getWorkspaceKey(workspaceFolder: WorkspaceFolder)
@@ -213,7 +267,7 @@ export default class DeployController extends ExtensionController
 
     private addWorkspace(workspaceFolder: WorkspaceFolder)
     {        
-        if (this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)])
+        if (this._deployServices[Controller.getWorkspaceKey(workspaceFolder)])
             return;
 
         this.debugLog(`Adding workspace ${workspaceFolder.uri.fsPath}.`)
@@ -222,33 +276,45 @@ export default class DeployController extends ExtensionController
         {
             projectFilePath = path.join(workspaceFolder.uri.fsPath, Constants.goCurrentWorkspaceDirName, Constants.projectFileName)
         }
+
+        let projectFile = new JsonData<ProjectFile>(projectFilePath, true, new ProjectFile());
         
+        // Deploy Service
         let deployService = new DeployService(
-            new JsonData<ProjectFile>(projectFilePath, true, new ProjectFile()),
+            projectFile,
             new JsonData<WorkspaceData>(path.join(workspaceFolder.uri.fsPath, Constants.goCurrentWorkspaceDirName+"\\"+Constants.projectDataFileName), true, new WorkspaceData()),
-            this._goCurrent,
+            this._deployPsService,
             workspaceFolder.uri.fsPath
         );
         deployService.onDidProjectFileChange(this.onProjecFileChange, this);
-        this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)] = deployService;
+        this._deployServices[Controller.getWorkspaceKey(workspaceFolder)] = deployService;
 
+        // PostDeployService
         let postDeployController = new PostDeployController(workspaceFolder);
         deployService.onDidPackagesDeployed(postDeployController.onPackagesDeployed, postDeployController);
         deployService.onDidInstanceRemoved(postDeployController.onInstanceRemoved, postDeployController);
         deployService.onDidInstanceRemoved(this.onDeploymentRemoved, this);
 
-        this._alServices[DeployController.getWorkspaceKey(workspaceFolder)] = new AlService(
+        this._postDeployControllers[Controller.getWorkspaceKey(workspaceFolder)] = postDeployController;
+
+        // AL Service
+        this._alServices[Controller.getWorkspaceKey(workspaceFolder)] = new AlService(
             deployService, 
-            this.getAlUtils(),
+            this.getAlPsService(),
             workspaceFolder
         );
 
-        this._postDeployControllers[DeployController.getWorkspaceKey(workspaceFolder)] = postDeployController;
+        // Package Service
+        this._packageServices[Controller.getWorkspaceKey(workspaceFolder)] = new PackageService(
+            this.getPackagePsService(),
+            this.getAlExtensionService(),
+            projectFile
+        );
     }
 
     private removeWorkspace(workspaceFolder: WorkspaceFolder)
     {
-        let workspaceId = DeployController.getWorkspaceKey(workspaceFolder);
+        let workspaceId = Controller.getWorkspaceKey(workspaceFolder);
         if (this._deployServices[workspaceId])
         {
             this._deployServices[workspaceId].dispose();
@@ -369,8 +435,8 @@ export default class DeployController extends ExtensionController
         let active: WorkspaceFolder[] = [];
         for (let workspaceFolder of workspace.workspaceFolders)
         {
-            if (this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)] &&
-                this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)].isActive())
+            if (this._deployServices[Controller.getWorkspaceKey(workspaceFolder)] &&
+                this._deployServices[Controller.getWorkspaceKey(workspaceFolder)].isActive())
                 active.push(workspaceFolder)
         }
         return active;
@@ -381,8 +447,8 @@ export default class DeployController extends ExtensionController
         let active: WorkspaceFolder[] = [];
         for (let workspaceFolder of workspace.workspaceFolders)
         {
-            if (!this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)] ||
-                !this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)].isActive())
+            if (!this._deployServices[Controller.getWorkspaceKey(workspaceFolder)] ||
+                !this._deployServices[Controller.getWorkspaceKey(workspaceFolder)].isActive())
                 active.push(workspaceFolder)
         }
         return active;
@@ -393,8 +459,8 @@ export default class DeployController extends ExtensionController
         let active: WorkspaceFolder[] = [];
         for (let workspaceFolder of workspace.workspaceFolders)
         {
-            if (this._alServices[DeployController.getWorkspaceKey(workspaceFolder)] &&
-                this._alServices[DeployController.getWorkspaceKey(workspaceFolder)].isActive())
+            if (this._alServices[Controller.getWorkspaceKey(workspaceFolder)] &&
+                this._alServices[Controller.getWorkspaceKey(workspaceFolder)].isActive())
                 active.push(workspaceFolder)
         }
         return active;
@@ -418,11 +484,11 @@ export default class DeployController extends ExtensionController
 
         try
         {
-            await this.showDeployWithService(this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)], workspaceFolder);
+            await this.showDeployWithService(this._deployServices[Controller.getWorkspaceKey(workspaceFolder)], workspaceFolder);
         }
         catch (e)
         {
-            if (!DeployController.handleError(e))
+            if (!Controller.handleError(e))
                 window.showErrorMessage("Error occurred while installing packages.");
         }
     }
@@ -452,7 +518,9 @@ export default class DeployController extends ExtensionController
         if (!selectedSet)
             return;
 
-        let selectedTarget = await this.showTargetPicks(selectedSet.payload.target)
+        let targets = await deployService.getTargets(selectedSet.payload.id);
+
+        let selectedTarget = await this.showTargetPicks(targets)
 
         if (!selectedTarget)
             return;
@@ -472,7 +540,7 @@ export default class DeployController extends ExtensionController
             }
             else
             {
-                if (this._goCurrent.testInstanceExists(instanceName))
+                if (this._deployPsService.testInstanceExists(instanceName))
                 {
                     window.showErrorMessage(`Instance with the name "${instanceName}" is already installed.`)
                     return;
@@ -484,7 +552,7 @@ export default class DeployController extends ExtensionController
         {
             let deploymentResult = await window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: "Installation process started in a new window..."
+                title: Resources.installationStartedInANewWindow
             }, async (progress, token) => {
                 return await deployService.deployPackageGroup(
                     selectedSet.payload,
@@ -499,14 +567,14 @@ export default class DeployController extends ExtensionController
         }
         catch (e)
         { 
-            if (!DeployController.handleError(e))
+            if (!Controller.handleError(e))
                 window.showErrorMessage("Error occurred while installing packages.");
         };
     }
 
     private async getOrShowInstanceNamePick(suggestedName: string) : Promise<string>
     {
-        suggestedName = suggestedName.replace(" ", "-").replace(".","-");
+        suggestedName = suggestedName.replace(/[^a-zA-Z0-9-]/g, "-");
         let instanceName = "";
         let suggestedInstanceName = await this.getNonexistingInstanceName(suggestedName);
         let tries = 0;
@@ -523,7 +591,7 @@ export default class DeployController extends ExtensionController
             instanceName = await window.showInputBox(inputOptions);
             if (!instanceName)
                 return;
-            let exists: boolean = await this._goCurrent.testInstanceExists(instanceName);
+            let exists: boolean = await this._deployPsService.testInstanceExists(instanceName);
             if (exists)
             {
                 tries++;
@@ -538,7 +606,7 @@ export default class DeployController extends ExtensionController
     {
         let instanceName = suggestedName;
         let idx = 0;
-        while (await this._goCurrent.testInstanceExists(instanceName))
+        while (await this._deployPsService.testInstanceExists(instanceName))
         {
             idx++;
             instanceName = `${suggestedName}-${idx}`
@@ -582,7 +650,7 @@ export default class DeployController extends ExtensionController
             if (this._updatesAvailable[result.payload.uri.path])
             {
                 let update = result.payload2;
-                this.installUpdate(this._deployServices[DeployController.getWorkspaceKey(result.payload)], update).then(success => {
+                this.installUpdate(this._deployServices[Controller.getWorkspaceKey(result.payload)], update).then(success => {
                     if (success)
                     {
                         let idx = this._updatesAvailable[result.payload.uri.path].findIndex(u => u.packageGroupId === result.payload2.packageGroupId && u.instanceName === result.payload2.instanceName);
@@ -652,7 +720,7 @@ export default class DeployController extends ExtensionController
         }
         catch (e) 
         {
-            DeployController.handleError(e);
+            Controller.handleError(e);
         }
     }
 
@@ -663,7 +731,7 @@ export default class DeployController extends ExtensionController
         if (!workspaceFolder)
             return;
 
-        this.removeWithService(this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)]);
+        this.removeWithService(this._deployServices[Controller.getWorkspaceKey(workspaceFolder)]);
     }
 
     private async removeWithService(deployService: DeployService)
@@ -704,7 +772,7 @@ export default class DeployController extends ExtensionController
 
     private async showInstancePicks(exludeInstances: Array<string> = [], placeholder: string = "Selected an instance") : Promise<PackageInfo[]>
     {
-        let instances = await this._goCurrent.getInstances();
+        let instances = await this._deployPsService.getInstances();
 
         let picks: QuickPickItemPayload<PackageInfo[]>[] = [];
 
@@ -777,7 +845,7 @@ export default class DeployController extends ExtensionController
 
     private openWizard()
     {
-        this._goCurrent.openGoCurrentWizard();
+        this._deployPsService.openGoCurrentWizard();
     }
 
     private async newProject()
@@ -813,7 +881,7 @@ export default class DeployController extends ExtensionController
         if (!workspaceFolder)
             return;
 
-        let deployService: DeployService = this._deployServices[DeployController.getWorkspaceKey(workspaceFolder)];
+        let deployService: DeployService = this._deployServices[Controller.getWorkspaceKey(workspaceFolder)];
         let existingInstances = await deployService.getDeployedInstances()
 
         let packages = await this.showInstancePicks(existingInstances);
@@ -829,25 +897,22 @@ export default class DeployController extends ExtensionController
         let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveDeploymentWorkspaces());
         if (!workspaceFolder)
             return;
-        let workspaceKey = DeployController.getWorkspaceKey(workspaceFolder);
+        let workspaceKey = Controller.getWorkspaceKey(workspaceFolder);
 
         let alService: AlService = this._alServices[workspaceKey];
         if (!alService.isActive())
             return;
-        alService.RePopulateLaunchJson();
+        alService.rePopulateLaunchJson();
     }
 
     private async newPackage()
     {
-        
+        window.showWarningMessage("Not implemented.");
     }
 
     private async showAlInstancePicks(alService: AlService): Promise<PackageInfo>
     {
         let instances = await alService.getInstances();
-
-        if (instances.length === 1)
-            return instances[0];
         
         let picks: QuickPickItemPayload<PackageInfo>[] = [];
         for (let instance of instances)
@@ -868,7 +933,7 @@ export default class DeployController extends ExtensionController
         let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveAlWorkspaces());
         if (!workspaceFolder)
             return;
-        let workspaceKey = DeployController.getWorkspaceKey(workspaceFolder);
+        let workspaceKey = Controller.getWorkspaceKey(workspaceFolder);
 
         let alService: AlService = this._alServices[workspaceKey];
         if (!alService.isActive())
@@ -879,14 +944,17 @@ export default class DeployController extends ExtensionController
         if (!instance)
             return
 
-        await window.withProgress({
+        let unpublished = await window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: "Unpublishing app..."
         }, async (progress, token) => {
-            await alService.unpublishApp(instance.InstanceName);
+            return await alService.unpublishApp(instance.InstanceName);
         });
 
-        window.showInformationMessage(`App unpublished.`);
+        if (unpublished)
+            window.showInformationMessage(`App unpublished.`);
+        else
+            window.showInformationMessage(`App already unpublished.`);
     }
 
     private async alUpgradeData()
@@ -894,10 +962,10 @@ export default class DeployController extends ExtensionController
         let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveAlWorkspaces());
         if (!workspaceFolder)
             return;
-        let workspaceKey = DeployController.getWorkspaceKey(workspaceFolder);
+        let workspaceKey = Controller.getWorkspaceKey(workspaceFolder);
 
         let alService: AlService = this._alServices[workspaceKey];
-        if (!alService.isActive())
+        if (!alService || !alService.isActive())
             return;
         
         let instance = await this.showAlInstancePicks(alService);
@@ -920,12 +988,49 @@ export default class DeployController extends ExtensionController
         {
             window.showInformationMessage(`Data upgraded for the following apps: ${appsUpgraded.join(', ')}.`);
         }
-        
     }
 
     private async alDownloadDependencies() 
     {
-        window.showWarningMessage("Not implemented.");
+        this.outputChannel.clear();
+        this.outputChannel.hide();
+        this.outputChannel.show();
+        try
+        {
+            let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveAlWorkspaces());
+
+            if (!workspaceFolder)
+                return;
+    
+            let packageService: PackageService = this._packageServices[Controller.getWorkspaceKey(workspaceFolder)];
+
+            let targets = await packageService.getTargets(undefined, true);
+            let target = await this.showTargetPicks(targets);
+
+            if (!target)
+                return;
+            
+            this.outputChannel.appendLine("Starting dependency download ...")
+            
+            let output = await window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: "Downloading dependencies (.alpackages + .netpackages) ..."
+            }, async (progress, token) => {
+                return await packageService.downloadAlDependencies(
+                    workspaceFolder.uri.fsPath, 
+                    target, 
+                    GitHelpers.getBranchName(workspaceFolder.uri.fsPath),
+                );
+            });
+            this.outputChannel.appendLine(output);
+            this.outputChannel.appendLine("Dependencies downloaded.");
+        }
+        catch (e)
+        {
+            Controller.handleError(e);
+            this.outputChannel.appendLine('Error occurd while downloading dependencies:');
+            this.outputChannel.appendLine(Controller.getErrorMessage(e));
+        }
     }
 
     private async alCompileAndPackage()
@@ -933,12 +1038,151 @@ export default class DeployController extends ExtensionController
         window.showWarningMessage("Not implemented.");
     }
 
+    private async alNewPackage()
+    {
+        var outputChannel = this.outputChannel;
+        outputChannel.clear();
+        outputChannel.show();
+        try
+        {
+            let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveAlWorkspaces());
+
+            if (!workspaceFolder)
+                return;
+    
+            let workspaceKey = Controller.getWorkspaceKey(workspaceFolder);
+    
+            if (!await this.ensureGoCurrentServer(workspaceKey))
+                return;
+    
+            let alService: AlService = this._alServices[workspaceKey];
+            if (!alService || !alService.isActive())
+                return;
+    
+            let packageService: PackageService = this._packageServices[Controller.getWorkspaceKey(workspaceFolder)];
+
+            let targets = await packageService.getTargets();
+            let target = await this.showTargetPicks(targets);
+            
+            outputChannel.appendLine('Compiling and creating package ...');
+
+            await window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: "Compiling and creating package ..."
+            }, async (progress, token) => {
+                await packageService.invokeAlCompileAndPackage(
+                    workspaceFolder.uri.fsPath, 
+                    target, 
+                    GitHelpers.getBranchName(workspaceFolder.uri.fsPath), 
+                    message => outputChannel.appendLine(message)
+                );
+            });
+        }
+        catch (e)
+        {
+            Controller.handleError(e);
+            this.outputChannel.appendLine('Error occurd while compiling and creating package:');
+            this.outputChannel.appendLine(Controller.getErrorMessage(e));
+        }
+    }
+
     private async experimental()
     {
-        let config = vscode.workspace.getConfiguration('go-current-workspace')
+        let ble = new AlExtensionService();
+        ble.stop();
+        window.showInformationMessage(ble.compilerPath);
+
+        /*let extension = vscode.extensions.getExtension('ms-dynamics-smb.al');
+        //extension.exports.services[1].tryStartLanguageServer();
+        
+        window.showInformationMessage(`1. The state is ${extension.exports.services[1].languageServerClient.state}`);
+        
+
+        await extension.exports.services[1].languageServerClient.stop()
+
+        window.showInformationMessage(`2. The state is ${extension.exports.services[1].languageServerClient.state}`);
+        await this.delay(2500);
+        window.showInformationMessage(`3. The state is ${extension.exports.services[1].languageServerClient.state}`);
+        await this.delay(2500);
+
+        await extension.exports.services[1].languageServerClient.start()
+        window.showInformationMessage(`4. The state is ${extension.exports.services[1].languageServerClient.state}`);
+        await this.delay(2500);
+        window.showInformationMessage(`5. The state is ${extension.exports.services[1].languageServerClient.state}`);
+        console.log('adf');*/
+        /*let config = vscode.workspace.getConfiguration('go-current-workspace')
         console.log("This is the experimental stuff");
         vscode.window.showInformationMessage(config.get('debug').toString());
-        console.log(config);
+        console.log(config);*/
+    }
+
+    delay(ms: number): Promise<void>
+    {
+        return new Promise( resolve => setTimeout(resolve, ms) );
+    }
+
+    private async ensureGoCurrentServer(workspaceKey: string): Promise<boolean>
+    {
+        let service = this.getPackagePsService();
+        let gocVersion = await service.getGoCurrentServerVersion();
+
+        if (!gocVersion.IsInstalled)
+        {
+            let result = await window.showWarningMessage("Go Current server is required for this operation.", Constants.buttonInstall);
+            if (result === Constants.buttonInstall)
+            {
+                this.installGocServer(workspaceKey);
+            }
+            return false;
+        }
+        if (!gocVersion.HasRequiredVersion)
+        {
+            let result = await window.showWarningMessage(`Go Current server v${gocVersion.RequiredVersion} or greater is required for this operation, you have v${gocVersion.CurrentVersion}.`, Constants.buttonUpdate);
+            if (result === Constants.buttonUpdate)
+            {
+                this.installGocServer(workspaceKey);
+            }
+            return false;
+        }
+        return true;
+    }
+
+    private async installGocServer(workspaceKey: string)
+    {
+        let packageId = 'go-current-server'
+
+        let result = await window.withProgress({
+            location: vscode.ProgressLocation.Notification
+        }, async (progress, token) => 
+        {
+            progress.report({message: "Starting ..."})
+            
+            let deployService = this._deployServices[workspaceKey];
+            let servers = await deployService.getServers();
+
+            let isAvailable = await this._deployPsService.testPackageAvailable(packageId, servers);
+
+            if (isAvailable)
+            {
+                progress.report({message: Resources.installationStartedInANewWindow})
+                let packages: Package[] = [{id: packageId, version: ''}];
+                return await this._deployPsService.installPackages(packages, undefined, servers);
+            }
+            else
+            {
+                vscode.env.openExternal(vscode.Uri.parse(Constants.gocServerUrl));
+                return null;
+            }
+        });
+
+        if (result && result.filter(p => p.Id === packageId).length > 0)
+        {
+            let result = await window.showInformationMessage(Resources.goCurrentServerUpdated, Constants.buttonReloadWindow)
+            if (result === Constants.buttonReloadWindow)
+            {
+                commands.executeCommand("workbench.action.reloadWindow");
+            }
+        }
     }
 
     private debugLog(value: string)

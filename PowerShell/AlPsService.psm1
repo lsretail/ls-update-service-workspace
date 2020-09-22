@@ -4,24 +4,6 @@ Import-Module GoCurrent
 Import-Module (Join-Path $PSScriptRoot 'AdminUtils.psm1')
 Import-Module (Join-Path $PSScriptRoot 'ErrorHandling.psm1')
 
-function Invoke-AlTest
-{
-    Start-Sleep 3
-    
-    $Block = {
-        param(
-            $InstanceName
-        )
-        Write-Host 'this is from the block'
-        return "this is from the block: $InstanceName"
-    }
-    $Arguments = @{
-        InstanceName = 'this is my instance name'
-    }
-    return Invoke-AsAdmin -ScriptBlock $Block -Arguments $Arguments
-   
-}
-
 function Invoke-UpgradeDataAdmin
 {
     param(
@@ -128,9 +110,10 @@ function Invoke-UnpublishApp
     {
         $App | Uninstall-NavApp -ServerInstance $ServerInstance -Tenant default -Force
         $App | Unpublish-NavApp -ServerInstance $ServerInstance
+        return ConvertTo-Json $true -Compress
     }
     else
     {
-        Write-JsonError -Message "App doesn't exists in `"$ServerInstance`"." -Type 'User'
+        return ConvertTo-Json $false -Compress
     }
 }

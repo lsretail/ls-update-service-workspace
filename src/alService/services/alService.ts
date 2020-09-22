@@ -1,7 +1,7 @@
-import { DeployService } from "../../deployService";
+import { DeployService } from "../../deployService/services/deployService";
 import { PostDeployController } from "../../postDeployController";
 import { WorkspaceFolder, WorkspaceConfiguration } from "vscode";
-import { GoCurrent } from "../../GoCurrent";
+import { DeployPsService } from "../../deployService/services/deployPsService";
 import { AlPsService } from "./alPsService";
 import { PackageInfo } from "../../interfaces/packageInfo";
 import { Constants } from "../../constants";
@@ -9,6 +9,7 @@ import { fsHelpers } from "../../fsHelpers";
 import * as path from 'path'
 import { AlApp } from "../interfaces/alApp";
 import { JsonData } from "../../jsonData";
+import { AlExtensionService } from "../../packageService/services/alExtensionService";
 
 export class AlService
 {
@@ -20,7 +21,7 @@ export class AlService
 
     constructor(
         deployService: DeployService, 
-        alPsService: AlPsService, 
+        alPsService: AlPsService,
         workspaceFolder: WorkspaceFolder
     )
     {
@@ -42,7 +43,7 @@ export class AlService
         return this._alApp;
     }
 
-    public async RePopulateLaunchJson(): Promise<void>
+    public async rePopulateLaunchJson(): Promise<void>
     {
         let toPopulate = [];
 
@@ -65,7 +66,7 @@ export class AlService
         await PostDeployController.removeNonExisting(instances);
     }
 
-    public async unpublishApp(instanceName: string) : Promise<string>
+    public async unpublishApp(instanceName: string) : Promise<boolean>
     {
         let appData = await this.alApp.getData();
         return await this._alPsService.unpublishApp(instanceName, appData.id);

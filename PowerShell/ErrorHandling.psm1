@@ -34,5 +34,5 @@ function Write-JsonError
         'type' = $Type
         'scriptStackTrace' = $ScriptStackTrace
     }
-    throw (ConvertTo-Json $Data -Compress)+"|||"
+    throw "!!!"+(ConvertTo-Json $Data -Compress)+"|||"
 }

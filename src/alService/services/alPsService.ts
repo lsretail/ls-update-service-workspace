@@ -26,11 +26,6 @@ export class AlPsService
         }
     }
 
-    public async alTest() : Promise<string>
-    {
-        return this._powerShell.executeCommandSafe("Invoke-AlTest", false);
-    }
-
     public async isAdmin(): Promise<boolean>
     {
         if (!this._isAdmin)
@@ -38,7 +33,7 @@ export class AlPsService
         return this._isAdmin;
     }
 
-    public async unpublishApp(instanceName: string, appId: string): Promise<string>
+    public async unpublishApp(instanceName: string, appId: string): Promise<boolean>
     {
         let param = {
             'InstanceName': instanceName,
@@ -54,6 +49,6 @@ export class AlPsService
             'InstanceName': instanceName,
         }
 
-        return this.executeAsAdmin("Invoke-UpgradeData", true, param);       
+        return this.executeAsAdmin("Invoke-UpgradeData", true, param);
     }
 }

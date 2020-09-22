@@ -4,33 +4,33 @@
         {
             "id": "bc-system-symbols",
             "version": {
-                "fromAppId": "platform",
-                "fromAppIdParts": 3,
-                "fromAppIdType": "fromMajor"
+                "alAppId": "platform",
+                "alAppIdParts": 3,
+                "alAppIdType": "fromMajor"
             }
         },
         {
             "id": "bc-system-application",
             "version": {
-                "fromAppId": "63ca2fa4-4f03-4f2b-a480-172fef340d3f",
-                "fromAppIdParts": 3,
-                "fromAppIdType": "fromMinor"
+                "alAppId": "63ca2fa4-4f03-4f2b-a480-172fef340d3f",
+                "alAppIdParts": 3,
+                "alAppIdType": "fromMinor"
             }
         },
         {
             "id": "bc-base-application",
             "version": {
-                "fromAppId": "437dbf0e-84ff-417a-965d-ed2bb9650972",
-                "fromAppIdParts": 3,
-                "fromAppIdType": "fromMinor"
+                "alAppId": "437dbf0e-84ff-417a-965d-ed2bb9650972",
+                "alAppIdParts": 3,
+                "alAppIdType": "fromMinor"
             }
         },
         {
             "id": "ls-central-app",
             "version": {
-                "fromAppId": "837549ae-2e5b-44de-be89-24a3665a0547",
-                "fromAppIdParts": 3,
-                "fromAppIdType": "fromMinor"
+                "alAppId": "837549ae-2e5b-44de-be89-24a3665a0547",
+                "alAppIdParts": 3,
+                "alAppIdType": "fromMinor"
             }
         }
     ],

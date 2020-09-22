@@ -7,7 +7,7 @@
 ### Install Go Current Packages from VS Code
 
 1. Open the *command palette (ctrl+p)->Go Current: Install packages*.
-2. From the drop down, select the packages you want to install.
+2. From the drop-down, select the packages you want to install.
     * Note: Your project must be configured beforehand with the packages available, see *How to add packages to your project* below.
 3. A Go Current dialog will appear, you might be presented with some arguments and additional components.
 4. Click *Install* when ready.
@@ -30,8 +30,8 @@
 If you installed an instance (LS Central / Business Central), outside of VS Code and want to mange it from your workspace, you can add it with the command *Add Instance to Your Workspace*:
 
 1. Open the *command palette (ctrl+p)->Go Current: Add Instance to Your Workspace*.
-2. Select an instance from the drop down list.
-* If the selected instance is a LS Central / Business Central instance, it will be added to your *launch.json*.
+2. Select an instance from the drop-down list.
+* If the selected instance is an LS Central / Business Central instance, it will be added to your *launch.json*.
 
 ## Requirements
 
@@ -109,5 +109,5 @@ Create a file *.gocurrent/gocurrent.json* relative to your project directory wit
 }
 ```
 
-This examples adds two options to you workspace, *Package group* and *Another group*.
-Must must make sure the package listed under each group are available on your GoC server.
+This example adds two options to you workspace, *Package group* and *Another group*.
+Must make sure the package listed under each group are available on your Go Current server.

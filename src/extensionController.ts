@@ -33,7 +33,6 @@ export class ExtensionController
 
     registerCommand(command: string, callback: (...args: any[]) => any, thisArg?: any)
     {
-        console.log(command);
         var disposable = vscode.commands.registerCommand(command, callback);
         this.context.subscriptions.push(disposable);
     }

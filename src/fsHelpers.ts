@@ -73,4 +73,9 @@ export class fsHelpers
             });
         });
     }
+
+    public static rmDir(dir: string, recursive: boolean)
+    {
+        fs.rmdirSync(dir, {recursive: recursive});
+    }
 }

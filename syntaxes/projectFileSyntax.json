@@ -7,17 +7,28 @@
     "properties": {
         "id": {
             "type": "string",
-            "description": "Specifies the GoC package Id.",
+            "description": "Specifies the Go Current package ID.",
             "minLength": 1
         },
         "name": {
             "type": "string",
-            "description": "Specifies the GoC package name.",
+            "description": "Specifies the Go Current package name.",
             "minLength": 1
         },
         "displayName": {
             "type": "string",
-            "description": "Specifies the GoC package display name."
+            "description": "Specifies the Go Current package display name."
+        },
+        "version": {
+            "description": "Specifies the Go Current package version.",
+            "oneOf":[
+                {
+                    "$ref": "./sharedDefinitions.json#definitions/version"
+                },
+                {
+                    "$ref": "./sharedDefinitions.json#definitions/versionTargetSimple"
+                }
+            ]
         },
         "dependencies": {
             "type": "array",
@@ -26,7 +37,104 @@
                 "$ref": "./sharedDefinitions.json#definitions/packageList"
             }
         },
+        "parameters": {
+            "type": "array",
+            "description": "Specify parameters this package accepts.",
+            "items": {
+                "type": "object",
+                "default": { "key": "", "description": "", "defaultValue": "", "required": false, "widget": "TextBox" },
+                "properties": {
+                    "description": {
+                        "type": "string",
+                        "description": "Specify a description for the parameter, this will be shown to the user."
+                    },
+                    "key": {
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9]+$",
+                        "description": "Specify a key for the parameter, used to retrieve the user's value in the package PowerShell script."
+                    },
+                    "defaultValue": {
+                        "type": "string",
+                        "description": "Specify a default value for the parameter, if the user does not provide one."
+                    },
+                    "hint": {
+                        "type": "string",
+                        "description": "Specify a helpful hint for the user."
+                    },
+                    "widget": {
+                        "type": "string",
+                        "description": "Specify the widget type to present to the user.",
+                        "enum": [
+                            "TextBox",
+                            "Numeric",
+                            "CheckBox",
+                            "OpenFile",
+                            "SaveFile",
+                            "Password",
+                            "OpenFolder",
+                            "Database",
+                            "OpenDatabase",
+                            "NewDatabase"
+                        ]
+                    },
+                    "required": {"type": "boolean", "description": "Specify if this parameter is required before installing the package."},
+                    "hidden": {"type": "boolean", "description": "Specify if this parameter should be hidden from the user interface."}
+                }       
+            }
+        },
+        "fillParameters": {
+            "type": "object",
+            "description": "Specify if this package should automatically set parameters for other packages in the same installation.",
+            "default": { "package-id": {"ParameterKey": "Value to set parameter"}},
+            "additionalProperties": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "string"
+                }
+            }
+        },
+        "commands": {
+            "type": "object",
+            "description": "Specify what commands the package implements.",
+            "default": {
+                "install": "Package.psm1:Install-Package",
+                "update": "Package.psm1:Update-Package",
+                "remove": "Package.psm1:Remove-Package",
+                "rollback": "Package.psm1:Invoke-Rollback"
+            },
+            "properties": {
+                "install": {"type": "string"},
+                "update": {"type": "string"},
+                "remove": {"type": "string"},
+                "rollback": {"type": "string"},
+                "preInstall": {"type": "string"},
+                "preUpdate": {"type": "string"},
+                "preRemove": {"type": "string"},
+                "postInstall": {"type": "string"},
+                "postUpdate": {"type": "string"}
+            }
+        },
+        "instance": {
+            "type": "boolean",
+            "description": "Specify if the user can install multiple instances of this package."
+        },
+        "substituteFor": {
+            "type": "string",
+            "description": "Specify if this package can substitute another package in other dependencies."
+        },
+        "windowsUpdateSensitive": {
+            "type": "boolean",
+            "description": "Specify if the package can be sensitive to Windows updates, this will warn the user installing the package if any updates are pending."
+        },
+        "outputDir": {
+            "type": "string",
+            "description": "Specify the directory where the package is created."
+        },
         "versionVariables": {
+            "type": "null",
+            "description": "This property is deprecated, use variables instead."
+        },
+        "variables": {
             "type": "object",
             "description": "Specifies reusable version queries. Reference with ${variableName}.",
             "additionalProperties": {
@@ -38,7 +146,7 @@
                         "$ref": "./sharedDefinitions.json#definitions/versionQueryResolver"
                     },
                     {
-                        "$ref": "./sharedDefinitions.json#definitions/fromAppId"
+                        "$ref": "./sharedDefinitions.json#definitions/alAppId"
                     },
                     {
                         "$ref": "./sharedDefinitions.json#definitions/branchPriorityFilter"
@@ -70,6 +178,20 @@
                 "default": "dev.${currentBranch}"
             }
         },
+        "devTarget": {
+            "description": "Specify target configuration available for this group.",
+            "anyOf":[
+                {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                {
+                    "type": "string"
+                }
+            ]
+        },
         "devPackageGroups": {
             "type": "array",
             "description": "List of development deployments",
@@ -98,12 +220,19 @@
                         "type": "string",
                         "description": "Specify an instance name suggestion for installation."
                     },
-                    "target": {
-                        "type": "array",
+                    "devTarget": {
                         "description": "Specify target configuration available for this group.",
-                        "items": {
-                            "type": "string"
-                        }
+                        "anyOf":[
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
                     },
                     "packages": {
                         "type": "array",

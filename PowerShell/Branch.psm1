@@ -76,7 +76,7 @@ function ConvertTo-PreReleaseLabel
         [string] $Label,
         [int] $BuildNumber,
         [string] $CommitHash,
-        [int] $CommitLength = 10
+        [int] $CommitLength = 8
     )
 
     if ($BuildNumber)
@@ -88,7 +88,7 @@ function ConvertTo-PreReleaseLabel
     {
         if ($CommitHash.Length -gt $CommitLength)
         {
-            $CommitHash = $CommitHash.Substring(0, 10)
+            $CommitHash = $CommitHash.Substring(0, $CommitLength)
         }
         $Label += "+$CommitHash"
     }

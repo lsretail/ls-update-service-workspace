@@ -22,7 +22,7 @@
                             "$ref": "#definitions/versionQueryResolver"
                         },
                         {
-                            "$ref": "#definitions/fromAppId"
+                            "$ref": "#definitions/alAppId"
                         },
                         {
                             "$ref": "#definitions/branchPriorityFilter"
@@ -78,12 +78,34 @@
                     "$ref": "#definitions/versionQueryResolver"
                 },
                 {
-                    "$ref": "#definitions/fromAppId"
+                    "$ref": "#definitions/alAppId"
                 },
                 {
                     "$ref": "#definitions/branchPriorityFilter"
                 }
             ]
+        },
+        "versionTargetSimple": {
+            "type": "object",
+            "default": {"default": ""},
+            "required": ["default"],
+            "properties": {
+                "default": {
+                    "$ref": "#definitions/version"
+                },
+                "release": {
+                    "$ref": "#definitions/version"
+                },
+                "releaseCandidate":{
+                    "$ref": "#definitions/version"
+                },
+                "dev": {
+                    "$ref": "#definitions/version"
+                }
+            },
+            "additionalProperties": {
+                "$ref": "#definitions/version"
+            }
         },
         "packageListRef": {
             "required": ["$ref"],
@@ -113,23 +135,23 @@
                 }
             }
         },
-        "fromAppId": {
+        "alAppId": {
             "description": "Get version from app ID in app.json project file.",
             "type": "object",
-            "default": { "fromAppId": "" },
-            "required": ["fromAppId"],
+            "default": { "alAppId": "" },
+            "required": ["alAppId"],
             "properties": {
-                "fromAppId": {
+                "alAppId": {
                     "type": "string",
                     "description": "Specify app ID of dependency in app.json to extract version range."
                 },
-                "fromAppIdType": {
+                "alAppIdType": {
                     "type": "string",
                     "enum": ["version", "fromMinor", "fromMajor", "minorToNextMajor", "majorToNextMajor"],
                     "default": "fromMinor",
                     "description": "Type of version range to extract from the app version (default: fromMinor)."
                 },
-                "fromAppIdParts": {
+                "alAppIdParts": {
                     "type": "integer",
                     "default": 4,
                     "description": "Number of parts to use from version number (default: 4)"

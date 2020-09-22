@@ -1,24 +1,24 @@
 "use strict"
 
-import {ProjectFile, PackageGroup, Package, Server} from './models/projectFile'
-import {Deployment} from './models/deployment'
-import {WorkspaceData} from './models/workspaceData'
-import {JsonData} from './jsonData'
-import {GoCurrent} from './GoCurrent'
-import {DataHelpers} from './dataHelpers'
+import {ProjectFile, PackageGroup, Package, Server} from '../../models/projectFile'
+import {Deployment} from '../../models/deployment'
+import {WorkspaceData} from '../../models/workspaceData'
+import {JsonData} from '../../jsonData'
+import {DeployPsService} from './deployPsService'
+import {DataHelpers} from '../../dataHelpers'
 import {EventEmitter, Event, Disposable, Uri} from 'vscode';
-import {UpdateAvailable} from './models/updateAvailable';
-import {PackageInfo} from './interfaces/packageInfo';
-import { DeploymentResult } from './models/deploymentResult'
-import GitHelpers from './helpers/gitHelpers'
+import {UpdateAvailable} from '../../models/updateAvailable';
+import {PackageInfo} from '../../interfaces/packageInfo';
+import { DeploymentResult } from '../../models/deploymentResult'
+import GitHelpers from '../../helpers/gitHelpers'
 import { trace } from 'console'
-import { AppError } from './errors/AppError'
+import { AppError } from '../../errors/AppError'
 
 let uuid = require('uuid/v4');
 
 export class DeployService
 {
-    private _goCurrent: GoCurrent;
+    private _goCurrent: DeployPsService;
     private _projectFile: JsonData<ProjectFile>;
     private _workspaceData: JsonData<WorkspaceData>;
     private _workspacePath: string;
@@ -30,8 +30,8 @@ export class DeployService
 
     public constructor(
         projectFile: JsonData<ProjectFile>, 
-        workspaceData: JsonData<WorkspaceData>, 
-        goCurrent: GoCurrent,
+        workspaceData: JsonData<WorkspaceData>,
+        goCurrent: DeployPsService,
         workspacePath: string
     )
     {
@@ -254,7 +254,7 @@ export class DeployService
         return result;
     }
 
-    private async getServers(packageGroup: PackageGroup): Promise<Server[]>
+    public async getServers(packageGroup?: PackageGroup): Promise<Server[]>
     {
         let servers: Server[] = [];
         if (packageGroup && packageGroup.servers)
@@ -371,7 +371,7 @@ export class DeployService
     {
         let packageGroup = this.getPackageGroup((await this._projectFile.getData()), packageGroupId);
         let servers = await this.getServers(packageGroup);
-        
+
         return await this._goCurrent.testIsInstance(this._projectFile.uri.fsPath, packageGroupId, servers);
     }
 
@@ -393,6 +393,11 @@ export class DeployService
     public getDeployedPackages(deploymentGuid: string) : Promise<PackageInfo[]>
     {
         return this._goCurrent.getDeployedPackages(this._workspaceData.uri.fsPath, deploymentGuid);
+    }
+
+    public getTargets(id: string, ): Promise<string[]>
+    {
+        return this._goCurrent.getTargets(this._projectFile.uri.fsPath, id, true);
     }
 
     public dispose()

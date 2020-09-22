@@ -20,11 +20,14 @@ export class Constants
 
     static alProjectFileName = "app.json";
 
-    static buttonUpdate = "Update now";
+    static buttonInstall = "Install";
+    static buttonUpdate = "Update";
     static buttonLater = "Later";
     static buttonReloadWindow = "Reload Window"
     static buttonContinue = "Continue"
     static buttonCancel = "Cancel"
     static buttonYes = "Yes"
     static buttonNo = "No"
+
+    static gocServerUrl = "https://portal.lsretail.com/Products/LS-Central-LS-Nav/Downloads/Go-Current";
 }

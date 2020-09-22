@@ -83,17 +83,22 @@
             },
             {
                 "command": "go-current.al.downloadDependencies",
-                "title": "Download dependencies (.alpackages + .netpackages)",
+                "title": "Download Dependencies (.alpackages + .netpackages)",
                 "category": "Go Current AL"
             },
             {
                 "command": "go-current.al.compileAndPackage",
-                "title": "Compile and create package",
+                "title": "Compile and Create Package",
+                "category": "Go Current AL"
+            },
+            {
+                "command": "go-current.al.newPackage",
+                "title": "Create Package",
                 "category": "Go Current AL"
             },
             {
                 "command": "go-current.newPackage",
-                "title": "Create package",
+                "title": "Create Package",
                 "category": "Go Current"
             }
         ],
@@ -152,8 +157,12 @@
                     "when": "go-current.al.active"
                 },
                 {
+                    "command": "go-current.al.newPackage",
+                    "when": "go-current.al.active"
+                },
+                {
                     "command": "go-current.newPackage",
-                    "when": "go-current.deploy.active"
+                    "when": "go-current.deploy.active && !go-current.al.active"
                 }
             ]
         },
@@ -204,7 +213,7 @@
         "@typescript-eslint/parser": "^3.8.0",
         "glob": "^7.1.6",
         "mocha": "^8.0.1",
-        "typescript": "^3.8.3",
+        "typescript": "^4.0.0",
         "vscode-test": "^1.4.0"
     },
     "dependencies": {

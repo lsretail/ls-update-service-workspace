@@ -1,10 +1,10 @@
 
-import {PowerShell} from './PowerShell'
-import {PackageInfo} from './interfaces/packageInfo';
-import { Server } from './models/projectFile';
-import { GoCurrentVersion } from './interfaces/goCurrentVersion';
+import {PowerShell} from '../../PowerShell'
+import {PackageInfo} from '../../interfaces/packageInfo';
+import { Server, Package } from '../../models/projectFile';
+import { GoCurrentVersion } from '../../interfaces/goCurrentVersion';
 
-export class GoCurrent
+export class DeployPsService
 {
     private _modulePath: string;
 
@@ -32,7 +32,7 @@ export class GoCurrent
 
     private getNewPowerShell() : PowerShell
     {
-        let powerShell = new PowerShell();
+        let powerShell = new PowerShell(this._powerShell.isDebug);
         powerShell.addModuleFromPath(this._modulePath);
         powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
         return powerShell;
@@ -44,6 +44,46 @@ export class GoCurrent
             'Value': 'input parameter'
         }
         return this._powerShell.executeCommandSafe("Get-TestString", false, param);
+    }
+
+    public async installPackages(
+        packages: Package[],
+        instanceName?: string,
+        servers?: Server[]
+
+    ) : Promise<PackageInfo[]>
+    {
+        let param = {
+            packages: `'${JSON.stringify(packages)}'`
+        }
+
+        if (instanceName)
+            param['InstanceName'] = instanceName;
+
+        if (servers)
+            param['Servers'] = `'${JSON.stringify(servers)}'`;
+
+        let powerShell = this.getNewPowerShell();
+        try
+        {
+            return await powerShell.executeCommandSafe("Install-PackagesJson", true, param);
+        }
+        finally
+        {
+            powerShell.dispose();
+        }
+    }
+
+    public testPackageAvailable(packageId: string, servers: Server[])
+    {
+        let param = {
+            PackageId: packageId
+        }
+
+        if (servers)
+            param['Servers'] = `'${JSON.stringify(servers)}'`;
+
+        return this._powerShell.executeCommandSafe("Test-PackageAvailable", true, param);
     }
 
     public async installPackageGroup(
@@ -217,6 +257,22 @@ export class GoCurrent
     public openGoCurrentWizard()
     {
         this._powerShell.executeCommandSafe("Invoke-OpenGoCurrentWizard", false);
+    }
+
+    public getTargets(projectFilePath: string, id?: string, useDevTarget?: boolean): Promise<string[]>
+    {
+        let param = {
+            projectFilePath: projectFilePath,
+            useDevTarget: false
+        }
+
+        if (id)
+            param['id'] = id;
+
+        if (useDevTarget)
+            param['useDevTarget'] = useDevTarget;
+
+        return this._powerShell.executeCommandSafe("Get-Targets", true, param);
     }
 
     public testBug() : Promise<any>

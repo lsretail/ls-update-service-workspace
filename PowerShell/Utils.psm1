@@ -124,3 +124,89 @@ function Get-VersionParts
     }
     return $Version
 }
+
+function Get-MaxLength
+{
+    param(
+        [string] $Value,
+        $Length
+    )
+    if ($Value.Length -gt $Length)
+    {
+        return $Value.Substring(0, $Length)
+    }
+    return $Value
+}
+
+function ConvertFrom-JsonToHashtable
+{
+    param(
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        $Content
+    )
+    try {
+        # Use this class to perform the deserialization:
+        # https://msdn.microsoft.com/en-us/library/system.web.script.serialization.javascriptserializer(v=vs.110).aspx
+        Add-Type -AssemblyName "System.Web.Extensions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" -ErrorAction Stop
+    }
+    catch {
+        throw "Unable to locate the System.Web.Extensions namespace from System.Web.Extensions.dll. Are you using .NET 4.5 or greater?"
+    }
+
+    $JsSerializer = New-Object -TypeName System.Web.Script.Serialization.JavaScriptSerializer
+
+    return $JsSerializer.Deserialize($Content, [hashtable])
+}
+
+function ConvertTo-Title
+{
+    param($Value)
+    return $Value.Substring(0, 1).ToUpper() + $Value.Substring(1, $Value.Length - 1)
+}
+
+function Test-FileLock
+{
+    param(
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)] 
+        $Path
+    )
+    process
+    {
+        if ($Path -is [System.IO.FileInfo])
+        {
+            $Path = $Path.FullName
+        }
+        try
+        { 
+            [IO.File]::OpenWrite((Resolve-Path $Path).Path).close();
+            $false 
+        }
+        catch
+        {
+            return $true
+            
+        }
+    }
+}
+
+function Test-DllLockInDir
+{
+    param(
+        $Dir
+    )
+
+    if (!(Test-Path $Dir))
+    {
+        return $false
+    }
+
+    $AnyLocked = Get-ChildItem -Path $Dir -Recurse -Filter '*.dll' | Test-FileLock | Where-Object { $_ } | Select-Object -First 1
+    if ($AnyLocked)
+    {
+        return $true
+    }
+    else
+    {
+        return $false
+    }
+}

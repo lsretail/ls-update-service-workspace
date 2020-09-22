@@ -6,7 +6,7 @@ import { Constants } from './constants';
 import { fsHelpers } from './fsHelpers';
 import Resources from './resources';
 import * as util from 'util'
-import { GoCurrent } from './GoCurrent';
+import { DeployPsService } from './deployService/services/deployPsService';
 
 export class PostDeployController
 {
