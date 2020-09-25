@@ -167,7 +167,9 @@ function Install-Packages
 
     $Process = Start-Process -FilePath $WizardPath -ArgumentList $ArgumentList -PassThru
     $Process.WaitForExit()
+
     Remove-Item $TempFilePath -Force -ErrorAction SilentlyContinue
+
     if ($Process.ExitCode -ne 0)
     {
         throw "Error occurred while installing packages."

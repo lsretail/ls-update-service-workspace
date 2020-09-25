@@ -6,7 +6,23 @@
     "files": [
         "${alAppProjectDir}\\${alAppPublisher}_${alAppName}_${alAppVersion}.app"
     ],
-    "dependencies": [],
+    "dependencies": [
+        {
+            "id": "bc-system-symbols",
+            "version": {
+                "alAppId": "platform",
+                "alAppIdType": "fromMinor",
+                "alAppParts": 3
+            }
+        }
+    ],
+    "variables": {
+        "lsCentralVersion": {
+            "alAppId": "platform",
+            "alAppIdType": "fromMinor",
+            "alAppParts": 3
+        }
+    },
     "devPackageGroups": [
         {
             "id": "149ede3e-02b8-45ab-8793-8adb2bf6f190",
@@ -15,7 +31,7 @@
             "packages": [
                 {
                     "id": "ls-central-demo-database",
-                    "version": "^-"
+                    "version": "${lsCentralVersion}"
                 },
                 {
                     "$ref": "dependencies"
@@ -23,6 +39,14 @@
                 {
                     "id": "bc-web-client",
                     "version": ""
+                },
+                {
+                    "id": "ls-central-toolbox-server",
+                    "version": "${lsCentralVersion}"
+                },
+                {
+                    "id": "ls-dd-server-addin",
+                    "version": "^"
                 }
             ],
             "arguments": {

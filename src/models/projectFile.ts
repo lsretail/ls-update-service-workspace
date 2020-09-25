@@ -23,6 +23,7 @@ export class PackageGroup
     instanceNameSuggestion: string;
     devTarget: string | string[];
     servers: Server[];
+    arguments: {[key: string]: {[key: string]: string}}
 }
 
 export class Package

@@ -34,6 +34,7 @@ import { AppJson } from './newProjectService/interfaces/appJson';
 import { constants } from 'buffer';
 import { WorkspaceHelpers } from './helpers/workspaceHelpers';
 import * as util from 'util'
+import { ProjectFileHelpers } from './helpers/projectFileHelpers';
 
 export default class Controller extends ExtensionController
 {
@@ -277,11 +278,7 @@ export default class Controller extends ExtensionController
             return;
 
         this.debugLog(`Adding workspace ${workspaceFolder.uri.fsPath}.`)
-        let projectFilePath = path.join(workspaceFolder.uri.fsPath, Constants.projectFileName)
-        if (!fsHelpers.existsSync(projectFilePath))
-        {
-            projectFilePath = path.join(workspaceFolder.uri.fsPath, Constants.goCurrentWorkspaceDirName, Constants.projectFileName)
-        }
+        let projectFilePath = ProjectFileHelpers.getProjectFilePath(workspaceFolder.uri.fsPath);
 
         let projectFile = new JsonData<ProjectFile>(projectFilePath, true, new ProjectFile());
         
@@ -860,12 +857,69 @@ export default class Controller extends ExtensionController
 
         if (!workspaceFolder)
             return
-        
-        let newProjectService = new NewProjectService();
-        let newProjectFilePath = await newProjectService.newProject(workspaceFolder, this.context);
+
+        let newProjectService = new NewProjectService(workspaceFolder);
+
+        let newProjectFilePath: string;
+        if (newProjectService.isAl())
+        {
+            newProjectFilePath = await newProjectService.newAlProject(this.context);
+        }
+        else
+        {
+            newProjectFilePath = await newProjectService.newProject(this.context);
+        }        
 
         let document = await workspace.openTextDocument(newProjectFilePath)
         await window.showTextDocument(document);
+
+        if (!newProjectService.isAl())
+        {
+            let packageId = await window.showInputBox({
+                value: "your-package-id",
+                ignoreFocusOut: true,
+                prompt: "Specify package ID"
+            })
+    
+            await newProjectService.updateProperty({id: packageId});
+        }
+        else
+        {
+            let choice = await window.showQuickPick([
+                Resources.addLicensePackage,
+                Resources.chooseLicenseFile,
+                Resources.skipLicenseForNow
+
+            ], {
+                placeHolder: "Add license for your Business Central development instance.", 
+                ignoreFocusOut: true,
+            })
+
+            if (choice === Resources.chooseLicenseFile)
+            {
+                let licenseFile = await window.showOpenDialog({
+                    canSelectFiles: true, 
+                    defaultUri: workspaceFolder.uri,
+                    filters: {License: ['flf']},
+                    title: "Select license file",
+                    openLabel: "Select License"
+                });
+                if (licenseFile)
+                {
+                    await newProjectService.addLicenseFile(licenseFile[0].fsPath);
+                }
+            }
+            else if (choice === Resources.addLicensePackage)
+            {
+                let licensePackageId = await window.showInputBox({prompt: Resources.specifyLicensePackage});
+                if (licensePackageId)
+                {
+                    await newProjectService.addLicensePackage(licensePackageId);
+                }
+            }
+        }
+
+        newProjectService.dispose();
     }
 
     public onDeploymentRemoved(instanceName: string)

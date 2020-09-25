@@ -125,7 +125,7 @@ export class JsonData<TData>
         }
     }
 
-    public save(): Thenable<void>
+    public save(): Promise<void>
     {
         if (this._dataCache)
         {
