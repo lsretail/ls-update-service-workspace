@@ -58,7 +58,7 @@
             },
             {
                 "command": "go-current.openWizard",
-                "title": "Open",
+                "title": "Open App",
                 "category": "Go Current"
             },
             {
@@ -100,6 +100,11 @@
                 "command": "go-current.newPackage",
                 "title": "Create Package",
                 "category": "Go Current"
+            },
+            {
+                "command": "go-current.al.addNewDependencies",
+                "title": "Go Current AL: Import dependencies from app.json",
+                "category": "Go Current AL"
             }
         ],
         "menus": {
@@ -163,6 +168,24 @@
                 {
                     "command": "go-current.newPackage",
                     "when": "go-current.deploy.active && !go-current.al.active"
+                },
+                {
+                    "command": "go-current.al.addNewDependencies",
+                    "when": "false"
+                }
+            ],
+            "explorer/context": [
+                {
+                    "command": "go-current.al.addNewDependencies",
+                    "when": "go-current.al.active && resourceFilename == gocurrent.json",
+                    "group": "Go Current"
+                }
+            ],
+            "editor/context": [
+                {
+                    "command": "go-current.al.addNewDependencies",
+                    "when": "go-current.al.active && resourceFilename == gocurrent.json",
+                    "group": "Go Current"
                 }
             ]
         },

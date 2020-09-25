@@ -19,6 +19,10 @@
             "type": "string",
             "description": "Specifies the Go Current package display name."
         },
+        "description": {
+            "type": "string",
+            "description": "Specifies the Go Current package description."
+        },
         "version": {
             "description": "Specifies the Go Current package version.",
             "oneOf":[

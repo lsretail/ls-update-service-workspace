@@ -8,4 +8,6 @@ export default class Resources
     static goCurrentUpdated = 'Go Current was updated, reload to enable the new version.'
     static goCurrentServerUpdated = 'Go Current Server was installed, reload to enable the new version.'
     static installationStartedInANewWindow = 'Installation process started in a new window...'
+    static dependenciesAddedToProject = '%s dependencies were added to your gocurrent.json file.'
+    static noDependenciesAddedToProject = 'You already have all the dependencies covered.'
 }

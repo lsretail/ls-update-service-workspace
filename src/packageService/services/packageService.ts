@@ -71,17 +71,9 @@ export class PackageService
             catch (e)
             {
                 // ignore
-                console.log("alsdfjdfj")
-            }
-
-            
+            }            
         }
         
-    }
-
-    testThis() : Promise<string>
-    {
-        return this._packagesPsService.testThis2();
     }
 
     public async downloadAlDependencies(

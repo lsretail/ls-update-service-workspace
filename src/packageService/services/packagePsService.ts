@@ -157,12 +157,4 @@ export class PackagePsService
             powerShell.dispose();
         }
     }
-
-    public testThis2() : Promise<string>
-    {
-        let param = {
-            ble: "adsf"
-        }
-        return this._powerShell.executeCommandSafe("Test-This", false, param);
-    }
 }

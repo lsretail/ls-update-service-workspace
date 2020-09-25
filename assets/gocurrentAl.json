@@ -1,0 +1,38 @@
+{
+    "id": "your-app-package-id",
+    "name": "${alAppName}",
+    "description": "${alAppDescription}",
+    "version": "${alAppVersion:Parts(3)}",
+    "files": [
+        "${alAppProjectDir}\\${alAppPublisher}_${alAppName}_${alAppVersion}.app"
+    ],
+    "dependencies": [],
+    "devPackageGroups": [
+        {
+            "id": "149ede3e-02b8-45ab-8793-8adb2bf6f190",
+            "name": "LS Central",
+            "description": "Install a new LS Central instance on your computer.",
+            "packages": [
+                {
+                    "id": "ls-central-demo-database",
+                    "version": "^-"
+                },
+                {
+                    "$ref": "dependencies"
+                },
+                {
+                    "id": "bc-web-client",
+                    "version": ""
+                }
+            ],
+            "arguments": {
+                "bc-server": {
+                    "AllowForceSync": "true",
+                    "DeveloperServicesEnabled": "true",
+                    "AllowSessionCallSuspendWhenWriteTransactionStarted": "true",
+                    "PublicWebBaseUrl": "http://localhost:8080/${Package.InstanceName}/"
+                }
+            }
+        }
+    ]
+}

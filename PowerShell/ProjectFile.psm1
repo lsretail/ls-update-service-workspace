@@ -10,8 +10,9 @@ $_AlAppName = 'AlAppName'
 $_AlAppPublisher = 'AlAppPublisher'
 $_AlAppId = 'AlAppId'
 $_AlAppDescription = 'AlAppDescription'
+$_AlAppProjectDir = 'AlAppProjectDir'
 
-$_AlAppVariables = @($_AlAppVersion, $_AlAppName, $_AlAppPublisher, $_AlAppId, $_AlAppDescription)
+$_AlAppVariables = @($_AlAppVersion, $_AlAppName, $_AlAppPublisher, $_AlAppId, $_AlAppDescription, $_AlAppProjectDir)
 $_CurrentBranch = 'currentBranch'
 $_ProjectDir = 'ProjectDir'
 $_ReservedVariables = @($_ProjectDir, $_CurrentBranch) + $_AlAppVariables
@@ -745,6 +746,7 @@ function Resolve-AlAppVariables
     $ResolveCache[$_AlAppPublisher] = $AppJson.publisher
     $ResolveCache[$_AlAppName] = $AppJson.name
     $ResolveCache[$_AlAppDescription] = $AppJson.description
+    $ResolveCache[$_AlAppProjectDir] = ([System.IO.Path]::GetDirectoryName($AppJsonPath))
 }
 
 function Resolve-VariableBranchFilter

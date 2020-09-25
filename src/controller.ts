@@ -27,9 +27,13 @@ import { AlPsService } from './alService/services/alPsService';
 import { AppError } from './errors/AppError';
 import { PackageService } from './packageService/services/packageService';
 import { PackagePsService } from './packageService/services/packagePsService';
-import { serialize } from 'v8';
 import Resources from './resources';
 import { AlExtensionService } from './packageService/services/alExtensionService';
+import { NewProjectService } from './newProjectService/services/newProjectService';
+import { AppJson } from './newProjectService/interfaces/appJson';
+import { constants } from 'buffer';
+import { WorkspaceHelpers } from './helpers/workspaceHelpers';
+import * as util from 'util'
 
 export default class Controller extends ExtensionController
 {
@@ -81,6 +85,7 @@ export default class Controller extends ExtensionController
         this.registerCommand("go-current.al.downloadDependencies", () => this.alDownloadDependencies());
         this.registerCommand("go-current.al.compileAndPackage", () => this.alCompileAndPackage());
         this.registerCommand("go-current.al.newPackage", () => this.alNewPackage());
+        this.registerCommand("go-current.al.addNewDependencies", (...args) => this.alAddNewDependencies(args));
         process.on('unhandledRejection', (reason) => {
             Controller.handleError(reason)
         });
@@ -250,6 +255,7 @@ export default class Controller extends ExtensionController
     private onProjecFileChange(deployService: DeployService)
     {
         this.checkForUpdates(true);
+        this.updateActiveServices();
     }
 
     private addWorkspaces()
@@ -855,18 +861,11 @@ export default class Controller extends ExtensionController
         if (!workspaceFolder)
             return
         
-        let dir = path.join(workspaceFolder.uri.fsPath, Constants.goCurrentWorkspaceDirName);
-        let destPath = path.join(dir, Constants.projectFileName)
-        let srcPath = this.context.asAbsolutePath("assets\\gocurrent.json")
+        let newProjectService = new NewProjectService();
+        let newProjectFilePath = await newProjectService.newProject(workspaceFolder, this.context);
 
-        if (!fsHelpers.existsSync(dir))
-        {
-            fsHelpers.mkdirSync(dir);
-        }
-        fsHelpers.copySync(srcPath, destPath);
-
-        // TODO
-        window.showInformationMessage("")
+        let document = await workspace.openTextDocument(newProjectFilePath)
+        await window.showTextDocument(document);
     }
 
     public onDeploymentRemoved(instanceName: string)
@@ -907,7 +906,46 @@ export default class Controller extends ExtensionController
 
     private async newPackage()
     {
-        window.showWarningMessage("Not implemented.");
+        var outputChannel = this.outputChannel;
+        outputChannel.clear();
+        outputChannel.show();
+        outputChannel.appendLine('Creating package ...');
+        try
+        {
+            let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveDeploymentWorkspaces());
+
+            if (!workspaceFolder)
+                return;
+    
+            let workspaceKey = Controller.getWorkspaceKey(workspaceFolder);
+    
+            if (!await this.ensureGoCurrentServer(workspaceKey))
+                return;
+    
+            let packageService: PackageService = this._packageServices[Controller.getWorkspaceKey(workspaceFolder)];
+           
+            let targets = await packageService.getTargets();
+            let target = await this.showTargetPicks(targets);
+
+            let packagePath = await window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: "Creating package ..."
+            }, async (progress, token) => {
+                return await packageService.newPackage(
+                    GitHelpers.getBranchName(workspaceFolder.uri.fsPath),
+                    target,
+                    workspaceFolder.uri.fsPath
+                );
+            });
+
+            outputChannel.appendLine(`Package created: ${packagePath}.`)
+        }
+        catch (e)
+        {
+            Controller.handleError(e);
+            this.outputChannel.appendLine('Error occurd while compiling and creating package:');
+            this.outputChannel.appendLine(Controller.getErrorMessage(e));
+        }   
     }
 
     private async showAlInstancePicks(alService: AlService): Promise<PackageInfo>
@@ -1035,14 +1073,7 @@ export default class Controller extends ExtensionController
 
     private async alCompileAndPackage()
     {
-        window.showWarningMessage("Not implemented.");
-    }
-
-    private async alNewPackage()
-    {
         var outputChannel = this.outputChannel;
-        outputChannel.clear();
-        outputChannel.show();
         try
         {
             let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveAlWorkspaces());
@@ -1063,7 +1094,9 @@ export default class Controller extends ExtensionController
 
             let targets = await packageService.getTargets();
             let target = await this.showTargetPicks(targets);
-            
+        
+            outputChannel.clear();
+            outputChannel.show();
             outputChannel.appendLine('Compiling and creating package ...');
 
             await window.withProgress({
@@ -1077,6 +1110,55 @@ export default class Controller extends ExtensionController
                     message => outputChannel.appendLine(message)
                 );
             });
+        }
+        catch (e)
+        {
+            Controller.handleError(e);
+            this.outputChannel.appendLine('Error occurd while compiling and creating package:');
+            this.outputChannel.appendLine(Controller.getErrorMessage(e));
+        }
+    }
+
+    private async alNewPackage()
+    {
+        var outputChannel = this.outputChannel;
+        try
+        {
+            let workspaceFolder = await this.showWorkspaceFolderPick(this.getActiveAlWorkspaces());
+
+            if (!workspaceFolder)
+                return;
+    
+            let workspaceKey = Controller.getWorkspaceKey(workspaceFolder);
+    
+            if (!await this.ensureGoCurrentServer(workspaceKey))
+                return;
+    
+            let alService: AlService = this._alServices[workspaceKey];
+            if (!alService || !alService.isActive())
+                return;
+    
+            let packageService: PackageService = this._packageServices[Controller.getWorkspaceKey(workspaceFolder)];
+
+            let targets = await packageService.getTargets();
+            let target = await this.showTargetPicks(targets);
+        
+            outputChannel.clear();
+            outputChannel.show();
+            outputChannel.appendLine('Creating package ...');
+
+            let packagePath = await window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: "Creating package ..."
+            }, async (progress, token) => {
+                return await packageService.newAlPackage(
+                    workspaceFolder.uri.fsPath, 
+                    target, 
+                    GitHelpers.getBranchName(workspaceFolder.uri.fsPath), 
+                );
+            });
+
+            outputChannel.appendLine(`Package created ${packagePath}.`);
         }
         catch (e)
         {
@@ -1114,6 +1196,33 @@ export default class Controller extends ExtensionController
         console.log("This is the experimental stuff");
         vscode.window.showInformationMessage(config.get('debug').toString());
         console.log(config);*/
+    }
+
+    async alAddNewDependencies(items: any[]): Promise<void>
+    {
+        if (!items[0])
+            return;
+
+        let filePath = items[0].fsPath;
+
+        let workspaceFolder = WorkspaceHelpers.getWorkspaceForPath(filePath);
+
+        if (!workspaceFolder)
+            return;
+        
+        let appJsonPath = path.join(workspaceFolder.uri.fsPath, Constants.alProjectFileName);
+
+        if (!fsHelpers.existsSync(appJsonPath))
+        {
+            window.showWarningMessage(`${Constants.alProjectFileName} doesn't exist in workspace.`);
+            return;
+        }
+        
+        let count = await NewProjectService.addDependenciesToProjectFileWithLoad(filePath, appJsonPath);
+        if (count > 0)
+            window.showInformationMessage(util.format(Resources.dependenciesAddedToProject, count), );
+        else
+            window.showInformationMessage(Resources.noDependenciesAddedToProject);
     }
 
     delay(ms: number): Promise<void>

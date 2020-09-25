@@ -1,65 +1,17 @@
 {
-    "id": "your-app-name",
-    "dependencies": [
-        {
-            "id": "bc-system-symbols",
-            "version": {
-                "alAppId": "platform",
-                "alAppIdParts": 3,
-                "alAppIdType": "fromMajor"
-            }
-        },
-        {
-            "id": "bc-system-application",
-            "version": {
-                "alAppId": "63ca2fa4-4f03-4f2b-a480-172fef340d3f",
-                "alAppIdParts": 3,
-                "alAppIdType": "fromMinor"
-            }
-        },
-        {
-            "id": "bc-base-application",
-            "version": {
-                "alAppId": "437dbf0e-84ff-417a-965d-ed2bb9650972",
-                "alAppIdParts": 3,
-                "alAppIdType": "fromMinor"
-            }
-        },
-        {
-            "id": "ls-central-app",
-            "version": {
-                "alAppId": "837549ae-2e5b-44de-be89-24a3665a0547",
-                "alAppIdParts": 3,
-                "alAppIdType": "fromMinor"
-            }
-        }
+    "id": "your-package-id",
+    "name": "Your package name",
+    "description": "Your package description.",
+    "version": "1.0.0",
+    "files": [
+        "Package\\*"
     ],
-    "devPackageGroups": [
-        {
-            "id": "149ede3e-02b8-45ab-8793-8adb2bf6f190",
-            "name": "LS Central",
-            "description": "Install a new LS Central instance on your computer.",
-            "packages": [
-                {
-                    "id": "ls-central-demo-database",
-                    "version": "^-"
-                },
-                {
-                    "$ref": "dependencies"
-                },
-                {
-                    "id": "bc-web-client",
-                    "version": ""
-                }
-            ],
-            "arguments": {
-                "bc-server": {
-                    "AllowForceSync": "true",
-                    "DeveloperServicesEnabled": "true",
-                    "AllowSessionCallSuspendWhenWriteTransactionStarted": "true",
-                    "PublicWebBaseUrl": "http://localhost:8080/${Package.InstanceName}/"
-                }
-            }
-        }
-    ]
+    "dependencies": [],
+    "instance": false,
+    "commands": {
+        "install": "Package.psm1:Install-Package",
+        "update": "Package.psm1:Update-Package",
+        "remove": "Package.psm1:Remove-Package",
+        "rollback": "Package.psm1:Invoke-Rollback"
+    }
 }

@@ -108,6 +108,7 @@ function Get-AlAddinDependencies
         }
         
         Get-ChildItem -Path $Dir -Filter '*.txt' -Recurse | Remove-Item
+        Get-ChildItem -Path $Dir -Filter '*.xml' -Recurse | Remove-Item
     }
     if (Test-Path $GatherDir)
     {
@@ -332,27 +333,34 @@ function Get-AlProjectDependencies
     Write-Verbose "Dependencies for package:"
     $Dependencies | Format-Table -AutoSize | Out-String | Write-Verbose
 
-    # We might want to compile with more restricted queries
-    $CompileDependencies = Get-AlModifiedDependencies -Dependencies $Dependencies -CompileModifiers $CompileModifiers
+    $ModifiedDependencies = $Dependencies    
+
+    if ($DevDependencies -and $DevDependencies.Packages)
+    {
+        Write-Verbose "Dev dependencies for package:"
+        $DevDependencies.Packages | Format-Table -AutoSize | Out-String | Write-Verbose
+        $ModifiedDependencies = Get-AlModifiedDependencies -Dependencies $ModifiedDependencies -CompileModifiers $DevDependencies.Packages
+    }
 
     if ($CompileModifiers)
     {
-        Write-Verbose "Compile dependencies:"
-        $CompileDependencies | Format-Table -AutoSize | Out-String | Write-Verbose
+        # We might want to compile with more restricted queries
+        $ModifiedDependencies = Get-AlModifiedDependencies -Dependencies $ModifiedDependencies -CompileModifiers $CompileModifiers
+
+        Write-Verbose "Compile Modifiers:"
+        $CompileModifiers | Format-Table -AutoSize | Out-String | Write-Verbose
     }
+
+    $ModifiedDependencies | Format-Table -AutoSize | Out-String | Write-Verbose
 
     Write-Verbose 'Downloading dependencies for app...'
-    Get-AlDependencies -Dependencies $CompileDependencies -OutputDir $AlPackagesDir
+    Get-AlDependencies -Dependencies $ModifiedDependencies -OutputDir $AlPackagesDir
     
     Write-Verbose 'Downloading assemblies for app...'
-    Get-AlAddinDependencies -Dependencies $CompileDependencies -OutputDir $AddinDir -IncludeServer
+    Get-AlAddinDependencies -Dependencies $ModifiedDependencies -OutputDir $AddinDir -IncludeServer
 
-    if ($DevDependencies)
-    {
-        Write-Verbose "Dev dependencies for package:"
-        $DevDependencies.Packages | Format-Table | Out-String | Write-Verbose
-        Get-AlDevDependencies -Dependencies $DevDependencies.Packages -ProjectDir $ProjectDir -OutputDir $OutputDir
-    }
+    Write-Verbose 'Downloading dev depenencies for app...'
+    Get-AlDevDependencies -Dependencies $ModifiedDependencies -ProjectDir $ProjectDir -OutputDir $OutputDir
 }
 
 function Invoke-AlProjectCompile
@@ -556,17 +564,28 @@ function Get-AlModifiedDependencies
         [Array] $CompileModifiers
     )
 
+    $Used = @()
+
     foreach ($Dependency in $Dependencies)
     {
         $Modifier = $CompileModifiers | Where-Object { $_.Id -eq $Dependency.Id }
 
         if ($Modifier)
         {
+            $Used += $Modifier
             $Query1 = [LSRetail.GoCurrent.Common.SemanticVersioning.VersionQuery]::Parse($Dependency.version)
             $Query2 = [LSRetail.GoCurrent.Common.SemanticVersioning.VersionQuery]::Parse($Modifier.version)
             $Dependency.version = [LSRetail.GoCurrent.Common.SemanticVersioning.VersionQuery]::Intersection(@($Query1, $Query2)).ToString()
         }
         $Dependency
+    }
+
+    foreach ($Item in $CompileModifiers)
+    {
+        if (!$Used.Contains($Item))
+        {
+            $Item
+        }
     }
 }
 

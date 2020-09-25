@@ -12,6 +12,7 @@ export class PowerShell
     private _promiseOrder: Promise<any>;
     private _preCommand: string;
     private _runNextCommand: string;
+    private _relaunchCount = 0;
 
     constructor(debug: boolean = false)
     {
@@ -35,8 +36,9 @@ export class PowerShell
             if (code > 0)
             {
                 console.log(`PowerShell ended unexpectedly (exit code ${code}).`)}
-                this._shell = null;
-                this._initializeIfNecessary();
+                this._relaunchCount++;
+                if (this._relaunchCount < 100)
+                    this._shell = null;
             }
         );
         
