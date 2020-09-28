@@ -1272,7 +1272,9 @@ export default class Controller extends ExtensionController
             return;
         }
         
-        let count = await NewProjectService.addDependenciesToProjectFileWithLoad(filePath, appJsonPath);
+        let newProjectService = new NewProjectService(workspaceFolder);
+
+        let count = await newProjectService.addDependenciesToProjectFileWithLoad();
         if (count > 0)
             window.showInformationMessage(util.format(Resources.dependenciesAddedToProject, count), );
         else

@@ -74,7 +74,7 @@ export class NewProjectService
             appJsonData
         );
 
-        this._projectFile.save();
+        this.projectFile.save();
 
         return newProjectFilePath;
     }
@@ -107,12 +107,12 @@ export class NewProjectService
 
     public async updateProperty(properties: object)
     {
-        let data = await this._projectFile.getData();
+        let data = await this.projectFile.getData();
         for (let key in properties)
         {
             data[key] = properties[key];
         }
-        await this._projectFile.save();
+        await this.projectFile.save();
     }
 
     public async addLicenseFile(filePath: string)
@@ -150,12 +150,12 @@ export class NewProjectService
     public async addDependenciesToProjectFileWithLoad(): Promise<number>
     {
         let count = NewProjectService.addDependenciesToProjectFile(
-            await this._projectFile.getData(),
+            await this.projectFile.getData(),
             await this.appJson.getData()
         )
 
         if (count > 0)
-            await this._projectFile.save();
+            await this.projectFile.save();
 
         return count;
     }
