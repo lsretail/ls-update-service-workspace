@@ -38,7 +38,7 @@
             },
             {
                 "command": "go-current.remove",
-                "title": "Uninstall Packages",
+                "title": "Remove Packages",
                 "category": "Go Current"
             },
             {
@@ -131,7 +131,7 @@
                 },
                 {
                     "command": "go-current.experimental",
-                    "when": "go-current.deploy.active && go-current.debug"
+                    "when": "go-current.experimental.active && go-current.debug"
                 },
                 {
                     "command": "go-current.openWizard",

@@ -122,7 +122,7 @@ export default class Controller extends ExtensionController
             workspace.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this);
 
             await this.checkForBaseUpdate();
-            await this.checkForUpdates(true);
+            await this.checkForUpdatesSilent();
         }
     }
 
@@ -243,7 +243,7 @@ export default class Controller extends ExtensionController
         }
 
         if (e.added.length > 0)
-            this.checkForUpdates(true);
+            this.checkForUpdatesSilent();
 
         for (let removed of e.removed)
         {
@@ -255,7 +255,7 @@ export default class Controller extends ExtensionController
 
     private onProjecFileChange(deployService: DeployService)
     {
-        this.checkForUpdates(true);
+        this.checkForUpdatesSilent();
         this.updateActiveServices();
     }
 
@@ -666,7 +666,22 @@ export default class Controller extends ExtensionController
         });
     }
 
-    private async checkForUpdates(silent: boolean = false)
+    private async checkForUpdates()
+    {
+        let anyUpdates = await window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: Resources.checkingForUpdates
+        }, async (progress, token) => {
+            return await this.checkForUpdatesSilent();
+        });
+
+        if (!anyUpdates)
+        {
+            window.showInformationMessage("No updates available.");
+        }
+    }
+
+    private async checkForUpdatesSilent(): Promise<boolean>
     {
         let buttons: string[] = [Constants.buttonUpdate, Constants.buttonLater];
         commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
@@ -703,17 +718,20 @@ export default class Controller extends ExtensionController
             }
         }
 
-        if (!silent && !anyUpdates)
-        {
-            window.showInformationMessage("No updates available.");
-        }
+        return anyUpdates;
     }
 
     private async installUpdate(deployService: DeployService, update: UpdateAvailable) : Promise<boolean>
     {
         try
         {
-            let deploymentResult = await deployService.installUpdate(update.packageGroupId, update.instanceName, update.guid);
+            let deploymentResult = await window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: Resources.installationStartedInANewWindow
+            }, async (progress, token) => {
+                return await deployService.installUpdate(update.packageGroupId, update.instanceName, update.guid);
+            });
+            
             if (deploymentResult.lastUpdated.length > 0)
             {
                 window.showInformationMessage(`Package group "${deploymentResult.deployment.name}" updated: ` + deploymentResult.lastUpdated.map(p => `${p.id} v${p.version}`).join(', '));
@@ -734,17 +752,35 @@ export default class Controller extends ExtensionController
         if (!workspaceFolder)
             return;
 
-        this.removeWithService(this._deployServices[Controller.getWorkspaceKey(workspaceFolder)]);
-    }
+        let deployService = this._deployServices[Controller.getWorkspaceKey(workspaceFolder)];
 
-    private async removeWithService(deployService: DeployService)
-    {
-       let deployment = await this.showDeploymentsPicks(deployService, "Select a package group to remove");
+        let deployment = await this.showDeploymentsPicks(deployService, "Select a package group to remove");
 
         if (!deployment)
             return;
-        let removedName = await deployService.removeDeployment(deployment.guid);
-        window.showInformationMessage(`Package group "${removedName}" removed.`);
+
+        let choices = [Constants.buttonYes, Constants.buttonNo]
+
+        let name = deployment.name;
+        if (!name)
+            name = deployment.instanceName;
+        else if (deployment.instanceName)
+            name += ` (${deployment.instanceName})`;
+        
+        let picked = await window.showQuickPick(choices, {
+            placeHolder: util.format(Resources.areYourSureAboutRemove, name)
+        });
+
+        if (picked === Constants.buttonNo)
+            return;
+
+        let removedName = await window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Removing package(s) ..."
+        }, async (progress, token) => {
+            return await deployService.removeDeployment(deployment.guid);
+        });
+        window.showInformationMessage(`Package(s) "${removedName}" removed.`);
     }
 
     private async showDeploymentsPicks(deployService: DeployService, placeholder: string = "Selected a group") : Promise<Deployment>
@@ -924,7 +960,7 @@ export default class Controller extends ExtensionController
 
     public onDeploymentRemoved(instanceName: string)
     {
-        this.checkForUpdates(true);
+        this.checkForUpdatesSilent();
     }
 
     private async addInstanceToWorkspace()
@@ -943,6 +979,7 @@ export default class Controller extends ExtensionController
             return;
 
         deployService.addPackagesAsDeployed(packages);
+        
     }
 
     private async rePopulateLaunchJson()
@@ -953,9 +990,16 @@ export default class Controller extends ExtensionController
         let workspaceKey = Controller.getWorkspaceKey(workspaceFolder);
 
         let alService: AlService = this._alServices[workspaceKey];
+
         if (!alService.isActive())
             return;
-        alService.rePopulateLaunchJson();
+
+        let updated = await alService.rePopulateLaunchJson();
+
+        if (!updated)
+        {
+            window.showInformationMessage(Resources.launchJsonAlreadyCoversAllYourBcInstance);
+        }
     }
 
     private async newPackage()

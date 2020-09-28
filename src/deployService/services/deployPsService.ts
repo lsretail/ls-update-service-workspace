@@ -10,6 +10,7 @@ export class DeployPsService
 
     private _powerShell: PowerShell;
     private _powerShellLongRunning: PowerShell;
+    private _isAdmin: boolean;
 
     constructor(powerShell: PowerShell, modulePath: string)
     {
@@ -36,6 +37,25 @@ export class DeployPsService
         powerShell.addModuleFromPath(this._modulePath);
         powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
         return powerShell;
+    }
+
+    public async isAdmin(): Promise<boolean>
+    {
+        if (!this._isAdmin)
+            this._isAdmin = await this._powerShell.executeCommandSafe("Test-AdminAsJson", true);
+        return this._isAdmin;
+    }
+
+    private async executeAsAdmin(commandName: string, parseJson: boolean, ...args: any[]) : Promise<any>
+    {
+        if (await this.isAdmin())
+        {
+            return this._powerShell.executeCommandSafe(commandName, parseJson, ...args);
+        }
+        else
+        {
+            return this._powerShell.executeCommandSafe(commandName + "Admin", parseJson, ...args);
+        }
     }
 
     public getTestString(): Promise<string>
@@ -173,7 +193,7 @@ export class DeployPsService
             'WorkspaceDataPath': workspaceDataPath,
             'DeploymentGuid': deploymentGuid,
         }
-        return this.longRunning.executeCommandSafe("Remove-Deployment", true, param);
+        return this.executeAsAdmin("Remove-Deployment", true, param);
     }
 
     public getGoCurrentVersion(): Promise<GoCurrentVersion>

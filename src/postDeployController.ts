@@ -34,62 +34,10 @@ export class PostDeployController
         }
     }
 
-    public onInstanceRemoved(instanceName: string)
+    public async onInstanceRemoved(instanceName: string): Promise<void>
     {
         if (instanceName)
-            PostDeployController.removeAlLaunchConfig(instanceName);
-    }
-
-    private processNavServer(packageInfo: PackageInfo)
-    {
-        if (
-            !("Type" in packageInfo.Info) ||
-            !packageInfo.Info.Type.includes("bc-server") ||
-            !("Server" in packageInfo.Info)
-        )
-        {
-            return;
-        }
-        const launchConfig = workspace.getConfiguration('launch');
-        const configurations = launchConfig['configurations'];
-        let found = false;
-        for (let section of configurations)
-        {
-            if (section.type === "al")
-            {
-                if (packageInfo.Info.Server && section.server !== packageInfo.Info.Server)
-                {
-                    section.server = packageInfo.Info.Server
-                    found = true;
-                }
-                if (packageInfo.Info.ServerInstance && section.serverInstance !== packageInfo.Info.ServerInstance)
-                {
-                    section.serverInstance = packageInfo.Info.ServerInstance;
-                    found = true;
-                }
-                if (packageInfo.Info.Authentication && section.authentication !== packageInfo.Info.Authentication)
-                {
-                    section.authentication = packageInfo.Info.Authentication;
-                    found = true;
-                }
-                if (packageInfo.Info.ServerConfig && packageInfo.Info.ServerConfig.DeveloperServicesPort && section.port !== packageInfo.Info.ServerConfig.DeveloperServicesPort)
-                {
-                    section.port = packageInfo.Info.ServerConfig.DeveloperServicesPort;
-                    found = true;
-                }
-            }
-        }
-        if (found)
-        {
-            window.showInformationMessage(Resources.updateLaunchJson, Constants.buttonYes, Constants.buttonNo).then(result => {
-                if (result === Constants.buttonYes)
-                {
-                    launchConfig.update('configurations', configurations, false).then(result=>{}, error => {
-                        window.showErrorMessage(`Error occurred while updating launch.json: ${error}`);
-                    });
-                }
-            });
-        }
+            await PostDeployController.removeAlLaunchConfig(instanceName);
     }
 
     public static async addAlLaunchConfig(packageInfos: PackageInfo[], workspaceFolder: WorkspaceFolder): Promise<boolean>
@@ -97,19 +45,26 @@ export class PostDeployController
         const launchConfig = workspace.getConfiguration('launch', workspaceFolder.uri);
         let configurations: any[] = launchConfig['configurations'];
         
-        let defaultValues: any;
+        let defaultValues: object = {
+            schemaUpdateMode: "ForceSync",
+            breakOnError: true,
+            launchBrowser: true,
+            enableLongRunningSqlStatements: true,
+            enableSqlInformationDebugger: true,
+            tenant: "default"
+        };
+
+        let properties = ["startupObjectType", "breakOnError", "launchBrowser", "enableLongRunningSqlStatements", "enableSqlInformationDebugger", "tenant", "schemaUpdateMode"]
 
         if (configurations)
-            defaultValues = configurations.filter(s => s.type === 'al')[0];
+        {
+            let defaultFromConfig = configurations.filter(s => s.type === 'al')[0];
+            PostDeployController.copyProperties(defaultFromConfig, defaultValues, properties);
+        }
         else
+        {
             configurations = [];
-
-        if (!defaultValues)
-            defaultValues = {};
-        if (!defaultValues.startupObjectId)
-            defaultValues.startupObjectId = 22;
-        if (!defaultValues.schemaUpdateMode)
-            defaultValues.schemaUpdateMode = "ForceSync";
+        }
 
         let updated = false;
 
@@ -136,7 +91,7 @@ export class PostDeployController
             launch.serverInstance = info.ServerInstance;
             launch.authentication = info.Authentication;
 
-            if ((typeof launch.authentication ||launch.authentication instanceof String) && (<string>launch.authentication).toLowerCase() === "accesscontrolservice")
+            if ((typeof launch.authentication || launch.authentication instanceof String) && (<string>launch.authentication).toLowerCase() === "accesscontrolservice")
             {
                 launch.authentication = "AAD";
             }
@@ -144,8 +99,9 @@ export class PostDeployController
             if (info.ServerConfig)
                 launch.port = parseInt(info.ServerConfig.DeveloperServicesPort);
 
-            launch.schemaUpdateMode = defaultValues.schemaUpdateMode;
-            launch.startupObjectId = defaultValues.startupObjectId;
+
+            PostDeployController.copyProperties(defaultValues, launch, properties);
+
             configurations.push(launch);
     
             instancesUpdated.push(packageInfo.InstanceName);
@@ -155,7 +111,7 @@ export class PostDeployController
         {
             await launchConfig.update('configurations', configurations, false);
             for (let instance of instancesUpdated)
-                window.showInformationMessage(`Launch.json updated for instance "${instance}".`);
+                window.showInformationMessage(util.format(Resources.launchJsonUpdatedWith, instance));
         }
         catch (error)
         {
@@ -165,33 +121,55 @@ export class PostDeployController
         return updated;
     }
 
-    public static removeAlLaunchConfig(instanceName)
+    private static copyProperties(srcObj: object, destObj: object, properties: string[])
+    {
+        if (!srcObj || typeof srcObj !== 'object')
+            return;
+
+        if (!destObj || typeof destObj !== 'object')
+            return
+
+        for (let property of properties)
+        {
+            if (srcObj[property])
+            {
+                destObj[property] = srcObj[property];
+            }
+        }
+    }
+
+    public static async removeAlLaunchConfig(instanceName): Promise<void>
     {
         let configName = instanceName + " (Go Current)";
         const launchConfig = workspace.getConfiguration('launch');
         let configurations: any[] = launchConfig['configurations'];
         configurations = configurations.filter(s => !(s.type === 'al' && s.name === configName));
-        launchConfig.update('configurations', configurations, false).then(result=>{}, error => {
+        await launchConfig.update('configurations', configurations, false).then(result=>{}, error => {
             window.showErrorMessage(`Error occurred while updating launch.json: ${error}`);
         });
     }
 
-    public static async removeNonExisting(instanceNames: string[])
+    public static async removeNonExisting(instanceNames: string[]): Promise<boolean>
     {
         const launchConfig = workspace.getConfiguration('launch');
         let configurations: any[] = launchConfig['configurations'];
         
         let configNames = instanceNames.map(i => `${i} (Go Current)`);
 
+
+        let count = configurations.length;
         configurations = configurations.filter(s => !(s.type === 'al' && s.name.includes("(Go Current)") && !configNames.includes(s.name)));
+        let updated = count - configurations.length > 0
         
         try
         {
             await launchConfig.update('configurations', configurations, false)
+            return updated;
         }
         catch (error)
         {
             window.showErrorMessage(`Error occurred while updating launch.json: ${error}`);
+            return false;
         }
     }
 

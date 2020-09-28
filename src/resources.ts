@@ -8,6 +8,7 @@ export default class Resources
     static goCurrentUpdated = 'Go Current was updated, reload to enable the new version.';
     static goCurrentServerUpdated = 'Go Current Server was installed, reload to enable the new version.';
     static installationStartedInANewWindow = 'Installation process started in a new window...';
+    static checkingForUpdates = "Checking for updates ...";
     static dependenciesAddedToProject = '%s dependencies were added to your gocurrent.json file.';
     static noDependenciesAddedToProject = 'You already have all the dependencies covered.';
 
@@ -15,4 +16,9 @@ export default class Resources
     static addLicensePackage = "Add your license package (recommended).";
     static skipLicenseForNow = "Skip license for now."
     static specifyLicensePackage = "Specify your license package ID."
+
+    static launchJsonAlreadyCoversAllYourBcInstance = "Your launch.json already covers all your Business Central instances."
+    static launchJsonUpdatedWith = "Your launch.json was updated with instance %s";
+
+    static areYourSureAboutRemove = 'Are you sure you want to remove "%s"?'
 }

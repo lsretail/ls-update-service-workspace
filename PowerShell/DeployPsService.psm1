@@ -2,6 +2,7 @@ $ErrorActionPreference = 'stop'
 
 Import-Module (Join-Path $PSScriptRoot 'ProjectFile.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'ErrorHandling.psm1')
+Import-Module (Join-Path $PSScriptRoot 'AdminUtils.psm1')
 
 Add-Type -AssemblyName 'System.ServiceModel'
 try
@@ -406,10 +407,9 @@ function GetDeployment()
     Write-JsonError "Deployment `"$DeploymentGuid`" does not exists workspace data file." -Type 'User'
 }
 
-function Remove-AsAdmin()
+function Remove-Deployment()
 {
     param(
-        $OutputPath,
         $WorkspaceDataPath,
         $DeploymentGuid
     )
@@ -428,21 +428,39 @@ function Remove-AsAdmin()
 
     $NotInstances = $Deployment.packages | Where-Object { !(Test-GocIsInstance -Id $_.id)}
     $NotInstances = $NotInstances | Where-Object { $null -ne (Get-GocInstalledPackage -Id $_.id ) }
-    $NotInstances | Remove-GocPackage
+    if ($NotInstances)
+    {
+        $NotInstances | Remove-GocPackage
+    }
 
-    Set-Content -Value (ConvertTo-Json $Deployment.name -Depth 100 -Compress) -Path $OutputPath
+    return (ConvertTo-Json $Deployment.name -Depth 100 -Compress)
 }
 
-function Remove-Deployment()
+function Remove-DeploymentAdmin
 {
     param(
+        [Parameter(Mandatory)]
         $WorkspaceDataPath,
+        [Parameter(Mandatory)]
         $DeploymentGuid
     )
-    $Command = 'Remove-AsAdmin'
-    $Arguments = "'$WorkspaceDataPath' '$DeploymentGuid'"
-    $ExceptionText = "Exception occured while uninstalling packages."
-    Invoke-AsAdminOld -Command $Command -Arguments $Arguments -ExceptionText $ExceptionText
+    $Block = {
+        param(
+            [Parameter(Mandatory)]
+            $WorkspaceDataPath,
+            [Parameter(Mandatory)]
+            $DeploymentGuid
+        )
+        Import-Module (Join-Path $ScriptDir 'DeployPsService.psm1')
+        Remove-Deployment -WorkspaceDataPath $WorkspaceDataPath -DeploymentGuid $DeploymentGuid
+    }
+
+    $Arguments = @{
+        WorkspaceDataPath = $WorkspaceDataPath
+        DeploymentGuid = $DeploymentGuid
+    }
+    
+    return Invoke-AsAdmin -ScriptBlock $Block -Arguments $Arguments
 }
 
 function Get-AvailableBaseUpdates()

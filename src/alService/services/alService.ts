@@ -43,7 +43,7 @@ export class AlService
         return this._alApp;
     }
 
-    public async rePopulateLaunchJson(): Promise<void>
+    public async rePopulateLaunchJson(): Promise<boolean>
     {
         let toPopulate = [];
 
@@ -60,10 +60,12 @@ export class AlService
             toPopulate.push(serverPackage[0]);
         }
 
-        await PostDeployController.addAlLaunchConfig(toPopulate, this._workspaceFolder)
+        let updated = await PostDeployController.addAlLaunchConfig(toPopulate, this._workspaceFolder)
 
         let instances = (await this._deployService.getDeployedInstances());
-        await PostDeployController.removeNonExisting(instances);
+        updated = updated || await PostDeployController.removeNonExisting(instances);
+
+        return updated
     }
 
     public async unpublishApp(instanceName: string) : Promise<boolean>

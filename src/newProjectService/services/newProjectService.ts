@@ -187,6 +187,11 @@ export class NewProjectService
             projectFile.dependencies.push(newDep);
         }
 
+        if (newApps.includes(this._lsCentralAppId) && projectFile.variables?.lsCentralVersion?.alAppId === 'platform')
+        {
+            projectFile.variables.lsCentralVersion.alAppId = this._lsCentralAppId;
+        }
+
         return count;
     }
 
