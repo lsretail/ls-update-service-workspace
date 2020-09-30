@@ -116,20 +116,20 @@ export class DeployPsService
     ) : Promise<PackageInfo[]>
     {
         let param = {
-            'ProjectFilePath': projectFilePath,
+            'ProjectFilePath': `'${projectFilePath}'`,
         }
 
         if (packageGroupId)
-            param['packageGroupId'] = packageGroupId
+            param['packageGroupId'] = `'${packageGroupId}'`;
 
         if (instanceName)
-            param['InstanceName'] = instanceName;
+            param['InstanceName'] = `'${instanceName}'`;
 
         if (target)
-            param['Target'] = target;
+            param['Target'] = `'${target}'`;
 
         if (branchName)
-            param['BranchName'] = branchName;
+            param['BranchName'] = `'${branchName}'`;
 
         if (servers)
             param['Servers'] = `'${JSON.stringify(servers)}'`;
@@ -156,20 +156,20 @@ export class DeployPsService
     )
     {
         let param = {
-            'ProjectFilePath': projectFilePath,
+            'ProjectFilePath': `'${projectFilePath}'`,
         }
 
         if (packageGroupId)
-            param['PackageGroupId'] = packageGroupId;
+            param['PackageGroupId'] = `'${packageGroupId}'`;
 
         if (instanceName)
-            param['InstanceName'] = instanceName;
+            param['InstanceName'] = `'${instanceName}'`;
         
         if (target)
-            param['Target'] = target;
+            param['Target'] = `'${target}'`;
 
         if (branchName)
-            param['BranchName'] = branchName;
+            param['BranchName'] = `'${branchName}'`;
         
         if (servers)
             param['Servers'] = `'${JSON.stringify(servers)}'`;
@@ -190,8 +190,8 @@ export class DeployPsService
     public removeDeployment(workspaceDataPath: string, deploymentGuid: string) : Promise<any>
     {
         let param = {
-            'WorkspaceDataPath': workspaceDataPath,
-            'DeploymentGuid': deploymentGuid,
+            'WorkspaceDataPath': `'${workspaceDataPath}'`,
+            'DeploymentGuid': `'${deploymentGuid}'`,
         }
         return this.executeAsAdmin("Remove-Deployment", true, param);
     }
@@ -210,15 +210,15 @@ export class DeployPsService
     ) : Promise<any>
     {
         let param = {
-            'ProjectFilePath': projectFilePath,
-            'packageGroupId': packageGroupId
+            'ProjectFilePath': `'${projectFilePath}'`,
+            'packageGroupId': `'${packageGroupId}'`
         };
 
         if (target)
-            param['Target'] = target;
+            param['Target'] = `'${target}'`;
 
         if (branchName)
-            param['BranchName'] = branchName;
+            param['BranchName'] = `'${branchName}'`;
         
         if (servers)
             param['Servers'] = `'${JSON.stringify(servers)}'`;
@@ -244,7 +244,7 @@ export class DeployPsService
             args["Packages"] = packages;
 
         if (instanceName)
-            args["InstanceName"] = instanceName;
+            args["InstanceName"] = `'${instanceName}'`;
 
         return this._powerShell.executeCommandSafe("Test-IsInstalled", true, args)
     }
@@ -252,10 +252,10 @@ export class DeployPsService
     public getInstalledPackages(id: string, instanceName: string = undefined) : Promise<PackageInfo[]>
     {
         let param = {
-            'Id': id
+            'Id': `'${id}'`
         };
         if (instanceName)
-            param['InstanceName'] = instanceName;
+            param['InstanceName'] = `'${instanceName}'`;
 
         return this._powerShell.executeCommandSafe("Get-InstalledPackages", true, param);
     }
@@ -263,8 +263,8 @@ export class DeployPsService
     public getDeployedPackages(workspaceDataPath: string, deploymentGuid: string) : Promise<PackageInfo[]>
     {
          let param = {
-            'WorkspaceDataPath': workspaceDataPath,
-            'DeploymentGuid': deploymentGuid,
+            'WorkspaceDataPath': `'${workspaceDataPath}'`,
+            'DeploymentGuid': `'${deploymentGuid}'`,
         }
         return this._powerShell.executeCommandSafe("Get-DeployedPackages", true, param);
     }
@@ -282,12 +282,12 @@ export class DeployPsService
     public getTargets(projectFilePath: string, id?: string, useDevTarget?: boolean): Promise<string[]>
     {
         let param = {
-            projectFilePath: projectFilePath,
+            projectFilePath: `'${projectFilePath}'`,
             useDevTarget: false
         }
 
         if (id)
-            param['id'] = id;
+            param['id'] = `'${id}'`;
 
         if (useDevTarget)
             param['useDevTarget'] = useDevTarget;

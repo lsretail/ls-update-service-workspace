@@ -6,12 +6,16 @@ export default class GitHelpers
     public static getBranchName(workspacePath: string): string
     {
         const gitExtension = vscode.extensions.getExtension<GitExtension>('vscode.git').exports;
-        const api = gitExtension.getAPI(1);
-
-        for (let repository of api.repositories)
+        if (gitExtension.enabled)
         {
-            if (workspacePath.startsWith(repository.rootUri.fsPath))
-                return repository.state.HEAD.name
+            const api = gitExtension.getAPI(1);
+
+            for (let repository of api.repositories)
+            {
+                if (workspacePath.startsWith(repository.rootUri.fsPath))
+                    return repository.state.HEAD.name
+            }
         }
+        return "";
     }
 }

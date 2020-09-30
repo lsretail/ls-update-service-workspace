@@ -23,12 +23,12 @@ export class PackagePsService
     public getTargets(projectFilePath: string, id?: string, useDevTarget?: boolean): Promise<string[]>
     {
         let param = {
-            projectFilePath: projectFilePath,
+            projectFilePath: `'${projectFilePath}'`,
             useDevTarget: false
         }
 
         if (id)
-            param['id'] = id;
+            param['id'] = `'${id}'`;
 
         if (useDevTarget)
             param['useDevTarget'] = useDevTarget;
@@ -39,10 +39,10 @@ export class PackagePsService
     public async newPackage(projectFilePath: string, target: string, branchName: string, defaultOutputDir: string): Promise<string>
     {
         let param = {
-            projectFilePath: projectFilePath,
-            target: target,
-            branchName: branchName,
-            defaultOutputDir: defaultOutputDir
+            projectFilePath: `'${projectFilePath}'`,
+            target: `'${target}'`,
+            branchName: `'${branchName}'`,
+            defaultOutputDir: `'${defaultOutputDir}'`
         }
 
         let powerShell = this._powerShell.getNewPowerShell();
@@ -59,10 +59,10 @@ export class PackagePsService
     public async newAlPackage(projectDir: string, projectFilePath: string, target: string, branchName: string): Promise<string>
     {
         let param = {
-            projectDir: projectDir,
-            projectFilePath: projectFilePath,
-            target: target,
-            branchName: branchName
+            projectDir: `'${projectDir}'`,
+            projectFilePath: `'${projectFilePath}'`,
+            target: `'${target}'`,
+            branchName: `'${branchName}'`
         }
 
         let powerShell = this._powerShell.getNewPowerShell();
@@ -79,10 +79,10 @@ export class PackagePsService
     public async invokeAlCompileAndPackage(projectDir: string, branchName: string, target: string, compilerPath: string): Promise<string>
     {
         let param = {
-            projectDir: projectDir,
-            branchName: branchName,
-            target: target,
-            compilerPath: compilerPath
+            projectDir: `'${projectDir}'`,
+            branchName: `'${branchName}'`,
+            target: `'${target}'`,
+            compilerPath: `'${compilerPath}'`
         };
         
         let powerShell = this._powerShell.getNewPowerShell();
@@ -99,9 +99,9 @@ export class PackagePsService
     public async invokeCompile(projectDir: string, compilerPath: string, dependenciesDir: string): Promise<string>
     {
         let param = {
-            projectDir: projectDir,
-            compilerPath: compilerPath,
-            dependenciesDir: dependenciesDir
+            projectDir: `'${projectDir}'`,
+            compilerPath: `'${compilerPath}'`,
+            dependenciesDir: `'${dependenciesDir}'`
         };
         
         let powerShell = this._powerShell.getNewPowerShell();
@@ -138,10 +138,10 @@ export class PackagePsService
     ): Promise<string>
     {
         let param = {
-            projectDir: projectDir,
-            projectFilePath: projectFilePath,
-            target: target,
-            branchName: branchName,
+            projectDir: `'${projectDir}'`,
+            projectFilePath: `'${projectFilePath}'`,
+            target: `'${target}'`,
+            branchName: `'${branchName}'`,
         }
 
         if (outputDir)
