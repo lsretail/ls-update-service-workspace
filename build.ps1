@@ -38,7 +38,7 @@ $PackagePath = (Join-Path $PSScriptRoot 'package.json')
 
 $PackageContent = (Get-Content -Path $PackagePath -Raw)
 $PackageJson = ConvertFrom-Json -InputObject $PackageContent
-$Version = $PackageJson.Version.Replace('+developer', '')
+$Version = $PackageJson.Version.Replace('-developer', '')
 
 if ($GitCommit -and $BuildNumber)
 {
