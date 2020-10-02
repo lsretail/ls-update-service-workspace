@@ -4,8 +4,9 @@ import { JsonData } from "../../jsonData";
 import { PackagePsService } from "./packagePsService";
 import { AlExtensionService } from "./alExtensionService";
 import { fsHelpers } from "../../fsHelpers";
+import { IWorkspaceService } from "../../workspaceService/interfaces/IWorkspaceService";
 
-export class PackageService
+export class PackageService implements IWorkspaceService
 {
     private _packagesPsService: PackagePsService;
     private _projectFile: JsonData<ProjectFile>;
@@ -21,6 +22,16 @@ export class PackageService
         this._projectFile = projectFile;
         this._packagesPsService = packagePsService;
         this._alExtensionService = alExtensionService;
+    }
+
+    async isActive(): Promise<boolean> 
+    {
+        return true;
+    }
+    
+    async dispose(): Promise<void> 
+    {
+        // ignore
     }
 
     getTargets(id?: string, useDevTarget?: boolean): Promise<string[]>

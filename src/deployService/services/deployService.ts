@@ -13,12 +13,15 @@ import { DeploymentResult } from '../../models/deploymentResult'
 import GitHelpers from '../../helpers/gitHelpers'
 import { trace } from 'console'
 import { AppError } from '../../errors/AppError'
+import { GoCurrentPsService } from '../../goCurrentService/services/goCurrentPsService'
+import { IWorkspaceService } from '../../workspaceService/interfaces/IWorkspaceService'
 
 let uuid = require('uuid/v4');
 
-export class DeployService
+export class DeployService implements IWorkspaceService
 {
-    private _goCurrent: DeployPsService;
+    private _deployPsService: DeployPsService;
+    private _goCurrentPsService: GoCurrentPsService;
     private _projectFile: JsonData<ProjectFile>;
     private _workspaceData: JsonData<WorkspaceData>;
     private _workspacePath: string;
@@ -28,14 +31,18 @@ export class DeployService
     private _onDidInstanceRemoved = new EventEmitter<string>();
     private _disposable: Disposable;
 
+    public UpdatesAvailable: Array<UpdateAvailable> = [];
+
     public constructor(
         projectFile: JsonData<ProjectFile>, 
         workspaceData: JsonData<WorkspaceData>,
-        goCurrent: DeployPsService,
+        deployPsService: DeployPsService,
+        goCurrentPsService: GoCurrentPsService,
         workspacePath: string
     )
     {
-        this._goCurrent = goCurrent;
+        this._deployPsService = deployPsService;
+        this._goCurrentPsService = goCurrentPsService;
         this._projectFile = projectFile;
         this._workspaceData = workspaceData;
         this._workspacePath = workspacePath;
@@ -45,7 +52,12 @@ export class DeployService
         this._disposable = Disposable.from(...subscriptions);
     }
 
-    public get onDidProjectFileChange() : Event<DeployService>
+    get goCurrentService()
+    {
+        return this._goCurrentPsService;
+    }
+
+    public get onDidProjectFileChange(): Event<DeployService>
     {
         return this._onDidProjectFileChange.event;
     }
@@ -75,9 +87,9 @@ export class DeployService
         this._onDidInstanceRemoved.fire(instanceName);
     }
 
-    public isActive() : Boolean
+    public async isActive() : Promise<boolean>
     {
-        return this._projectFile.exists();
+        return this._projectFile.exists() && (await this._goCurrentPsService.isGocInstalled());
     }
 
     public getPackageGroups() : Thenable<Array<PackageGroup>>
@@ -165,7 +177,7 @@ export class DeployService
 
     public async removeDeployment(guid: string) : Promise<string>
     {
-        let removedName = await this._goCurrent.removeDeployment(this._workspaceData.uri.fsPath, guid);
+        let removedName = await this._deployPsService.removeDeployment(this._workspaceData.uri.fsPath, guid);
             
         await this.removeDeploymentFromData(guid);
         
@@ -213,7 +225,7 @@ export class DeployService
 
         let servers = await this.getServers(packageGroup);
 
-        var packagesInstalled = await this._goCurrent.installPackageGroup(
+        var packagesInstalled = await this._deployPsService.installPackageGroup(
             this._projectFile.uri.fsPath,
             packageGroup ? packageGroup.id : undefined,
             instanceName,
@@ -325,7 +337,7 @@ export class DeployService
                 continue
             }
 
-            let isInstalled = await this.isInstalled(deployment.packages.map((e) => e.id), deployment.instanceName);
+            let isInstalled = await this._goCurrentPsService.isInstalled(deployment.packages.map((e) => e.id), deployment.instanceName);
 
             if (!isInstalled)
             {
@@ -364,7 +376,7 @@ export class DeployService
             servers = await this.getServers(packageGroup);
         }
         
-        return await this._goCurrent.getAvailableUpdates(this._projectFile.uri.fsPath, deployment.id, deployment.instanceName, GitHelpers.getBranchName(this._workspacePath), deployment.target, servers);
+        return await this._deployPsService.getAvailableUpdates(this._projectFile.uri.fsPath, deployment.id, deployment.instanceName, GitHelpers.getBranchName(this._workspacePath), deployment.target, servers);
     }
 
     public async isInstance(packageGroupId: string) : Promise<boolean>
@@ -372,35 +384,25 @@ export class DeployService
         let packageGroup = this.getPackageGroup((await this._projectFile.getData()), packageGroupId);
         let servers = await this.getServers(packageGroup);
 
-        return await this._goCurrent.testIsInstance(this._projectFile.uri.fsPath, packageGroupId, servers);
+        return await this._deployPsService.testIsInstance(this._projectFile.uri.fsPath, packageGroupId, servers);
     }
 
     public canInstall(packageGroupId: string) : Promise<boolean>
     {
-        return this._goCurrent.testCanInstall(this._projectFile.uri.fsPath, packageGroupId);
-    }
-
-    public isInstalled(packages: string[], instanceName: string) : Promise<boolean>
-    {
-        return this._goCurrent.testIsInstalled(packages, instanceName);
-    }
-
-    public getInstalledPackages(id: string, instanceName: string = undefined) : Promise<PackageInfo[]>
-    {
-        return this._goCurrent.getInstalledPackages(id, instanceName);
+        return this._deployPsService.testCanInstall(this._projectFile.uri.fsPath, packageGroupId);
     }
 
     public getDeployedPackages(deploymentGuid: string) : Promise<PackageInfo[]>
     {
-        return this._goCurrent.getDeployedPackages(this._workspaceData.uri.fsPath, deploymentGuid);
+        return this._deployPsService.getDeployedPackages(this._workspaceData.uri.fsPath, deploymentGuid);
     }
 
     public getTargets(id: string, ): Promise<string[]>
     {
-        return this._goCurrent.getTargets(this._projectFile.uri.fsPath, id, true);
+        return this._deployPsService.getTargets(this._projectFile.uri.fsPath, id, true);
     }
 
-    public dispose()
+    public async dispose(): Promise<void>
     {
         this._disposable.dispose();
         this._projectFile.dispose();

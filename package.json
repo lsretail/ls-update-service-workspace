@@ -21,7 +21,8 @@
     "activationEvents": [
         "workspaceContains:.gocurrent/gocurrent.json",
         "workspaceContains:gocurrent.json",
-        "onCommand:go-current.newProject"
+        "onCommand:go-current.newProject",
+        "onCommand:go-current.openWizard"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -135,7 +136,7 @@
                 },
                 {
                     "command": "go-current.openWizard",
-                    "when": "go-current.deploy.active"
+                    "when": "go-current.active"
                 },
                 {
                     "command": "go-current.addInstanceToWorkspace",

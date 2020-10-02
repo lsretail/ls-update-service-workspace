@@ -19,6 +19,8 @@ function Install-Package
     & $CodePath @Arguments | Write-Host
     $ErrorActionPreference = 'stop'
 
+    Write-Host "Exit code $LASTEXITCODE"
+
     if ($LASTEXITCODE -ne 0)
     {
         Write-Host "Code path: $CodePath"

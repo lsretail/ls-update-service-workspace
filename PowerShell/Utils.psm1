@@ -210,3 +210,23 @@ function Test-DllLockInDir
         return $false
     }
 }
+
+function ConvertTo-ServersObj
+{
+    param(
+        $Servers
+    )
+    if ($Servers)
+    {
+        $ServersObj = @()
+        ConvertFrom-Json $Servers | Foreach-Object { 
+            $_ | Foreach-Object { 
+                $Item = @{}; 
+                $ServersObj += $Item
+                $_.PSObject.Properties | Foreach-Object { $Item[$_.Name] = $_.Value} 
+            }
+        }
+        return @(,$ServersObj)
+    }
+    return @()
+}

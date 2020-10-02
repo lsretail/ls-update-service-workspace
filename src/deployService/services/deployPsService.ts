@@ -20,17 +20,6 @@ export class DeployPsService
         this._modulePath = modulePath;
     }
 
-    private get longRunning()
-    {
-        if (!this._powerShellLongRunning)
-        {
-            this._powerShellLongRunning = new PowerShell(this._powerShell.isDebug);
-            this._powerShellLongRunning.addModuleFromPath(this._modulePath);
-            this._powerShellLongRunning.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
-        }
-        return this._powerShellLongRunning;
-    }
-
     private getNewPowerShell() : PowerShell
     {
         let powerShell = new PowerShell(this._powerShell.isDebug);
@@ -64,46 +53,6 @@ export class DeployPsService
             'Value': 'input parameter'
         }
         return this._powerShell.executeCommandSafe("Get-TestString", false, param);
-    }
-
-    public async installPackages(
-        packages: Package[],
-        instanceName?: string,
-        servers?: Server[]
-
-    ) : Promise<PackageInfo[]>
-    {
-        let param = {
-            packages: `'${JSON.stringify(packages)}'`
-        }
-
-        if (instanceName)
-            param['InstanceName'] = instanceName;
-
-        if (servers)
-            param['Servers'] = `'${JSON.stringify(servers)}'`;
-
-        let powerShell = this.getNewPowerShell();
-        try
-        {
-            return await powerShell.executeCommandSafe("Install-PackagesJson", true, param);
-        }
-        finally
-        {
-            powerShell.dispose();
-        }
-    }
-
-    public testPackageAvailable(packageId: string, servers: Server[])
-    {
-        let param = {
-            PackageId: packageId
-        }
-
-        if (servers)
-            param['Servers'] = `'${JSON.stringify(servers)}'`;
-
-        return this._powerShell.executeCommandSafe("Test-PackageAvailable", true, param);
     }
 
     public async installPackageGroup(
@@ -177,16 +126,6 @@ export class DeployPsService
         return this._powerShell.executeCommandSafe("Get-AvailableUpdates", true, param);
     }
 
-    public installBasePackages() : Promise<PackageInfo[]>
-    {
-        return this._powerShell.executeCommandSafe("Install-BasePackages", true, {});
-    }
-
-    public getAvailableBaseUpdates() : Promise<PackageInfo[]>
-    {
-        return this._powerShell.executeCommandSafe("Get-AvailableBaseUpdates", true, {});
-    }
-
     public removeDeployment(workspaceDataPath: string, deploymentGuid: string) : Promise<any>
     {
         let param = {
@@ -194,11 +133,6 @@ export class DeployPsService
             'DeploymentGuid': deploymentGuid,
         }
         return this.executeAsAdmin("Remove-Deployment", true, param);
-    }
-
-    public getGoCurrentVersion(): Promise<GoCurrentVersion>
-    {
-        return this._powerShell.executeCommandSafe("Get-GoCurrentVersion", true);
     }
 
     public testIsInstance(
@@ -226,38 +160,9 @@ export class DeployPsService
         return this._powerShell.executeCommandSafe("Test-IsInstance", true, param);
     }
 
-    public testInstanceExists(instanceName: string): Promise<boolean>
-    {
-        return this._powerShell.executeCommandSafe("Test-InstanceExists", true, {"InstanceName": instanceName});
-    }
-
     public testCanInstall(projectFilePath: string, packageGroupId: string): Promise<boolean>
     {
         return this._powerShell.executeCommandSafe("Test-CanInstall", true, {"ProjectFilePath": projectFilePath, "packageGroupId": packageGroupId})
-    }
-
-    public testIsInstalled(packages: string[], instanceName: string): Promise<boolean>
-    {
-        let args = {};
-
-        if (packages && packages.length > 0)
-            args["Packages"] = packages;
-
-        if (instanceName)
-            args["InstanceName"] = instanceName;
-
-        return this._powerShell.executeCommandSafe("Test-IsInstalled", true, args)
-    }
-
-    public getInstalledPackages(id: string, instanceName: string = undefined) : Promise<PackageInfo[]>
-    {
-        let param = {
-            'Id': id
-        };
-        if (instanceName)
-            param['InstanceName'] = instanceName;
-
-        return this._powerShell.executeCommandSafe("Get-InstalledPackages", true, param);
     }
 
     public getDeployedPackages(workspaceDataPath: string, deploymentGuid: string) : Promise<PackageInfo[]>
@@ -267,16 +172,6 @@ export class DeployPsService
             'DeploymentGuid': deploymentGuid,
         }
         return this._powerShell.executeCommandSafe("Get-DeployedPackages", true, param);
-    }
-
-    public getInstances() : Promise<PackageInfo[][]>
-    {
-        return this._powerShell.executeCommandSafe("Get-Instances", true);
-    }
-
-    public openGoCurrentWizard()
-    {
-        this._powerShell.executeCommandSafe("Invoke-OpenGoCurrentWizard", false);
     }
 
     public getTargets(projectFilePath: string, id?: string, useDevTarget?: boolean): Promise<string[]>
@@ -293,10 +188,5 @@ export class DeployPsService
             param['useDevTarget'] = useDevTarget;
 
         return this._powerShell.executeCommandSafe("Get-Targets", true, param);
-    }
-
-    public testBug() : Promise<any>
-    {
-        return this._powerShell.executeCommandSafe("Test-Bug", true);
     }
 }

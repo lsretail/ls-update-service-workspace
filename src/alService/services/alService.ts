@@ -1,7 +1,6 @@
 import { DeployService } from "../../deployService/services/deployService";
 import { PostDeployController } from "../../postDeployController";
-import { WorkspaceFolder, WorkspaceConfiguration } from "vscode";
-import { DeployPsService } from "../../deployService/services/deployPsService";
+import { Disposable, WorkspaceFolder } from "vscode";
 import { AlPsService } from "./alPsService";
 import { PackageInfo } from "../../interfaces/packageInfo";
 import { Constants } from "../../constants";
@@ -9,38 +8,45 @@ import { fsHelpers } from "../../fsHelpers";
 import * as path from 'path'
 import { AlApp } from "../interfaces/alApp";
 import { JsonData } from "../../jsonData";
-import { AlExtensionService } from "../../packageService/services/alExtensionService";
+import { IWorkspaceService } from "../../workspaceService/interfaces/IWorkspaceService";
+import { AppJson } from "../../newProjectService/interfaces/appJson";
 
-export class AlService
+export class AlService implements IWorkspaceService
 {
     private _deployService: DeployService;
     private _alPsService: AlPsService;
     private _active: boolean = false;
     private _workspaceFolder: WorkspaceFolder;
-    private _alApp: JsonData<AlApp>;
+    private _appJson: JsonData<AppJson>;
+    private _disposable: Disposable;
 
     constructor(
         deployService: DeployService, 
         alPsService: AlPsService,
+        appJson: JsonData<AppJson>,
         workspaceFolder: WorkspaceFolder
     )
     {
         this._deployService = deployService;
         this._workspaceFolder = workspaceFolder;
         this._alPsService = alPsService;
-        this._active = fsHelpers.existsSync(path.join(workspaceFolder.uri.fsPath, Constants.alProjectFileName));
+        this._active = appJson.exists()
+        this._appJson = appJson;
     }
 
-    public isActive(): Boolean
+    async dispose(): Promise<void> 
     {
-        return this._deployService.isActive() && this._active;
+        this._disposable?.dispose();
     }
 
-    public get alApp(): JsonData<AlApp>
+    public async isActive(): Promise<boolean>
     {
-        if (!this._alApp)
-            this._alApp = new JsonData<AlApp>(path.join(this._workspaceFolder.uri.fsPath, Constants.alProjectFileName));
-        return this._alApp;
+        return (await this._deployService.isActive()) && this._appJson.exists();
+    }
+
+    get appJson(): JsonData<AppJson>
+    {
+        return this._appJson;
     }
 
     public async rePopulateLaunchJson(): Promise<boolean>
@@ -52,7 +58,7 @@ export class AlService
             if (!deployment.instanceName)
                 continue;
 
-            let serverPackage = await this._deployService.getInstalledPackages('bc-server', deployment.instanceName);
+            let serverPackage = await this._deployService.goCurrentService.getInstalledPackages('bc-server', deployment.instanceName);
 
             if (serverPackage.length === 0)
                 continue;
@@ -70,7 +76,7 @@ export class AlService
 
     public async unpublishApp(instanceName: string) : Promise<boolean>
     {
-        let appData = await this.alApp.getData();
+        let appData = await this._appJson.getData();
         return await this._alPsService.unpublishApp(instanceName, appData.id);
     }
 
@@ -88,7 +94,7 @@ export class AlService
             if (!deployment.instanceName)
                 continue;
 
-            let serverPackage = await this._deployService.getInstalledPackages('bc-server', deployment.instanceName);
+            let serverPackage = await this._deployService.goCurrentService.getInstalledPackages('bc-server', deployment.instanceName);
 
             if (serverPackage.length === 0)
                 continue;

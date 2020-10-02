@@ -5,7 +5,7 @@ import Resources from './resources'
 import {Constants} from './constants'
 import * as util from 'util'
 
-export class ExtensionController
+export class UiService
 {
     context: vscode.ExtensionContext
 
@@ -14,21 +14,13 @@ export class ExtensionController
         this.context = context;
     }
 
-    activate()
+    async activate(): Promise<void>
     {
-
     }
 
-    registerFolderCommand(command: string, callback: (...args: any[]) => any, thisArg?: any)
+    async dispose(): Promise<void>
     {
-        var disposable = vscode.commands.registerCommand(command, (...args) => {
-            if (vscode.workspace.workspaceFolders.length === 0)
-            {
-                return this.showNoRootPathWarning();
-            }
-            callback(...args);
-        });
-        this.context.subscriptions.push(disposable);
+        
     }
 
     registerCommand(command: string, callback: (...args: any[]) => any, thisArg?: any)
@@ -40,15 +32,5 @@ export class ExtensionController
     registerDisposable(object: any)
     {
         this.context.subscriptions.push(object);
-    }
-
-    showNoRootPathWarning()
-    {
-        vscode.window.showWarningMessage(util.format(Resources.noFolder, Constants.extensionName), Resources.openFolderAction).then(choice => {
-            if (choice === Resources.openFolderAction)
-            {
-                vscode.commands.executeCommand("vscode.openFolder");
-            }
-        });
     }
 }

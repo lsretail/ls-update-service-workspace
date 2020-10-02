@@ -111,7 +111,7 @@ export class JsonData<TData>
         return Promise.resolve(this._dataCache);
     }
 
-    public exists(): Boolean
+    public exists(): boolean
     {
         if (this._watcher)
         {

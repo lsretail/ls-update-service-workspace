@@ -1,20 +1,27 @@
 
-import {workspace, WorkspaceFolder, window, Uri, MessageOptions, commands, ConfigurationTarget, WorkspaceConfiguration} from 'vscode'
+import {workspace, WorkspaceFolder, window, commands} from 'vscode'
 import { PackageInfo } from './interfaces/packageInfo';
-import * as path from 'path'
 import { Constants } from './constants';
-import { fsHelpers } from './fsHelpers';
 import Resources from './resources';
 import * as util from 'util'
-import { DeployPsService } from './deployService/services/deployPsService';
+import { IWorkspaceService } from './workspaceService/interfaces/IWorkspaceService';
 
-export class PostDeployController
+export class PostDeployController implements IWorkspaceService
 {
     private _workspaceFolder: WorkspaceFolder;
 
     constructor(workspaceFolder: WorkspaceFolder)
     {
         this._workspaceFolder = workspaceFolder;
+    }
+
+    async isActive(): Promise<boolean> 
+    {
+        return true;
+    }
+
+    async dispose(): Promise<void> 
+    {
     }
 
     public onPackagesDeployed(packages: PackageInfo[])
@@ -144,7 +151,7 @@ export class PostDeployController
         const launchConfig = workspace.getConfiguration('launch');
         let configurations: any[] = launchConfig['configurations'];
         configurations = configurations.filter(s => !(s.type === 'al' && s.name === configName));
-        await launchConfig.update('configurations', configurations, false).then(result=>{}, error => {
+        await launchConfig.update('configurations', configurations, false).then(()=>{}, error => {
             window.showErrorMessage(`Error occurred while updating launch.json: ${error}`);
         });
     }
