@@ -209,6 +209,7 @@ function Remove-DeploymentAdmin
     $Arguments = @{
         WorkspaceDataPath = $WorkspaceDataPath
         DeploymentGuid = $DeploymentGuid
+        ScriptDir = $PSScriptRoot
     }
     
     return Invoke-AsAdmin -ScriptBlock $Block -Arguments $Arguments

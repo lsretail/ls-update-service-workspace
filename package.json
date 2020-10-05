@@ -241,7 +241,7 @@
         "vscode-test": "^1.4.0"
     },
     "dependencies": {
-        "node-powershell": "^4.0.0",
+        "node-powershell": "git+https://bitbucket.lsretail.com/scm/~arnthor/node-powershell.git#master",
         "then-fs": "2.0",
         "uuid": "3.1.0"
     }

@@ -30,12 +30,6 @@ export async function activate(context: vscode.ExtensionContext)
 
     let config = vscode.workspace.getConfiguration('go-current-workspace')
 
-    // TODO, on project file changed, update service activity
-    //  - deploy + al serivces
-    // TODO: PostDeploy + add to launch.json !!!!
-    //    - Deployment removed, remove from launch.json
-    //    - Check for updates to remove from data.json
-
     let powerShell = new PowerShell(config.get('debug'));
     let goCurrentPsService = new GoCurrentPsService(powerShell, context.asAbsolutePath("PowerShell\\GoCurrentPsService.psm1"));
     let deployPsService = new DeployPsService(powerShell, context.asAbsolutePath("PowerShell\\DeployPsService.psm1"));

@@ -147,7 +147,7 @@
                 },
                 "alAppIdType": {
                     "type": "string",
-                    "enum": ["version", "fromMinor", "fromMajor", "minorToNextMajor", "majorToNextMajor"],
+                    "enum": ["version", "fromMinor", "fromMajor", "fromMinorToNextMajor", "fromMajorToNextMajor"],
                     "default": "fromMinor",
                     "description": "Type of version range to extract from the app version (default: fromMinor)."
                 },

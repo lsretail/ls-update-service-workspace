@@ -76,7 +76,7 @@ export class GoCurrentPsService
         }
 
         if (instanceName)
-            param['InstanceName'] = instanceName;
+            param['InstanceName'] = `'${instanceName}'`;
 
         if (servers)
             param['Servers'] = `'${JSON.stringify(servers)}'`;
@@ -95,7 +95,7 @@ export class GoCurrentPsService
     public testPackageAvailable(packageId: string, servers: Server[])
     {
         let param = {
-            PackageId: packageId
+            PackageId: `'${packageId}'`
         }
 
         if (servers)
