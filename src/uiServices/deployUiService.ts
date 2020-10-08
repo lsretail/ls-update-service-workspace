@@ -56,9 +56,6 @@ export class DeployUiService extends UiService
 
     private onWorkspaceChanges(e: WorkspaceContainerEvent<DeployService>)
     {
-        if (e.workspaceChanges.added.length > 0)
-            this.checkForUpdatesSilent();
-
         for (let workspaceFolder of e.workspaceChanges.added)
         {
             let deployService = e.workspaceContainer.getService(workspaceFolder);
@@ -74,6 +71,18 @@ export class DeployUiService extends UiService
         }
 
         this.checkAndUpdateIfActive();
+        if (!this._goCurrentPsService.isInitialized)
+        {
+            this._goCurrentPsService.onDidInitilize(e => {
+                this.checkForUpdatesSilent();
+            }, this);
+        }
+        else
+        {
+            if (e.workspaceChanges.added.length > 0)
+                this.checkForUpdatesSilent();
+        }
+        
     }
 
     private async checkAndUpdateIfActive()

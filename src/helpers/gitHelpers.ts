@@ -9,11 +9,10 @@ export default class GitHelpers
         if (gitExtension.enabled)
         {
             const api = gitExtension.getAPI(1);
-
             for (let repository of api.repositories)
             {
                 if (workspacePath.startsWith(repository.rootUri.fsPath))
-                    return repository.state.HEAD.name
+                    return repository.state?.HEAD?.name ?? ""
             }
         }
         return "";

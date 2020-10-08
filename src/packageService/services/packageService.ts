@@ -5,6 +5,7 @@ import { PackagePsService } from "./packagePsService";
 import { AlExtensionService } from "./alExtensionService";
 import { fsHelpers } from "../../fsHelpers";
 import { IWorkspaceService } from "../../workspaceService/interfaces/IWorkspaceService";
+import path = require("path");
 
 export class PackageService implements IWorkspaceService
 {
@@ -49,7 +50,12 @@ export class PackageService implements IWorkspaceService
         return this._packagesPsService.newAlPackage(projectDir, this._projectFile.uri.fsPath, target, branchName);
     }
 
-    async invokeAlCompileAndPackage(projectDir: string, target: string, branchName: string, outputChannel: (message: string) => void): Promise<void>
+    async invokeAlCompileAndPackage(
+        projectDir: string, 
+        target: string,
+        branchName: string,
+        outputChannel: (message: string) => void
+    ): Promise<void>
     {
         if (!this._alExtensionService.isInstalled)
             throw "AL Language extension not installed."
@@ -62,11 +68,26 @@ export class PackageService implements IWorkspaceService
         try
         {
             outputChannel("Downloading dependencies ...");
-            let output = await this._packagesPsService.getDependencies(projectDir, this._projectFile.uri.fsPath, target, branchName, tempDir);
+
+            let packageCachePath = path.join(tempDir, '.alpackages');
+            let assemblyProbingPath = path.join(tempDir, '.netpackages');
+
+            let output = await this._packagesPsService.getDependencies(
+                projectDir, 
+                this._projectFile.uri.fsPath, 
+                target, 
+                branchName,
+                packageCachePath,
+                assemblyProbingPath
+            );
             outputChannel(output);
     
             outputChannel("Compiling app ...");
-            output = await this._packagesPsService.invokeCompile(projectDir, this._alExtensionService.compilerPath, tempDir);
+            output = await this._packagesPsService.invokeCompile(
+                projectDir, 
+                this._alExtensionService.compilerPath, 
+                tempDir
+            );
             outputChannel(output);
     
             outputChannel("Creating package ...");
@@ -77,7 +98,7 @@ export class PackageService implements IWorkspaceService
         {
             try
             {
-                await fsHelpers.rmDir(tempDir, true);
+                fsHelpers.rmDir(tempDir, true);
             }
             catch (e)
             {
@@ -93,7 +114,13 @@ export class PackageService implements IWorkspaceService
         branchName: string, 
     ): Promise<string>
     {
-        let dllLock = await this._packagesPsService.testNetPackagesLocked(projectDir);
+        if (!this._alExtensionService.isInstalled)
+            throw "AL Language extension not installed."
+
+        let alConfig = this._alExtensionService.getConfig();
+        let assemblyProbingDir = this.getFirstRelativePath(alConfig.assemblyProbingPaths, '.netpackages');
+
+        let dllLock = await this._packagesPsService.testNetPackagesLocked(projectDir, assemblyProbingDir);
         if (dllLock && this._alExtensionService.isActive)
         {
             await this._alExtensionService.stop();
@@ -101,19 +128,38 @@ export class PackageService implements IWorkspaceService
             while (count < 10)
             {
                 await this.delay(500);
-                let newLock = await this._packagesPsService.testNetPackagesLocked(projectDir);
+                let newLock = await this._packagesPsService.testNetPackagesLocked(assemblyProbingDir);
                 if (!newLock)
                     break;
                 count ++
             }
         }
 
-        let output = await this._packagesPsService.getDependencies(projectDir, this._projectFile.uri.fsPath, target, branchName);
+        let output = await this._packagesPsService.getDependencies(
+            projectDir, 
+            this._projectFile.uri.fsPath, 
+            target, 
+            branchName,
+            alConfig.packageCachePath,
+            assemblyProbingDir
+        );
 
         if (dllLock && this._alExtensionService.isActive)
             await this._alExtensionService.start();
 
         return output;
+    }
+
+    private getFirstRelativePath(paths: string[], defaultValue: string): string
+    {
+        for (let item of paths)
+        {
+            if (!path.isAbsolute(item))
+            {
+                return item;
+            }
+        }
+        return defaultValue;
     }
 
     private delay(ms: number): Promise<void>

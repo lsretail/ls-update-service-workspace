@@ -3,15 +3,16 @@ import {PowerShell} from '../../PowerShell'
 import {PackageInfo} from '../../interfaces/packageInfo';
 import { Server, Package } from '../../models/projectFile';
 import { GoCurrentVersion } from '../../interfaces/goCurrentVersion';
+import { Event, EventEmitter } from 'vscode';
 
 export class GoCurrentPsService
 {
     private _modulePath: string;
 
     private _powerShell: PowerShell;
-    private _powerShellLongRunning: PowerShell;
     private _isAdmin: boolean;
     private _isInstalled: boolean = undefined;
+    private _onDidInitialize = new EventEmitter<GoCurrentPsService>();
 
     constructor(powerShell: PowerShell, modulePath: string)
     {
@@ -19,6 +20,11 @@ export class GoCurrentPsService
         this._powerShell.addModuleFromPath(modulePath);
         this._powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
         this._modulePath = modulePath;
+    }
+
+    public get onDidInitilize(): Event<GoCurrentPsService>
+    {
+        return this._onDidInitialize.event;
     }
 
     private getNewPowerShell() : PowerShell
@@ -48,11 +54,16 @@ export class GoCurrentPsService
         }
     }
 
-    public async isGocInstalled(): Promise<boolean>
+    public get isInitialized(): boolean
+    {
+        return this._isInstalled !== undefined
+    }
+
+    public isGocInstalled(): boolean
     {
         if (this._isInstalled === undefined)
         {
-            await this.getGoCurrentVersion();
+            return true;
         }
         return this._isInstalled;
     }
@@ -60,7 +71,12 @@ export class GoCurrentPsService
     public async getGoCurrentVersion(): Promise<GoCurrentVersion>
     {
         let gocVersion: GoCurrentVersion = await this._powerShell.executeCommandSafe("Get-GoCurrentVersion", true);
+        let isInitialized = this.isInitialized;
         this._isInstalled = gocVersion.IsInstalled && gocVersion.HasRequiredVersion;
+
+        if (!isInitialized)
+            this._onDidInitialize.fire(this);
+            
         return gocVersion;
     }
 

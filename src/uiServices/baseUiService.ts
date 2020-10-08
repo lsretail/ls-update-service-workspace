@@ -32,31 +32,32 @@ export class BaseUiService extends UiService
 
         commands.executeCommand("setContext", Constants.goCurrentExtensionActive, true);
 
-        let gocVersion = await this._goCurrentPsService.getGoCurrentVersion();
-        let goCurrentInstalled = gocVersion.IsInstalled;
+        this._goCurrentPsService.getGoCurrentVersion().then(gocVersion => {
+            let goCurrentInstalled = gocVersion.IsInstalled;
 
-        if (!goCurrentInstalled || !gocVersion.HasRequiredVersion)
-        {
-            if (!gocVersion.HasRequiredVersion)
+            if (!goCurrentInstalled || !gocVersion.HasRequiredVersion)
             {
-                window.showWarningMessage(`You do not have the required version of the Go Current client, v${gocVersion.RequiredVersion}, you have v${gocVersion.CurrentVersion}. Please update and reload your workspace.`);
-                console.warn(`You do not have the required version of the Go Current client, v${gocVersion.RequiredVersion}, you have v${gocVersion.CurrentVersion}. Please update and reload your workspace.`)
+                if (!gocVersion.HasRequiredVersion)
+                {
+                    window.showWarningMessage(`You do not have the required version of the Go Current client, v${gocVersion.RequiredVersion}, you have v${gocVersion.CurrentVersion}. Please update and reload your workspace.`);
+                    console.warn(`You do not have the required version of the Go Current client, v${gocVersion.RequiredVersion}, you have v${gocVersion.CurrentVersion}. Please update and reload your workspace.`)
+                }
+                else
+                {
+                    console.warn("Go Current not installed!")
+                    window.showWarningMessage("Go Current is not installed, extension will not load.");
+                }
+                
+                commands.executeCommand("setContext", Constants.goCurrentExtensionActive, false);
+                commands.executeCommand("setContext", Constants.goCurrentDeployActive, false);
+                commands.executeCommand("setContext", Constants.goCurrentAlActive, false);
+                commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
             }
             else
             {
-                console.warn("Go Current not installed!")
-                window.showWarningMessage("Go Current is not installed, extension will not load.");
+                this.checkForBaseUpdate();
             }
-            
-            commands.executeCommand("setContext", Constants.goCurrentExtensionActive, false);
-            commands.executeCommand("setContext", Constants.goCurrentDeployActive, false);
-            commands.executeCommand("setContext", Constants.goCurrentAlActive, false);
-            commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
-        }
-        else
-        {
-            await this.checkForBaseUpdate();
-        }
+        });        
     }
 
     openWizard()

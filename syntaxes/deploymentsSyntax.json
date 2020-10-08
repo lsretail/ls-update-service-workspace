@@ -1,7 +1,7 @@
 {
     "title": "Go Current Deployment Data File Syntax",
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "Schema for a Go Current Deploymnet Data File",
+    "description": "Schema for a Go Current Deployment Data File",
     "type": "object",
     "properties": {
         "deployments": {

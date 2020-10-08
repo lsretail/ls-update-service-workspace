@@ -120,10 +120,10 @@ export class PackagePsService
         return await this._powerShell.executeCommandSafe("New-TempDir", true);
     }
 
-    public testNetPackagesLocked(projectDir: string): Promise<boolean>
+    public testNetPackagesLocked(...dir: string[]): Promise<boolean>
     {
         let param = {
-            projectDir: projectDir
+            dir: `@("${dir.join('","')}")`
         };
 
         return this._powerShell.executeCommandSafe("Test-NetpackageLocked", true, param);
@@ -134,7 +134,8 @@ export class PackagePsService
         projectFilePath: string, 
         target: string, 
         branchName: string,
-        outputDir?: string
+        packageCacheDir: string,
+        assemblyProbingDir: string
     ): Promise<string>
     {
         let param = {
@@ -142,10 +143,9 @@ export class PackagePsService
             projectFilePath: `'${projectFilePath}'`,
             target: `'${target}'`,
             branchName: `'${branchName}'`,
+            packageCacheDir: `'${packageCacheDir}'`,
+            assemblyProbingDir: `'${assemblyProbingDir}'`
         }
-
-        if (outputDir)
-            param["outputDir"] = `'${outputDir}'`;
 
         let powerShell = this._powerShell.getNewPowerShell();
         try

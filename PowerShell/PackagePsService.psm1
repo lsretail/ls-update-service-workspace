@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'stop'
 
-Import-Module (Join-Path $PSScriptRoot 'ProjectFile.psm1')
-Import-Module (Join-Path $PSScriptRoot 'AlTools.psm1')
+Import-Module (Join-Path $PSScriptRoot 'Lib\ProjectFile.psm1')
+Import-Module (Join-Path $PSScriptRoot 'Lib\AlTools.psm1')
 
 $_RequiredFields = @('id', 'version', 'name')
 
@@ -95,11 +95,15 @@ function New-AlPackage
 function Test-NetpackageLocked
 {
     param(
-        $ProjectDir
+        [array]$Dir
     )
+    $ResultDir = $Dir | Select-Object -First 1
+    foreach ($Item in ($Dir | Select-Object -Skip 1))
+    {
+        $ResultDir = [System.IO.Path]::Combine($ResultDir, $Item)
+    }
 
-    $Dir = Join-path $ProjectDir '.netpackages'
-    return Test-DllLockInDir -Dir $Dir | ConvertTo-Json -Compress
+    return Test-DllLockInDir -Dir $ResultDir | ConvertTo-Json -Compress
 }
 
 function Get-Dependencies
@@ -111,12 +115,14 @@ function Get-Dependencies
         $ProjectFilePath,
         $BranchName,
         $Target,
+        [string] $PackageCacheDir,
+        [string] $AssemblyProbingDir,
         $OutputDir = $null
     )
 
     $Modifiers = Get-ProjectFileCompileModifiers -Path $ProjectFilePath -Target $Target -BranchName $BranchName -Idx 0
 
-    Get-AlProjectDependencies -ProjectDir $ProjectDir -BranchName $BranchName -Target $Target -Verbose -CompileModifiers $Modifiers -OutputDir $OutputDir
+    Get-AlProjectDependencies -ProjectDir $ProjectDir -BranchName $BranchName -Target $Target -Verbose -CompileModifiers $Modifiers -PackageCacheDir $PackageCacheDir -AssemblyProbingDir $AssemblyProbingDir
 }
 
 function New-TempDir

@@ -74,4 +74,22 @@ export class AlExtensionService
         }
         return this._languageClient;
     }
+
+    getConfig(): AlExtensionConfig
+    {
+        let config = vscode.workspace.getConfiguration('al');
+        if (!config)
+            return undefined;
+
+        return {
+            assemblyProbingPaths: config.get('assemblyProbingPaths', ['.netpackages']),
+            packageCachePath: config.get('packageCachePath', '.alpackages')
+        };
+    }
+}
+
+export interface AlExtensionConfig
+{
+    assemblyProbingPaths: string[];
+    packageCachePath: string;
 }

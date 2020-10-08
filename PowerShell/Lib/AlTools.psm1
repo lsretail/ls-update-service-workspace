@@ -2,7 +2,6 @@ $ErrorActionPreference = 'stop'
 
 Import-Module GoCurrent
 Import-Module (Join-Path $PSScriptRoot 'ProjectFile.psm1') -Force
-Import-Module LsSetupHelper\Release\Version
 
 function Get-AlDependencies
 {
@@ -128,8 +127,7 @@ function Get-AlDevDependencies
         $Dependencies,
         [Parameter(Mandatory)]
         $ProjectDir,
-        [Parameter(Mandatory)]
-        $OutputDir
+        $TempDir
     )
 
     $PackageIds = $Dependencies | ForEach-Object { $_.Id}
@@ -138,7 +136,11 @@ function Get-AlDevDependencies
 
     $Resolved = @($Deps | Get-GocUpdates | Where-Object { $PackageIds.Contains($_.Id)})
 
-    $TempDir = Join-Path $OutputDir 'Temp'
+    if (!$TempDir)
+    {
+        $TempDir = Join-Path $env:TEMP 'AlTools'
+    }
+    
     [System.IO.Directory]::CreateDirectory($TempDir) | Out-Null
 
     $ScriptFileName = 'ProjectDeploy.ps1'
@@ -309,7 +311,8 @@ function Get-AlProjectDependencies
         $BranchName,
         $Target,
         [hashtable] $Variables,
-        $OutputDir,
+        $PackageCacheDir,
+        $AssemblyProbingDir,
         [Array] $CompileModifiers
     )
 
@@ -318,17 +321,28 @@ function Get-AlProjectDependencies
     $DependenciesGroup = Get-ProjectFilePackages -Path $ProjectFilePath -Id 'dependencies' -Target $Target -BranchName $BranchName -Variables $Variables
     $DevDependencies = Get-ProjectFilePackages -Path $ProjectFilePath -Id 'devDependencies' -Target $Target -BranchName $BranchName -Variables $Variables
 
-    if (!$OutputDir)
+    if (!$PackageCacheDir)
     {
-        $OutputDir = $ProjectDir
+        $PackageCacheDir = (Join-Path $ProjectDir '.alpackages')
+    }
+    else
+    {
+        $PackageCacheDir = [System.IO.Path]::Combine($ProjectDir, $PackageCacheDir)
+    }
+
+    if (!$AssemblyProbingDir)
+    {
+        $AssemblyProbingDir = (Join-Path $ProjectDir '.netpackages')
+    }
+    else
+    {
+        $AssemblyProbingDir = [System.IO.Path]::Combine($ProjectDir, $AssemblyProbingDir)
     }
 
     $Dependencies = $DependenciesGroup.Packages
-    $AlPackagesDir = (Join-Path $OutputDir '.alpackages')
-    $AddinDir = (Join-Path $OutputDir '.netpackages')
     
-    Remove-IfExists -Path $AddinDir -Recurse -Force
-    Remove-IfExists -Path (Join-Path $AlPackagesDir '*') -Recurse -Force
+    Remove-IfExists -Path $AssemblyProbingDir -Recurse -Force
+    Remove-IfExists -Path (Join-Path $PackageCacheDir '*') -Recurse -Force
 
     Write-Verbose "Dependencies for package:"
     $Dependencies | Format-Table -AutoSize | Out-String | Write-Verbose
@@ -354,13 +368,13 @@ function Get-AlProjectDependencies
     $ModifiedDependencies | Format-Table -AutoSize | Out-String | Write-Verbose
 
     Write-Verbose 'Downloading dependencies for app...'
-    Get-AlDependencies -Dependencies $ModifiedDependencies -OutputDir $AlPackagesDir
+    Get-AlDependencies -Dependencies $ModifiedDependencies -OutputDir $PackageCacheDir
     
     Write-Verbose 'Downloading assemblies for app...'
-    Get-AlAddinDependencies -Dependencies $ModifiedDependencies -OutputDir $AddinDir -IncludeServer
+    Get-AlAddinDependencies -Dependencies $ModifiedDependencies -OutputDir $AssemblyProbingDir -IncludeServer
 
     Write-Verbose 'Downloading dev depenencies for app...'
-    Get-AlDevDependencies -Dependencies $ModifiedDependencies -ProjectDir $ProjectDir -OutputDir $OutputDir
+    Get-AlDevDependencies -Dependencies $ModifiedDependencies -ProjectDir $ProjectDir
 }
 
 function Invoke-AlProjectCompile
@@ -509,36 +523,6 @@ function New-AlProjectPackage
     }
 
     New-AlPackage @Arguments
-}
-
-function Set-AlVersion
-{
-    param(
-        [Parameter(Mandatory = $true)]
-        $ProjectDir,
-        [Parameter(Mandatory = $true)]
-        [string]$Version
-    )
-
-    $ProjectFilePath = (Join-Path $ProjectDir 'app.json')
-
-    if (!(Test-Path $ProjectFilePath))
-    {
-        throw "App project file does not exists: $ProjectFilePath"
-    }
-    
-    $OrigProjectFilePath = (Join-Path $ProjectDir 'app.json.original')
-
-    if (!(Test-Path $OrigProjectFilePath))
-    {
-        Copy-Item $ProjectFilePath $OrigProjectFilePath
-    }
-
-    $Version = Format-Version -Version $Version -Places 4 -DotNetFormat
-    
-    $ProjectFile = Get-Content -Raw -Path $ProjectFilePath | ConvertFrom-Json
-    $ProjectFile.Version = $Version
-    ConvertTo-Json $ProjectFile -Depth 50 | Set-Content -Path $ProjectFilePath
 }
 
 function Undo-AlVersion

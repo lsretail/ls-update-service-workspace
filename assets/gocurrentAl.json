@@ -30,6 +30,11 @@
             "description": "Install a new LS Central instance on your computer.",
             "packages": [
                 {
+                    "id": "sql-server-express",
+                    "version": "^-",
+                    "optional": true
+                },
+                {
                     "id": "ls-central-demo-database",
                     "version": "- ${lsCentralVersion}"
                 },

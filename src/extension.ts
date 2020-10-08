@@ -28,7 +28,7 @@ export async function activate(context: vscode.ExtensionContext)
 
     let services: Array<any> = [];
 
-    let config = vscode.workspace.getConfiguration('go-current-workspace')
+    let config = vscode.workspace.getConfiguration('go-current-workspace');
 
     let powerShell = new PowerShell(config.get('debug'));
     let goCurrentPsService = new GoCurrentPsService(powerShell, context.asAbsolutePath("PowerShell\\GoCurrentPsService.psm1"));

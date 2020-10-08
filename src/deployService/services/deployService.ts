@@ -89,7 +89,7 @@ export class DeployService implements IWorkspaceService
 
     public async isActive() : Promise<boolean>
     {
-        return this._projectFile.exists() && (await this._goCurrentPsService.isGocInstalled());
+        return this._projectFile.exists() && this._goCurrentPsService.isGocInstalled();
     }
 
     public getPackageGroups() : Thenable<Array<PackageGroup>>

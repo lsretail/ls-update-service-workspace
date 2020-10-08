@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'stop'
 
-Import-Module (Join-Path $PSScriptRoot 'ProjectFile.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'Lib\ProjectFile.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'ErrorHandling.psm1')
 Import-Module (Join-Path $PSScriptRoot 'AdminUtils.psm1')
 Import-Module (Join-Path $PSScriptRoot 'GoCurrentPsService.psm1')
