@@ -33,9 +33,10 @@ export class AlUiService extends UiService
 
     async activate(): Promise<void>
     {
-        this.registerCommand("go-current.al.repopulateLaunchJson", () => this.rePopulateLaunchJson());
-        this.registerCommand("go-current.al.unpublishApp", () => this.alUnpublishApp());
-        this.registerCommand("go-current.al.upgradeData", () => this.alUpgradeData());
+        this.registerCommand("go-current.al.repopulateLaunchJson", async () => await this.rePopulateLaunchJson());
+        this.registerCommand("go-current.al.unpublishApp", async () => await this.alUnpublishApp());
+        this.registerCommand("go-current.al.upgradeData", async () => await this.alUpgradeData());
+        this.registerCommand("go-current.al.publishApp", async () => await this.alPublishApp());
         this.registerCommand("go-current.al.addNewDependencies", (...args) => this.alAddNewDependencies(args));
 
         this._disposable = this._wsAlServices.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this);
@@ -183,5 +184,36 @@ export class AlUiService extends UiService
             window.showInformationMessage(format(Resources.dependenciesAddedToProject, count), );
         else
             window.showInformationMessage(Resources.noDependenciesAddedToProject);
+    }
+
+    async alPublishApp(): Promise<void>
+    {
+        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getActiveWorkspaces());
+        if (!workspaceFolder)
+            return;
+
+        let alService: AlService = this._wsAlServices.getService(workspaceFolder);
+
+        let appFilePath = await alService.getAppFileName(true)
+        if (!fsHelpers.existsSync(appFilePath))
+        {
+            window.showWarningMessage(`The app does not exists (${appFilePath}), compile the app to create the file and then try again.`);
+            return;
+        }
+
+        let instance = await this.showAlInstancePicks(alService);
+
+        if (!instance)
+            return
+
+        await window.withProgress({
+            location: ProgressLocation.Notification,
+            title: `Publishing app to "${instance.InstanceName}"...`
+        }, async () => {
+            return await alService.publishApp(instance.InstanceName);
+        });
+
+
+        window.showInformationMessage("App published.");
     }
 }

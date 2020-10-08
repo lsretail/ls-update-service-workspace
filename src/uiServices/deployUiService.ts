@@ -36,11 +36,11 @@ export class DeployUiService extends UiService
 
     async activate(): Promise<void>
     {
-        this.registerCommand("go-current.deploy", () => this.deploy());
-        this.registerCommand("go-current.checkForUpdates", () => this.checkForUpdates());
-        this.registerCommand("go-current.update", () => this.update());
-        this.registerCommand("go-current.remove", () => this.remove());
-        this.registerCommand("go-current.addInstanceToWorkspace", () => this.addInstanceToWorkspace());
+        this.registerCommand("go-current.deploy", async () => await this.deploy());
+        this.registerCommand("go-current.checkForUpdates", async () => await this.checkForUpdates());
+        this.registerCommand("go-current.update", async () => await this.update());
+        this.registerCommand("go-current.remove", async () => await this.remove());
+        this.registerCommand("go-current.addInstanceToWorkspace", async () => await this.addInstanceToWorkspace());
 
         //await this.checkAndUpdateIfActive();
         //await this.checkForUpdatesSilent();

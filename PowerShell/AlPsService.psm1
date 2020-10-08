@@ -52,6 +52,11 @@ function Invoke-UpgradeData
     foreach ($App in $Apps)
     {
         $AppsUpgraded += "$($App.Name) by $($App.Publisher) ($($App.AppId))"
+        if ($App.SyncState -ne [Microsoft.Dynamics.Nav.Types.Apps.NavAppSyncState]::Synced)
+        {
+            $App | Sync-NAVApp -Mode Development -Force
+        }
+        
         $App | Start-NAVAppDataUpgrade
     }
     return (ConvertTo-Json $AppsUpgraded -Compress)
@@ -115,5 +120,89 @@ function Invoke-UnpublishApp
     else
     {
         return ConvertTo-Json $false -Compress
+    }
+}
+
+function Publish-AppAdmin
+{
+    param(
+        [Parameter(Mandatory)]
+        $AppPath,
+        [Parameter(Mandatory)]
+        $InstanceName
+    )
+    $Block = {
+        param(
+            [Parameter(Mandatory)]
+            $ScriptDir,
+            [Parameter(Mandatory)]
+            $AppPath,
+            [Parameter(Mandatory)]
+            $InstanceName
+        )
+        Import-Module (Join-Path $ScriptDir 'AlPsService.psm1')
+        Publish-App -AppPath $AppPath -InstanceName $InstanceName
+    }
+    $Arguments = @{
+        ScriptDir = $PSScriptRoot
+        AppPath = $AppPath
+        InstanceName = $InstanceName
+    }
+    return Invoke-AsAdmin -ScriptBlock $Block -Arguments $Arguments
+}
+
+function Publish-App
+{
+    param(
+        [Parameter(Mandatory)]
+        $AppPath,
+        [Parameter(Mandatory)]
+        $InstanceName
+    )
+
+    $Server = Get-GocInstalledPackage -Id 'bc-server' -InstanceName $InstanceName
+
+    if (!$Server)
+    {
+        Write-JsonError -Message "Instance doesn't exists `"$InstanceName`"." -Type 'User'
+    }
+
+    Import-Module (Join-Path $Server.Info.ServerDir 'Microsoft.Dynamics.Nav.Apps.Management.dll')
+    $SyncMode = 'Development'
+    $AllowForceSync = $true
+
+    $ServerInstance = $Server.Info.ServerInstance
+
+    $AppFileInfo = Get-NAVAppInfo -Path $AppPath
+
+    $ExistingApp = $AppFileInfo | Get-NavAppInfo -ServerInstance $ServerInstance -TenantSpecificProperties -Tenant default | Select-Object -First 1
+
+
+    $AllExisting = Get-NavAppInfo -ServerInstance $ServerInstance -TenantSpecificProperties -Tenant default -Id $AppFileInfo.AppId
+    $AllExisting | Uninstall-NAVApp -ServerInstance $ServerInstance -Tenant default -Force
+
+    $App = Publish-NAVApp -ServerInstance $ServerInstance -Path $AppPath -SkipVerification -PassThru
+    $App | Sync-NAVApp -ServerInstance $ServerInstance -Mode $SyncMode -Force
+
+    try 
+    {
+        $App | Sync-NAVApp -ServerInstance $ServerInstance -Mode $SyncMode -Force
+    }
+    catch 
+    {
+        if (!$AllowForceSync)
+        {
+            throw
+        }
+        $App | Sync-NAVApp -ServerInstance $ServerInstance -Mode ForceSync -Force
+    }
+
+    if (!$ExistingApp)
+    {
+        $App | Install-NAVApp -ServerInstance $ServerInstance -Tenant default
+    }
+    else 
+    {
+        $App | Start-NAVAppDataUpgrade -ServerInstance $ServerInstance    
     }
 }

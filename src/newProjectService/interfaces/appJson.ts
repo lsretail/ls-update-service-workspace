@@ -3,7 +3,9 @@
 export interface AppJson
 {
     id: string;
-    name: string
+    name: string;
+    publisher: string;
+    version: string;
     dependencies: AppJsonDependency[] 
 }
 

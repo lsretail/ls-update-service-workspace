@@ -33,6 +33,16 @@ export class AlPsService
         return this._isAdmin;
     }
 
+    public async publishApp(instanceName: string, appPath: string): Promise<void>
+    {
+        let param = {
+            instanceName: `"${instanceName}"`,
+            appPath: `"${appPath}"`
+        }
+
+        return this.executeAsAdmin("Publish-App", true, param);
+    }
+
     public async unpublishApp(instanceName: string, appId: string): Promise<boolean>
     {
         let param = {

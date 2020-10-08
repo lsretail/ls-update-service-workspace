@@ -10,6 +10,7 @@ import { AlApp } from "../interfaces/alApp";
 import { JsonData } from "../../jsonData";
 import { IWorkspaceService } from "../../workspaceService/interfaces/IWorkspaceService";
 import { AppJson } from "../../newProjectService/interfaces/appJson";
+import { promises } from "fs";
 
 export class AlService implements IWorkspaceService
 {
@@ -74,6 +75,18 @@ export class AlService implements IWorkspaceService
         return updated
     }
 
+    public async publishApp(isntanceName: string): Promise<void>
+    {
+        let appPath = await this.getAppFileName(true);
+        return await this._alPsService.publishApp(isntanceName, appPath);
+    }
+
+    public async doesAppFileExists(): Promise<boolean>
+    {
+        let appPath = await this.getAppFileName(true);
+        return fsHelpers.existsSync(appPath);
+    }
+
     public async unpublishApp(instanceName: string) : Promise<boolean>
     {
         let appData = await this._appJson.getData();
@@ -103,5 +116,15 @@ export class AlService implements IWorkspaceService
         }
 
         return instances;
+    }
+
+    public async getAppFileName(includeDir: boolean): Promise<string>
+    {
+        let data = await this.appJson.getData();
+        let fileName = `${data.publisher}_${data.name}_${data.version}.app`
+
+        if (includeDir)
+            return path.join(this._workspaceFolder.uri.fsPath, fileName);
+        return fileName;
     }
 }
