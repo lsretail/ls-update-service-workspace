@@ -1,8 +1,8 @@
-import { workspace } from "vscode";
+import { workspace, WorkspaceFolder } from "vscode";
 
 export class WorkspaceHelpers
 {
-    public static getWorkspaceForPath(path: string)
+    public static getWorkspaceForPath(path: string): WorkspaceFolder
     {
         for (let workspaceFolder of workspace.workspaceFolders)
         {

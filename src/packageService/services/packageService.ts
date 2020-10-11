@@ -7,6 +7,7 @@ import { fsHelpers } from "../../fsHelpers";
 import { IWorkspaceService } from "../../workspaceService/interfaces/IWorkspaceService";
 import path = require("path");
 import { AppJson } from "../../newProjectService/interfaces/appJson";
+import { WorkspaceHelpers } from "../../helpers/workspaceHelpers";
 
 export class PackageService implements IWorkspaceService
 {
@@ -115,16 +116,18 @@ export class PackageService implements IWorkspaceService
         projectDir: string, 
         target: string, 
         branchName: string, 
-    ): Promise<string>
+    ): Promise<{output: string, dllsLocked: boolean}>
     {
         if (!this._alExtensionService.isInstalled)
             throw "AL Language extension not installed."
 
-        let alConfig = this._alExtensionService.getConfig();
+        let workspaceFolder = WorkspaceHelpers.getWorkspaceForPath(projectDir);
+
+        let alConfig = this._alExtensionService.getConfig(workspaceFolder);
         let assemblyProbingDir = this.getFirstRelativePath(alConfig.assemblyProbingPaths, '.netpackages');
 
-        let dllLock = await this._packagesPsService.testNetPackagesLocked(projectDir, assemblyProbingDir);
-        if (dllLock && this._alExtensionService.isActive)
+        let dllsLocked = await this._packagesPsService.testNetPackagesLocked(projectDir, assemblyProbingDir);
+        if (dllsLocked && this._alExtensionService.isActive)
         {
             await this._alExtensionService.stop();
             let count = 0
@@ -147,10 +150,10 @@ export class PackageService implements IWorkspaceService
             assemblyProbingDir
         );
 
-        if (dllLock && this._alExtensionService.isActive)
+        if (dllsLocked && this._alExtensionService.isActive)
             await this._alExtensionService.start();
 
-        return output;
+        return {output: output, dllsLocked: dllsLocked};
     }
 
     private getFirstRelativePath(paths: string[], defaultValue: string): string

@@ -49,7 +49,7 @@ export class PostDeployController implements IWorkspaceService
 
     public static async addAlLaunchConfig(packageInfos: PackageInfo[], workspaceFolder: WorkspaceFolder): Promise<boolean>
     {
-        const launchConfig = workspace.getConfiguration('launch', workspaceFolder.uri);
+        const launchConfig = workspace.getConfiguration('launch', workspaceFolder);
         let configurations: any[] = launchConfig['configurations'];
         
         let defaultValues: object = {
@@ -116,7 +116,8 @@ export class PostDeployController implements IWorkspaceService
 
         try
         {
-            await launchConfig.update('configurations', configurations, false);
+            await launchConfig.update('configurations', configurations, null);
+            //launchConfig.update()
             for (let instance of instancesUpdated)
                 window.showInformationMessage(util.format(Resources.launchJsonUpdatedWith, instance));
         }

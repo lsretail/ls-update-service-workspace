@@ -85,8 +85,18 @@ export class PackageUiService extends UiService
                     GitHelpers.getBranchName(workspaceFolder.uri.fsPath),
                 );
             });
-            this._outputChannel.appendLine(output);
+            this._outputChannel.appendLine(output.output);
             this._outputChannel.appendLine("Dependencies downloaded.");
+            if (output.dllsLocked)
+            {
+                window.showInformationMessage(Resources.dependenciesDownloadedReload, Constants.buttonReloadWindow).then(result => 
+                {
+                    if (result === Constants.buttonReloadWindow)
+                    {
+                        commands.executeCommand("workbench.action.reloadWindow");
+                    }
+                });
+            }
         }
         catch (e)
         {

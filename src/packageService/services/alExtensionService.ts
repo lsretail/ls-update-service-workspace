@@ -75,9 +75,9 @@ export class AlExtensionService
         return this._languageClient;
     }
 
-    getConfig(): AlExtensionConfig
+    getConfig(workspaceFolder: vscode.WorkspaceFolder): AlExtensionConfig
     {
-        let config = vscode.workspace.getConfiguration('al');
+        let config = vscode.workspace.getConfiguration('al', workspaceFolder);
         if (!config)
             return undefined;
 
