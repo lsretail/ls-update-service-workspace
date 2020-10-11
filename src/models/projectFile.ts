@@ -37,6 +37,7 @@ export class ProjectFilePackage
 {
     id: string;
     version: string | VersionFromAlApp | any;
+    onlyRestrictVersion?: boolean;
     optional?: boolean;
 }
 

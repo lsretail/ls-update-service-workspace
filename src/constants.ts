@@ -13,8 +13,9 @@ export class Constants
     static vscodeWorkspaceDirName = ".vscode";
     static vscodeLaunchFileName = "launch.json";
 
+    static goCurrentProjectFileActive = "go-current.projectFile.active";
+    static goCurrentProjectFileHasInactiveWorkspaces = "go-current.projectFile.hasInactiveWorkspaces";
     static goCurrentDeployActive = "go-current.deploy.active";
-    static goCurrentDeployHasInactiveWorkspaces = "go-current.deploy.hasInactiveWorkspaces";
     static goCurrentAlActive = "go-current.al.active";
     static goCurrentDeployUpdatesAvailable = "go-current.deploy.updatesAvailable";
 

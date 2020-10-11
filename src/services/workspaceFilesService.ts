@@ -24,11 +24,11 @@ export class WorkspaceFilesService implements IWorkspaceService
 
     async isActive(): Promise<boolean> 
     {
-        return true;
+        return this._projectFile.exists();
     }
 
     async dispose(): Promise<void> {
-        this._projectFile.dispose();
+        this._projectFile.dispose();    
         this._workspaceData.dispose();
         this._appJson.dispose();
     }

@@ -36,14 +36,13 @@ export class DeployUiService extends UiService
 
     async activate(): Promise<void>
     {
-        this.registerCommand("go-current.deploy", async () => await this.deploy());
+        this.registerCommand("go-current.deploy", async () => await this.install());
         this.registerCommand("go-current.checkForUpdates", async () => await this.checkForUpdates());
         this.registerCommand("go-current.update", async () => await this.update());
         this.registerCommand("go-current.remove", async () => await this.remove());
         this.registerCommand("go-current.addInstanceToWorkspace", async () => await this.addInstanceToWorkspace());
+        this.registerCommand("go-current.viewResolvedProjectFile", (...args) => this.viewResolvedProjectFile());
 
-        //await this.checkAndUpdateIfActive();
-        //await this.checkForUpdatesSilent();
         let subscriptions: vscode.Disposable[] = [];
         this._wsDeployServices.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this, subscriptions);
         this._disposable = vscode.Disposable.from(...subscriptions);
@@ -71,6 +70,7 @@ export class DeployUiService extends UiService
         }
 
         this.checkAndUpdateIfActive();
+        // Make sure we only check for updates after we know that GoC is installed.
         if (!this._goCurrentPsService.isInitialized)
         {
             this._goCurrentPsService.onDidInitilize(e => {
@@ -82,19 +82,16 @@ export class DeployUiService extends UiService
             if (e.workspaceChanges.added.length > 0)
                 this.checkForUpdatesSilent();
         }
-        
     }
 
     private async checkAndUpdateIfActive()
     {
         let anyActive = await this._wsDeployServices.anyActive();
-        let anyInactive = await this._wsDeployServices.anyInactive();
 
-        commands.executeCommand("setContext", Constants.goCurrentDeployHasInactiveWorkspaces, anyInactive);
         commands.executeCommand("setContext", Constants.goCurrentDeployActive, anyActive);
     }
 
-    private async deploy()
+    private async install()
     {
         let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsDeployServices.getActiveWorkspaces());
         if (!workspaceFolder)
@@ -124,7 +121,7 @@ export class DeployUiService extends UiService
                 picks.push({
                     "label": entry.name, 
                     "description": entry.description, 
-                    "detail": entry.packages.map(p => `${p.id}`).join(', '),
+                    "detail": entry.packages.filter(p => !p.onlyRestrictVersion).map(p => `${p.id}`).join(', '),
                     "payload": entry
                 });
             }
@@ -430,4 +427,34 @@ export class DeployUiService extends UiService
             return;
         return selected.payload;
     }
+
+    async viewResolvedProjectFile(): Promise<void>
+    {
+        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsDeployServices.getActiveWorkspaces());
+
+        if (!workspaceFolder)
+            return;
+
+        let deployService = this._wsDeployServices.getService(workspaceFolder);       
+
+        let targets = await deployService.getTargets(undefined, false);
+
+        let selectedTarget = await UiHelpers.showTargetPicks(targets)
+
+        if (!selectedTarget)
+            return;
+
+        let projectFileResolved: any = await deployService.getResolvedProjectFile(selectedTarget);
+        projectFileResolved.DevPackageGroups = await deployService.getResolvedPackageGroups(selectedTarget);
+
+        const panel = vscode.window.createWebviewPanel(
+            'projectFile',
+            'Resolved Go Current Project File',
+            vscode.ViewColumn.One,
+            {}
+          );
+          
+          panel.webview.html = '<pre>' + JSON.stringify(projectFileResolved, null, 4) + '<br>' + JSON.stringify(projectFileResolved, null, 4)+ '</pre>';
+
+    }   
 }

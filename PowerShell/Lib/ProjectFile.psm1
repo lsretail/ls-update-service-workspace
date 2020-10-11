@@ -17,6 +17,8 @@ $_CurrentBranch = 'currentBranch'
 $_ProjectDir = 'ProjectDir'
 $_ReservedVariables = @($_ProjectDir, $_CurrentBranch) + $_AlAppVariables
 
+$_ResolveFileModified = @{}
+
 function Get-ProjectFilePackages
 {
     param(
@@ -159,6 +161,7 @@ function Get-ProjectFileCompileModifiers
     if (($ProjectFile.compileModifiers | Select-Object -First 1) -is [array])
     {
         $CurrIdx = -1;
+        $Entries = @()
         foreach ($CompileModifiers in $ProjectFile.compileModifiers)
         {
             $CurrIdx++
@@ -169,10 +172,22 @@ function Get-ProjectFileCompileModifiers
             $Packages = New-Object -TypeName System.Collections.ArrayList
             $Packages.AddRange($CompileModifiers) | Out-Null
             Resolve-PackagesVersions -Packages $Packages @ResolveContainer
-            if ($Packages.Count -gt 0)
+            if ($Packages.Count -gt 0 -and $null -ne $Idx)
             {
-                @(,$Packages.ToArray())
+                return ,$Packages.ToArray()
             }
+            elseif ($Packages.Count -gt 0)
+            {
+                $Entries += ,$Packages.ToArray()
+            }
+            elseif ($null -ne $Idx)
+            {
+                return ,@()
+            }
+        }
+        if ($null -eq $Idx)
+        {
+            return ,$Entries
         }
     }
     elseif (($null -ne $Idx) -and $Idx -eq 0)
@@ -184,7 +199,7 @@ function Get-ProjectFileCompileModifiers
     }
     else
     {
-        return @()
+        return ,@()
     }
 }
 
@@ -681,14 +696,20 @@ function Resolve-Variable
     else
     {
         $Path = [System.IO.Path]::Combine($ProjectDir, $ResolverPath)
+
+        $FileInfo = Get-Item -Path $Path
+
+        $Force = ($_ResolveFileModified.ContainsKey($Path) -and ($_ResolveFileModified[$Path] -ne $FileInfo.LastWriteTime))
+
         $Block = {
-            Import-Module $Path -Force
+            param($Force)
+            Import-Module $Path -Force:$Force
             . $ResolverFunction -ProjectDir $ProjectDir -Id $Id -Version $Version -Target $Target
         }
-        & $Block
+        & $Block -Force $Force
+        $_ResolveFileModified[$Path] = $FileInfo.LastWriteTime
     }
 }
-
 function Resolve-VariableAlAppJson
 {
     param(
@@ -709,7 +730,7 @@ function Resolve-VariableAlAppJson
     }
 
     $AppJsonPath = Get-AlAppJsonPath -ProjectDir $ProjectDir
-    $Version = Get-VersionFromDependency -AppJsonPath $AppJsonPath -AppId $AlAppId
+    $Version = Get-VersionFromAppDependency -AppJsonPath $AppJsonPath -AppId $AlAppId
     if (!$Version)
     {
         throw "Could not locate dependency with app id `"$AlAppId`" in `"$AppJsonPath`"."
@@ -781,4 +802,4 @@ function Resolve-VariableBranchFilter
     ConvertTo-BranchPriorityPreReleaseFilter @Arguments 
 }
 
-#Export-ModuleMember -Function '*-ProjectFile*'
+Export-ModuleMember -Function '*-ProjectFile*'

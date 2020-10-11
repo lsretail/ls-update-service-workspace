@@ -81,14 +81,13 @@ function New-AlPackage
 {
     param(
         [string] $ProjectDir,
+        [string] $AppPath,
         [string] $ProjectFilePath,
         [string] $Target,
         [string] $BranchName
     )
 
-    $ProjectFile = Get-ProjectFile -Path $ProjectFilePath -Target $Target -BranchName $BranchName
-
-    $Package = New-AlProjectPackage -ProjectDir $ProjectDir -AppPath ($ProjectFile.InputPath | Select-Object -First 1) -Target $Target -BranchName $BranchName -Force
+    $Package = New-AlProjectPackage -ProjectDir $ProjectDir -AppPath $AppPath -Target $Target -BranchName $BranchName -Force
     return ConvertTo-Json $Package.Path
 }
 

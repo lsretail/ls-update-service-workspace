@@ -1,4 +1,5 @@
 import { commands, window, ExtensionContext, workspace } from 'vscode';
+import * as vscode from 'vscode'
 import { Constants } from '../constants';
 import { DeployService } from '../deployService/services/deployService';
 import { UiService } from "../extensionController";
@@ -7,22 +8,27 @@ import { UiHelpers } from '../helpers/uiHelpers';
 import { NewProjectService } from '../newProjectService/services/newProjectService';
 import { PostDeployController } from '../postDeployController';
 import Resources from '../resources';
-import { WorkspaceContainer } from '../workspaceService/services/workspaceContainer';
+import { WorkspaceFilesService } from '../services/workspaceFilesService';
+import { WorkspaceContainer, WorkspaceContainerEvent } from '../workspaceService/services/workspaceContainer';
 
 export class BaseUiService extends UiService
 {
     private _goCurrentPsService: GoCurrentPsService;
     private _wsDeployServices: WorkspaceContainer<DeployService>;
+    private _wsWorkspaceFileServices: WorkspaceContainer<WorkspaceFilesService>;
+    private _disposable: vscode.Disposable;
 
     constructor(
         context: ExtensionContext,
         goCurrentPsService: GoCurrentPsService,
         wsDeployServices: WorkspaceContainer<DeployService>,
+        wsWorkspaceFileServices: WorkspaceContainer<WorkspaceFilesService>
     )
     {
         super(context);
         this._goCurrentPsService = goCurrentPsService;
         this._wsDeployServices = wsDeployServices;
+        this._wsWorkspaceFileServices = wsWorkspaceFileServices;
     }
 
     async activate(): Promise<void>
@@ -31,6 +37,10 @@ export class BaseUiService extends UiService
         this.registerCommand("go-current.openWizard", () => this.openWizard());
 
         commands.executeCommand("setContext", Constants.goCurrentExtensionActive, true);
+
+        let subscriptions: vscode.Disposable[] = [];
+        this._wsWorkspaceFileServices.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this, subscriptions);
+        this._disposable = vscode.Disposable.from(...subscriptions);
 
         this._goCurrentPsService.getGoCurrentVersion().then(gocVersion => {
             let goCurrentInstalled = gocVersion.IsInstalled;
@@ -57,7 +67,33 @@ export class BaseUiService extends UiService
             {
                 this.checkForBaseUpdate();
             }
-        });        
+        });
+    }
+
+    private onWorkspaceChanges(e: WorkspaceContainerEvent<WorkspaceFilesService>)
+    {
+        this.checkAndUpdateIfActive();
+        for (let workspaceFolder of e.workspaceChanges.added)
+        {
+            let subscriptions: vscode.Disposable[] = [];
+
+            let service = e.workspaceContainer.getService(workspaceFolder);
+
+            service.projectFile.onDidChange(e => {
+                this.checkAndUpdateIfActive();
+            }, subscriptions);
+
+            e.pushSubscription(workspaceFolder, vscode.Disposable.from(...subscriptions));
+        }
+    }
+
+    private async checkAndUpdateIfActive()
+    {
+        let anyActive = await this._wsWorkspaceFileServices.anyActive();
+        let anyInactive = await this._wsWorkspaceFileServices.anyInactive();
+
+        commands.executeCommand("setContext", Constants.goCurrentProjectFileActive, anyActive);
+        commands.executeCommand("setContext", Constants.goCurrentProjectFileHasInactiveWorkspaces, anyInactive);
     }
 
     openWizard()

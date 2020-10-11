@@ -16,7 +16,6 @@ export class AlService implements IWorkspaceService
 {
     private _deployService: DeployService;
     private _alPsService: AlPsService;
-    private _active: boolean = false;
     private _workspaceFolder: WorkspaceFolder;
     private _appJson: JsonData<AppJson>;
     private _disposable: Disposable;
@@ -31,7 +30,6 @@ export class AlService implements IWorkspaceService
         this._deployService = deployService;
         this._workspaceFolder = workspaceFolder;
         this._alPsService = alPsService;
-        this._active = appJson.exists()
         this._appJson = appJson;
     }
 

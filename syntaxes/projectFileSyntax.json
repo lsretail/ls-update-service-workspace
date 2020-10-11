@@ -7,24 +7,24 @@
     "properties": {
         "id": {
             "type": "string",
-            "description": "Specifies the Go Current package ID.",
+            "description": "Specify the Go Current package ID.",
             "minLength": 1
         },
         "name": {
             "type": "string",
-            "description": "Specifies the Go Current package name.",
+            "description": "Specify the Go Current package name.",
             "minLength": 1
         },
         "displayName": {
             "type": "string",
-            "description": "Specifies the Go Current package display name."
+            "description": "Specify the Go Current package display name."
         },
         "description": {
             "type": "string",
-            "description": "Specifies the Go Current package description."
+            "description": "Specify the Go Current package description."
         },
         "version": {
-            "description": "Specifies the Go Current package version.",
+            "description": "Specify the Go Current package version.",
             "oneOf":[
                 {
                     "$ref": "./sharedDefinitions.json#definitions/version"
@@ -36,7 +36,7 @@
         },
         "dependencies": {
             "type": "array",
-            "description": "Specifies dependencies for the package.",
+            "description": "Specify dependencies for the package.",
             "items": {
                 "$ref": "./sharedDefinitions.json#definitions/packageList"
             }
@@ -140,7 +140,7 @@
         },
         "variables": {
             "type": "object",
-            "description": "Specifies reusable version queries. Reference with ${variableName}.",
+            "description": "Specify reusable version queries. Reference with ${variableName}.",
             "additionalProperties": {
                 "oneOf":[
                     {
@@ -206,15 +206,15 @@
                 "properties": {
                     "id": {
                         "type": "string",
-                        "description": "Id of package group."
+                        "description": "ID of package group."
                     },
                     "name": {
                         "type": "string",
-                        "description": "Name of package group"
+                        "description": "Name of package group."
                     },
                     "description": {
                         "type": "string",
-                        "description": "Description of deployment group"
+                        "description": "Description of the deployment group."
                     },
                     "instanceName": {
                         "type": "string",
@@ -241,7 +241,7 @@
                     },
                     "packages": {
                         "type": "array",
-                        "description": "Packages in deployment group",
+                        "description": "Packages in the deployment group.",
                         "items": {
                             "anyOf":[
                                 {

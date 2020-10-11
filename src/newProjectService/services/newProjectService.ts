@@ -16,8 +16,13 @@ export class NewProjectService
     private static _appIdToPackageMap = {
         "63ca2fa4-4f03-4f2b-a480-172fef340d3f": "bc-system-application",
         "437dbf0e-84ff-417a-965d-ed2bb9650972": "bc-base-application",
+        "dd0be2ea-f733-4d65-bb34-a28f4624fb14": "bc-test-library-assert",
+        "9856ae4f-d1a7-46ef-89bb-6ef056398228": "bc-system-application-test-library",
+        "e7320ebb-08b3-4406-b1ec-b4927d3e280b": "bc-test-library-any",
+        "5095f467-0a01-4b99-99d1-9ff1237d286f": "bc-test-library-variable-storage",
+        "5d86850b-0d76-4eca-bd7b-951ad998e997": "bc-base-application-tests-test-libraries",
         "5ecfc871-5d82-43f1-9c54-59685e82318d": "ls-central-app",
-        "7ecfc871-5d82-43f1-9c54-59685e82318d": "ls-central-hotels"
+        "7ecfc871-5d82-43f1-9c54-59685e82318d": "ls-hotels-app"
     };
 
     private _workspaceFolder: WorkspaceFolder;
@@ -55,7 +60,6 @@ export class NewProjectService
 
         let newProjectFilePath = path.join(this._workspaceFolder.uri.fsPath, Constants.goCurrentWorkspaceDirName, Constants.projectFileName);
         this.copyFile(templatePath, newProjectFilePath);
-
 
         let projectFileData = await this.projectFile.getData();
         let appJsonData = await this.appJson.getData();
@@ -164,6 +168,7 @@ export class NewProjectService
     {
         let gocIds = AppIdHelpers.getAppIdsFromGoCurrentJson(projectFile);
         let appIds = AppIdHelpers.getAppIdsFromAppJson(appJson);
+        let existingIds = AppIdHelpers.getDependenciesFromGoCurrentJson(projectFile);
 
         let newApps = AppIdHelpers.getNewAppIds(gocIds, appIds);
 
@@ -171,19 +176,42 @@ export class NewProjectService
             projectFile.dependencies = [];
 
         let count = 0;
-        for (let newApp of newApps)
+
+        if (appJson.application)
         {
             count++;
             let newDep = new ProjectFilePackage();
-            if (this._appIdToPackageMap[newApp])
-                newDep.id = this._appIdToPackageMap[newApp];
-            else
-                newDep.id = "set-package-id-for-app-id"
+            newDep.id = 'bc-application';
             let version = new VersionFromAlApp();
-            version.alAppId = newApp;
-            version.alAppIdType = 'fromMinor';
+            version.alAppId = 'application';
+            version.alAppIdType = 'fromMinorToNextMajor';
             version.alAppParts = 3
             newDep.version = version;
+            projectFile.dependencies.push(newDep);
+        }
+
+        for (let newApp of newApps)
+        {
+            let newDep = new ProjectFilePackage();
+            let version = new VersionFromAlApp();
+            if (this._appIdToPackageMap[newApp])
+            {
+                newDep.id = this._appIdToPackageMap[newApp];
+                version.alAppParts = 3
+                if (existingIds.includes(newDep.id))
+                    continue;
+            }
+            else
+            {
+                newDep.id = "set-package-id-for-app-id"
+                version.alAppParts = 4
+            }
+            
+            version.alAppId = newApp;
+            version.alAppIdType = 'fromMinorToNextMajor';
+            
+            newDep.version = version;
+            count++;
             projectFile.dependencies.push(newDep);
         }
 

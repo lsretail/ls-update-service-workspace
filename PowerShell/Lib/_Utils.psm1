@@ -39,7 +39,7 @@ function Get-AlAppJsonPath
     return $AppJsonPath
 }
 
-function Get-VersionFromDependency
+function Get-VersionFromAppDependency
 {
     <#
         .SYNOPSIS
@@ -69,6 +69,11 @@ function Get-VersionFromDependency
     if ($AppId -ieq 'platform')
     {
         return $AppJson.platform
+    }
+
+    if ($AppId -ieq 'application')
+    {
+        return $AppJson.application
     }
 
     $Dependency = $null

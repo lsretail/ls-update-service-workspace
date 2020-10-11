@@ -11,7 +11,7 @@
             "id": "bc-system-symbols",
             "version": {
                 "alAppId": "platform",
-                "alAppIdType": "fromMinor",
+                "alAppIdType": "fromMinorToNextMajor",
                 "alAppParts": 3
             }
         }

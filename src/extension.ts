@@ -38,7 +38,7 @@ export async function activate(context: vscode.ExtensionContext)
     let workspaceService = new WorkspaceService();
     let outputChannel = vscode.window.createOutputChannel("Go Current Workspace");
 
-    let workspaceFilesServices = workspaceService.register(WorkspaceFilesService, workspaceFolder => {
+    let wsWorkspaceFilesServices = workspaceService.register(WorkspaceFilesService, workspaceFolder => {
         return new WorkspaceFilesService(workspaceFolder);
     });
 
@@ -48,7 +48,7 @@ export async function activate(context: vscode.ExtensionContext)
 
     let wsDeployServices = workspaceService.register(DeployService, workspaceFolder => {
         let postDeployService = wsPostDeployServices.getService(workspaceFolder);
-        let filesService = workspaceFilesServices.getService(workspaceFolder);
+        let filesService = wsWorkspaceFilesServices.getService(workspaceFolder);
         let deployService =  new DeployService(
             filesService.projectFile,
             filesService.workspaceData,
@@ -66,7 +66,7 @@ export async function activate(context: vscode.ExtensionContext)
 
     let wsAlServices = workspaceService.register(AlService, workspaceFolder => {
         let deployService = wsDeployServices.getService(workspaceFolder);
-        let filesService = workspaceFilesServices.getService(workspaceFolder);
+        let filesService = wsWorkspaceFilesServices.getService(workspaceFolder);
     
         return new AlService(
             deployService,
@@ -79,18 +79,20 @@ export async function activate(context: vscode.ExtensionContext)
     let packagePsService = new PackagePsService(powerShell, context.asAbsolutePath("PowerShell\\PackagePsService.psm1"));
 
     let wsPackageServices = workspaceService.register(PackageService, workspaceFolder => {
-        let filesService = workspaceFilesServices.getService(workspaceFolder)
+        let filesService = wsWorkspaceFilesServices.getService(workspaceFolder)
         return new PackageService(
             packagePsService,
             new AlExtensionService(),
-            filesService.projectFile
+            filesService.projectFile,
+            filesService.appJson
         );
     });
 
     let baseUiService = new BaseUiService(
         context, 
         goCurrentPsService,
-        wsDeployServices
+        wsDeployServices,
+        wsWorkspaceFilesServices
     );
     services.push(baseUiService);
 
@@ -103,7 +105,8 @@ export async function activate(context: vscode.ExtensionContext)
 
     let alUiService = new AlUiService(
         context,
-        wsAlServices
+        wsAlServices,
+        wsDeployServices
     );
     services.push(alUiService);
 
@@ -114,6 +117,7 @@ export async function activate(context: vscode.ExtensionContext)
         wsPackageServices,
         packagePsService,
         goCurrentPsService,
+        wsWorkspaceFilesServices,
         outputChannel
     )
     services.push(packageUiService);

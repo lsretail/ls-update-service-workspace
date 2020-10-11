@@ -7,6 +7,8 @@ export interface AppJson
     publisher: string;
     version: string;
     dependencies: AppJsonDependency[] 
+    platform: string;
+    application: string | undefined;
 }
 
 export interface AppJsonDependency

@@ -6,23 +6,26 @@ import { AlExtensionService } from "./alExtensionService";
 import { fsHelpers } from "../../fsHelpers";
 import { IWorkspaceService } from "../../workspaceService/interfaces/IWorkspaceService";
 import path = require("path");
+import { AppJson } from "../../newProjectService/interfaces/appJson";
 
 export class PackageService implements IWorkspaceService
 {
     private _packagesPsService: PackagePsService;
     private _projectFile: JsonData<ProjectFile>;
+    private _appJson: JsonData<AppJson>;
     private _alExtensionService: AlExtensionService;
-
 
     public constructor(
         packagePsService: PackagePsService,
         alExtensionService: AlExtensionService,
-        projectFile: JsonData<ProjectFile> 
+        projectFile: JsonData<ProjectFile>,
+        appJson: JsonData<AppJson> 
     )
     {
         this._projectFile = projectFile;
         this._packagesPsService = packagePsService;
         this._alExtensionService = alExtensionService;
+        this._appJson = appJson;
     }
 
     async isActive(): Promise<boolean> 
@@ -45,9 +48,9 @@ export class PackageService implements IWorkspaceService
         return this._packagesPsService.newPackage(this._projectFile.uri.fsPath, target, branchName, defaultOutputDir);
     }
 
-    newAlPackage(projectDir: string, target: string, branchName: string): Promise<string>
+    async newAlPackage(projectDir: string, target: string, branchName: string): Promise<string>
     {
-        return this._packagesPsService.newAlPackage(projectDir, this._projectFile.uri.fsPath, target, branchName);
+        return this._packagesPsService.newAlPackage(projectDir, await this.getAppFileName(true), this._projectFile.uri.fsPath, target, branchName);
     }
 
     async invokeAlCompileAndPackage(
@@ -91,7 +94,7 @@ export class PackageService implements IWorkspaceService
             outputChannel(output);
     
             outputChannel("Creating package ...");
-            let packagePath = await this._packagesPsService.newAlPackage(projectDir, this._projectFile.uri.fsPath, target, branchName);
+            let packagePath = await this.newAlPackage(projectDir, target, branchName);
             outputChannel(`Package created at "${packagePath}"`);
         }
         finally
@@ -165,5 +168,15 @@ export class PackageService implements IWorkspaceService
     private delay(ms: number): Promise<void>
     {
         return new Promise( resolve => setTimeout(resolve, ms) );
+    }
+
+    public async getAppFileName(includeDir: boolean): Promise<string>
+    {
+        let data = await this._appJson.getData();
+        let fileName = `${data.publisher}_${data.name}_${data.version}.app`
+
+        if (includeDir)
+            return path.join(path.dirname(this._appJson.uri.fsPath), fileName);
+        return fileName;
     }
 }

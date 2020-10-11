@@ -267,7 +267,7 @@ function New-AlPackage
         [hashtable] $Variables,
         [switch] $Force
     )
-    Import-Module LsPackageTools\AppPackageCreator
+    Import-Module LsPackageTools\AppPackageCreator -Verbose:$false
 
     $DefaultOutputDir = Split-Path $AlProjectFilePath -Parent
     
@@ -313,7 +313,8 @@ function Get-AlProjectDependencies
         [hashtable] $Variables,
         $PackageCacheDir,
         $AssemblyProbingDir,
-        [Array] $CompileModifiers
+        [Array] $CompileModifiers,
+        [string[]] $SkipPackageId = @()
     )
 
     $ProjectFilePath = Get-GocProjectFilePath -ProjectDir $ProjectDir
@@ -365,6 +366,8 @@ function Get-AlProjectDependencies
         $CompileModifiers | Format-Table -AutoSize | Out-String | Write-Verbose
     }
 
+    $ModifiedDependencies = $ModifiedDependencies | Where-Object { !$SkipPackageId.Contains($_.Id) }
+
     $ModifiedDependencies | Format-Table -AutoSize | Out-String | Write-Verbose
 
     Write-Verbose 'Downloading dependencies for app...'
@@ -391,7 +394,7 @@ function Invoke-AlProjectCompile
     {
         $CompilerPath = Get-AlCompiler
     }
-    
+
     $AddinDir = @((Join-Path $ProjectDir '.netpackages'), "C:\WINDOWS\Microsoft.NET\assembly")
     Write-Verbose 'Compiling app...'
 
@@ -402,7 +405,7 @@ function Invoke-AlProjectCompile
         AssemblyDir = $AddinDir
     }
 
-    return Invoke-AlCompiler @Arguments -Verbose
+    return Invoke-AlCompiler @Arguments
 }
 
 function Invoke-AlProjectBuild
@@ -467,32 +470,33 @@ function Invoke-AlProjectBuild
         [switch] $Force
     )
 
-    $Arguments = @{
-        CompileModifiers = $CompileModifiers
-        Variables = $Variables
-        Target = $Target
-        BranchName = $BranchName
-        ProjectDir = $ProjectDir
+    if (!$OutputDir)
+    {
+        $OutputDir = $ProjectDir
     }
 
-    Get-AlProjectDependencies @Arguments
+    $Arguments = @{
+        ProjectDir = $ProjectDir
+        Target = $Target
+        BranchName = $BranchName
+        Variables = $Variables
+    }
+
+    Get-AlProjectDependencies @Arguments -CompileModifiers $CompileModifiers
 
     $AppPath = Invoke-AlProjectCompile -ProjectDir $ProjectDir -CompilerPath $CompilerPath -OutputDir $OutputDir
+    $AppPath
 
     Write-Verbose 'Creating app package...'
 
-    $Arguments = @{
-        ProjectDir = $ProjectDir
+    $Arguments += @{
         AppPath = $AppPath
-        Target = $Target 
-        BranchName = $BranchName 
         OutputDir = $OutputDir
-        Variables = $Variables
         Force = $Force
     }
 
-    New-AlProjectPackage @Arguments
-
+    $Package = New-AlProjectPackage @Arguments
+    $Package
 }
 
 function New-AlProjectPackage

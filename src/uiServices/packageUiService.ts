@@ -13,6 +13,7 @@ import { PackagePsService } from "../packageService/services/packagePsService";
 import { PackageService } from "../packageService/services/packageService";
 import Resources from "../resources";
 import { WorkspaceContainer } from "../workspaceService/services/workspaceContainer";
+import { WorkspaceFilesService } from "../services/workspaceFilesService";
 
 export class PackageUiService extends UiService
 {
@@ -22,6 +23,7 @@ export class PackageUiService extends UiService
     private _outputChannel: OutputChannel;
     private _packagePsService: PackagePsService;
     private _goCurrentPsService: GoCurrentPsService;
+    private _wsWorkspaceFilesServices: WorkspaceContainer<WorkspaceFilesService>;
     
     constructor(
         context: ExtensionContext, 
@@ -30,6 +32,7 @@ export class PackageUiService extends UiService
         wsPackageService: WorkspaceContainer<PackageService>,
         packagePsService: PackagePsService,
         goCurrentPsService: GoCurrentPsService,
+        wsWorkspaceFilesServices: WorkspaceContainer<WorkspaceFilesService>,
         outputChannel: OutputChannel
     )
     {
@@ -40,6 +43,7 @@ export class PackageUiService extends UiService
         this._wsPackageService = wsPackageService;
         this._packagePsService = packagePsService;
         this._goCurrentPsService = goCurrentPsService;
+        this._wsWorkspaceFilesServices = wsWorkspaceFilesServices
     }
 
     async activate(): Promise<void>
@@ -47,6 +51,7 @@ export class PackageUiService extends UiService
         this.registerCommand("go-current.al.downloadDependencies", () => this.alDownloadDependencies());
         this.registerCommand("go-current.al.compileAndPackage", () => this.alCompileAndPackage());
         this.registerCommand("go-current.al.newPackage", () => this.alNewPackage());
+        this.registerCommand("go-current.newPackage", () => this.newPackage());
     }
 
     private async alDownloadDependencies() 
@@ -137,7 +142,7 @@ export class PackageUiService extends UiService
         var outputChannel = this._outputChannel;
         try
         {
-            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getActiveWorkspaces());
+            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsWorkspaceFilesServices.getActiveWorkspaces());
             if (!workspaceFolder)
                 return;
 
@@ -148,6 +153,9 @@ export class PackageUiService extends UiService
 
             let targets = await packageService.getTargets();
             let target = await UiHelpers.showTargetPicks(targets);
+
+            if (!target)
+                return;
         
             outputChannel.clear();
             outputChannel.show();
@@ -158,7 +166,7 @@ export class PackageUiService extends UiService
                 title: "Creating package ..."
             }, async (progress, token) => {
                 return await packageService.newAlPackage(
-                    workspaceFolder.uri.fsPath, 
+                    workspaceFolder.uri.fsPath,
                     target, 
                     GitHelpers.getBranchName(workspaceFolder.uri.fsPath), 
                 );
@@ -182,7 +190,7 @@ export class PackageUiService extends UiService
         outputChannel.appendLine('Creating package ...');
         try
         {
-            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsDeployServices.getActiveWorkspaces());
+            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsWorkspaceFilesServices.getActiveWorkspaces());
 
             if (!workspaceFolder)
                 return;

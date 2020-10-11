@@ -68,6 +68,11 @@
                 "category": "Go Current"
             },
             {
+                "command": "go-current.viewResolvedProjectFile",
+                "title": "Go Current: View Resolved Project File",
+                "category": "Go Current"
+            },
+            {
                 "command": "go-current.al.repopulateLaunchJson",
                 "title": "Re-populate launch.json",
                 "category": "Go Current AL"
@@ -104,7 +109,7 @@
             },
             {
                 "command": "go-current.al.addNewDependencies",
-                "title": "Go Current AL: Import dependencies from app.json",
+                "title": "Go Current: Import dependencies from app.json",
                 "category": "Go Current AL"
             }
         ],
@@ -112,7 +117,7 @@
             "commandPalette": [
                 {
                     "command": "go-current.newProject",
-                    "when": "!go-current.deploy.active && workspaceFolderCount || go-current.deploy.hasInactiveWorkspaces"
+                    "when": "!go-current.projectFile.active && workspaceFolderCount || go-current.projectFile.hasInactiveWorkspaces"
                 },
                 {
                     "command": "go-current.deploy",
@@ -173,6 +178,10 @@
                 {
                     "command": "go-current.al.addNewDependencies",
                     "when": "false"
+                },
+                {
+                    "command": "go-current.viewResolvedProjectFile",
+                    "when": "false"
                 }
             ],
             "explorer/context": [
@@ -180,11 +189,21 @@
                     "command": "go-current.al.addNewDependencies",
                     "when": "go-current.al.active && resourceFilename == gocurrent.json",
                     "group": "Go Current"
+                },
+                {
+                    "command": "go-current.viewResolvedProjectFile",
+                    "when": "go-current.al.active && resourceFilename == gocurrent.json",
+                    "group": "Go Current"
                 }
             ],
             "editor/context": [
                 {
                     "command": "go-current.al.addNewDependencies",
+                    "when": "go-current.al.active && resourceFilename == gocurrent.json",
+                    "group": "Go Current"
+                },
+                {
+                    "command": "go-current.viewResolvedProjectFile",
                     "when": "go-current.al.active && resourceFilename == gocurrent.json",
                     "group": "Go Current"
                 }

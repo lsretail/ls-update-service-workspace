@@ -397,9 +397,28 @@ export class DeployService implements IWorkspaceService
         return this._deployPsService.getDeployedPackages(this._workspaceData.uri.fsPath, deploymentGuid);
     }
 
-    public getTargets(id: string, ): Promise<string[]>
+    public getTargets(id?: string, useDevTarget?: boolean): Promise<string[]>
     {
-        return this._deployPsService.getTargets(this._projectFile.uri.fsPath, id, true);
+        if (useDevTarget === undefined)
+            useDevTarget = true
+        return this._deployPsService.getTargets(this._projectFile.uri.fsPath, id, useDevTarget);
+    }
+
+    public getResolvedProjectFile(target: string): Promise<object>
+    {
+        return this._deployPsService.getResolvedProjectFile(this._projectFile.uri.fsPath, target, GitHelpers.getBranchName(this._workspacePath));
+    }
+
+    public async getResolvedPackageGroups(target: string): Promise<object[]>
+    {
+        let projectFile = await this._projectFile.getData();
+        let groups = [];
+        for (let entry of projectFile.devPackageGroups)
+        {
+            let group = await this._deployPsService.getPackageGroup(this._projectFile.uri.fsPath,  entry.id, target, GitHelpers.getBranchName(this._workspacePath));
+            groups.push(group);
+        }
+        return groups;
     }
 
     public async dispose(): Promise<void>

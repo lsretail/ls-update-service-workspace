@@ -3,6 +3,7 @@ import { format } from "util";
 import { OutputChannel, ProgressLocation, ExtensionContext, QuickPickOptions, window, WorkspaceFoldersChangeEvent, workspace, commands, Disposable } from "vscode";
 import { AlService } from "../alService/services/alService";
 import { Constants } from "../constants";
+import { DeployService } from "../deployService/services/deployService";
 import { UiService } from "../extensionController";
 import { fsHelpers } from "../fsHelpers";
 import { UiHelpers } from "../helpers/uiHelpers";
@@ -20,15 +21,18 @@ import { WorkspaceContainer, WorkspaceContainerEvent } from "../workspaceService
 export class AlUiService extends UiService
 {
     private _wsAlServices: WorkspaceContainer<AlService>;
+    private _wsDeployService: WorkspaceContainer<DeployService>;
     private _disposable: Disposable;
     
     constructor(
         context: ExtensionContext, 
-        wsAlServices: WorkspaceContainer<AlService>
+        wsAlServices: WorkspaceContainer<AlService>,
+        wsDeployService: WorkspaceContainer<DeployService>
     )
     {
         super(context);
         this._wsAlServices = wsAlServices;
+        this._wsDeployService = wsDeployService;
     }
 
     async activate(): Promise<void>
@@ -46,18 +50,21 @@ export class AlUiService extends UiService
     {
         for (let workspaceFolder of e.workspaceChanges.added)
         {
-            let service = e.workspaceContainer.getService(workspaceFolder);
-            let disposable = service.appJson.onDidChange(e => {
+            let alService = e.workspaceContainer.getService(workspaceFolder);
+            let deployService = this._wsDeployService.getService(workspaceFolder);
+            let subscriptions: Disposable[] = [];
+            
+            alService.appJson.onDidChange(e => {
                 this.checkAndUpdateIfActive();
-            }, this);
-            e.pushSubscription(workspaceFolder, disposable);
+            }, this, subscriptions);
+
+            deployService.onDidProjectFileChange(e => {
+                this.checkAndUpdateIfActive();
+            },this, subscriptions);
+
+            e.pushSubscription(workspaceFolder, Disposable.from(...subscriptions));
         }
 
-        this.checkAndUpdateIfActive();
-    }
-
-    private onAppJsonChanged(e: JsonData<AppJson>)
-    {
         this.checkAndUpdateIfActive();
     }
 

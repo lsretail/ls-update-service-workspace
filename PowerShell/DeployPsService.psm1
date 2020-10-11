@@ -30,9 +30,9 @@ function Install-PackageGroup
         return @()
     }
 
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -BranchName $BranchName -Target $Target
+    $PackageGroup = Get-PackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -BranchName $BranchName -Target $Target
 
-    $Packages = $PackageGroup.Packages
+    $Packages = $PackageGroup.Packages | Where-Object { !$_.onlyRestrictVersion}
 
     return Install-Packages -InstanceName $InstanceName -Packages $Packages -Arguments $PackageGroup.Arguments -Servers $Servers
 }
@@ -52,7 +52,7 @@ function Get-AvailableUpdates()
 
     if ($PackageGroupId)
     {
-        $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -Target $Target -BranchName $BranchName -NoThrow
+        $PackageGroup = Get-PackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -Target $Target -BranchName $BranchName -NoThrow
     }
 
     if (!$PackageGroup)
@@ -82,7 +82,7 @@ function Test-IsInstance
         $Target,
         $BranchName
     )
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -Target $Target -BranchName $BranchName -NoThrow
+    $PackageGroup = Get-PackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -Target $Target -BranchName $BranchName -NoThrow
     if (!$PackageGroup)
     {
         return (ConvertTo-Json $false -Compress)
@@ -91,7 +91,7 @@ function Test-IsInstance
     return (ConvertTo-Json $Result -Compress -Depth 100)
 }
 
-function GetPackageGroup
+function Get-PackageGroup
 {
     param(
         [Parameter(Mandatory = $true)]
@@ -118,7 +118,7 @@ function Test-CanInstall
         $Target,
         $BranchName
     )
-    $PackageGroup = GetPackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -Target $Target -BranchName $BranchName
+    $PackageGroup = Get-PackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -Target $Target -BranchName $BranchName
     foreach ($Package in $PackageGroup.packages)
     {
         $First = Get-GocInstalledPackage -Id $Package.id | Select-Object -First 1
@@ -255,4 +255,28 @@ function Get-Targets
         $UseDevTarget = $false
     )
     return ConvertTo-Json -Depth 100 -Compress -InputObject @(Get-ProjectFileTargets -Path $ProjectFilePath -Id $Id -UseDevTarget:$UseDevTarget)
+}
+
+function Get-ResolvedProjectFile
+{
+    param(
+        $ProjectFilePath,
+        $Target,
+        $BranchName
+    )
+    $ProjectFile = Get-ProjectFile -Path $ProjectFilePath -Target $Target -BranchName $BranchName
+    return ConvertTo-Json $ProjectFile -Compress -Depth 100
+}
+
+function Get-ResolvedPackageGroup
+{
+    param(
+        [Parameter(Mandatory = $true)]
+        $ProjectFilePath,
+        [Parameter(Mandatory = $true)]
+        $PackageGroupId,
+        $Target,
+        $BranchName
+    )
+    return ConvertTo-Json (Get-PackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -Target $Target -BranchName $BranchName) -Compress -Depth 100
 }

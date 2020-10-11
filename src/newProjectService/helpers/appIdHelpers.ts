@@ -15,6 +15,14 @@ export class AppIdHelpers
         return list;
     }
 
+    static getDependenciesFromGoCurrentJson(projectFile: ProjectFile): string[]
+    {
+        if (!projectFile.dependencies)
+            return;
+        
+        return projectFile.dependencies.map(d => d.id);
+    }
+
     private static getAlAppIdProperties(items: any[], list: string[])
     {
         if (!items || items.length === 0)

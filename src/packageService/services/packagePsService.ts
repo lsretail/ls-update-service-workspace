@@ -56,10 +56,11 @@ export class PackagePsService
         }
     }
 
-    public async newAlPackage(projectDir: string, projectFilePath: string, target: string, branchName: string): Promise<string>
+    public async newAlPackage(projectDir: string, appPath: string, projectFilePath: string, target: string, branchName: string): Promise<string>
     {
         let param = {
             projectDir: `'${projectDir}'`,
+            appPath: `'${appPath}'`,
             projectFilePath: `'${projectFilePath}'`,
             target: `'${target}'`,
             branchName: `'${branchName}'`

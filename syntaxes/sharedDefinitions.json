@@ -7,7 +7,7 @@
             "properties": {
                 "id": {
                     "type": "string",
-                    "description": "Specifies package id",
+                    "description": "Specify package ID.",
                     "pattern": "^[a-z0-9\/-]+$"
                 },
                 "version": {
@@ -31,14 +31,18 @@
                 },
                 "optional": {
                     "type": "boolean",
-                    "description": "Specifies whether optional or not"
+                    "description": "Specify if dependency is optional."
+                },
+                "onlyRestrictVersion": {
+                    "type": "boolean",
+                    "description": "Specify restricted version for a package."
                 }
             }
         },
         "version": {
             "default": "",
             "type": "string",
-            "description": "Specifies package version",
+            "description": "Specify package version.",
             "pattern": "^[a-zA-Z0-9+.<>=${}!-_^ ]*$"
         },
         "versionTarget": {
@@ -72,7 +76,7 @@
                 {
                     "default": "",
                     "type": "string",
-                    "description": "Specifies package version"
+                    "description": "Specify package version."
                 },
                 {
                     "$ref": "#definitions/versionQueryResolver"
@@ -154,7 +158,7 @@
                 "alAppIdParts": {
                     "type": "integer",
                     "default": 4,
-                    "description": "Number of parts to use from version number (default: 4)"
+                    "description": "Number of parts to use from version number (default: 4)."
                 }
             }
         },

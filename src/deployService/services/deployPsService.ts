@@ -184,9 +184,30 @@ export class DeployPsService
         if (id)
             param['id'] = `'${id}'`;
 
-        if (useDevTarget)
+        if (useDevTarget !== undefined)
             param['useDevTarget'] = useDevTarget;
 
         return this._powerShell.executeCommandSafe("Get-Targets", true, param);
+    }
+
+    public getResolvedProjectFile(projectFilePath: string, target: string, branchName: string): Promise<object>
+    {
+        let param = {
+            projectFilePath: `'${projectFilePath}'`,
+            target: `'${target}'`,
+            branchName: `'${branchName}'`
+        }
+        return this._powerShell.executeCommandSafe("Get-ResolvedProjectFile", true, param);
+    }
+
+    public getPackageGroup(projectFilePath: string, id: string, target: string, branchName: string): Promise<object>
+    {
+        let param = {
+            projectFilePath: `'${projectFilePath}'`,
+            packageGroupId:  `'${id}'`,
+            target: `'${target}'`,
+            branchName: `'${branchName}'`
+        }
+        return this._powerShell.executeCommandSafe("Get-ResolvedPackageGroup", true, param);
     }
 }
