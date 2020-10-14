@@ -116,7 +116,7 @@ function ConvertTo-BranchPriorityPreReleaseFilter
         $Label = $Label.Trim()
         if (!$Labels.Contains("*-$Label"))
         {
-            $Labels += "*-$Label"
+            $Labels += "*-$Label."
         }
     }
     

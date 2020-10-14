@@ -524,7 +524,7 @@ function Resolve-VariablesInString
         }
         elseif ($ProjectVariables.ContainsKey($VariableName))
         {
-            $Replacement = Resolve-VersionWithFunction -VersionValue $ProjectVariables[$VariableName] -Target $Target -ProjectDir $ProjectDir -VariableName $VariableName -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
+            $Replacement = Resolve-VersionWithFunction -VersionValue $ProjectVariables[$VariableName] -Target $Target -ProjectDir $ProjectDir -VariableName $VariableName -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap -ResolveCache $ResolveCache -ProjectVariables $ProjectVariables
             $ResolveCache[$VariableName] = $Replacement
         }
         
@@ -582,7 +582,7 @@ function Resolve-Version
     }
     else
     {
-        return Resolve-VersionWithFunction -VersionValue $Version -Target $Target -ProjectDir $ProjectDir -PackageId $PackageId -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
+        return Resolve-VersionWithFunction -VersionValue $Version -Target $Target -ProjectDir $ProjectDir -PackageId $PackageId -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap -ResolveCache $ResolveCache -ProjectVariables $ProjectVariables
     }
 }
 
@@ -620,7 +620,9 @@ function Resolve-VersionWithFunction
         $ProjectDir,
         $Target,
         $BranchName,
-        $BranchToLabelMap
+        $BranchToLabelMap,
+        [hashtable] $ProjectVariables,
+        [hashtable] $ResolveCache
     )
 
     if ($VersionValue.GetType() -eq [string])
@@ -646,7 +648,7 @@ function Resolve-VersionWithFunction
     {
         $Arguments = @{
             Id = $VersionValue.Id 
-            Version = $VersionValue.Version
+            Version = (Resolve-VariablesInString -Value  $VersionValue.Version -ProjectVariables $ProjectVariables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap)
             ResolverPath = $VersionValue.ResolverPath
             ResolverFunction = $VersionValue.ResolverFunction 
             ProjectDir = $ProjectDir

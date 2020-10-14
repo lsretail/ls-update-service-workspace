@@ -117,7 +117,6 @@ export class PostDeployController implements IWorkspaceService
         try
         {
             await launchConfig.update('configurations', configurations, null);
-            //launchConfig.update()
             for (let instance of instancesUpdated)
                 window.showInformationMessage(util.format(Resources.launchJsonUpdatedWith, instance));
         }
@@ -146,13 +145,13 @@ export class PostDeployController implements IWorkspaceService
         }
     }
 
-    public static async removeAlLaunchConfig(instanceName): Promise<void>
+    public static async removeAlLaunchConfig(instanceName: string): Promise<void>
     {
         let configName = instanceName + " (Go Current)";
         const launchConfig = workspace.getConfiguration('launch');
         let configurations: any[] = launchConfig['configurations'];
         configurations = configurations.filter(s => !(s.type === 'al' && s.name === configName));
-        await launchConfig.update('configurations', configurations, false).then(()=>{}, error => {
+        await launchConfig.update('configurations', configurations, null).then(()=>{}, error => {
             window.showErrorMessage(`Error occurred while updating launch.json: ${error}`);
         });
     }
@@ -171,7 +170,7 @@ export class PostDeployController implements IWorkspaceService
         
         try
         {
-            await launchConfig.update('configurations', configurations, false)
+            await launchConfig.update('configurations', configurations, null)
             return updated;
         }
         catch (error)

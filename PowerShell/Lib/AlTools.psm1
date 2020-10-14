@@ -563,7 +563,12 @@ function Get-AlModifiedDependencies
             $Used += $Modifier
             $Query1 = [LSRetail.GoCurrent.Common.SemanticVersioning.VersionQuery]::Parse($Dependency.version)
             $Query2 = [LSRetail.GoCurrent.Common.SemanticVersioning.VersionQuery]::Parse($Modifier.version)
-            $Dependency.version = [LSRetail.GoCurrent.Common.SemanticVersioning.VersionQuery]::Intersection(@($Query1, $Query2)).ToString()
+            $NewQuery = [LSRetail.GoCurrent.Common.SemanticVersioning.VersionQuery]::Intersection(@($Query1, $Query2))
+            if (!$NewQuery)
+            {
+                throw "Got two queries for package `"$($Dependency.Id)`", that do not intersect."
+            }
+            $Dependency.version = $NewQuery.ToString()
         }
         $Dependency
     }
