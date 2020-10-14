@@ -68,7 +68,7 @@ export class AlService implements IWorkspaceService
         let updated = await PostDeployController.addAlLaunchConfig(toPopulate, this._workspaceFolder)
 
         let instances = (await this._deployService.getDeployedInstances());
-        updated = updated || await PostDeployController.removeNonExisting(instances);
+        updated = updated || await PostDeployController.removeNonExisting(instances, this._workspaceFolder);
 
         return updated
     }

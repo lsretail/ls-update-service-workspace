@@ -1,5 +1,6 @@
 
 import {workspace, WorkspaceFolder, window, commands} from 'vscode'
+import * as vscode from 'vscode'
 import { PackageInfo } from './interfaces/packageInfo';
 import { Constants } from './constants';
 import Resources from './resources';
@@ -44,7 +45,7 @@ export class PostDeployController implements IWorkspaceService
     public async onInstanceRemoved(instanceName: string): Promise<void>
     {
         if (instanceName)
-            await PostDeployController.removeAlLaunchConfig(instanceName);
+            await PostDeployController.removeAlLaunchConfig(instanceName, this._workspaceFolder);
     }
 
     public static async addAlLaunchConfig(packageInfos: PackageInfo[], workspaceFolder: WorkspaceFolder): Promise<boolean>
@@ -116,7 +117,7 @@ export class PostDeployController implements IWorkspaceService
 
         try
         {
-            await launchConfig.update('configurations', configurations, null);
+            await launchConfig.update('configurations', configurations, vscode.ConfigurationTarget.WorkspaceFolder);
             for (let instance of instancesUpdated)
                 window.showInformationMessage(util.format(Resources.launchJsonUpdatedWith, instance));
         }
@@ -145,20 +146,20 @@ export class PostDeployController implements IWorkspaceService
         }
     }
 
-    public static async removeAlLaunchConfig(instanceName: string): Promise<void>
+    public static async removeAlLaunchConfig(instanceName: string, workspaceFolder: WorkspaceFolder): Promise<void>
     {
         let configName = instanceName + " (Go Current)";
-        const launchConfig = workspace.getConfiguration('launch');
+        const launchConfig = workspace.getConfiguration('launch', workspaceFolder);
         let configurations: any[] = launchConfig['configurations'];
         configurations = configurations.filter(s => !(s.type === 'al' && s.name === configName));
-        await launchConfig.update('configurations', configurations, null).then(()=>{}, error => {
+        await launchConfig.update('configurations', configurations, vscode.ConfigurationTarget.WorkspaceFolder).then(()=>{}, error => {
             window.showErrorMessage(`Error occurred while updating launch.json: ${error}`);
         });
     }
 
-    public static async removeNonExisting(instanceNames: string[]): Promise<boolean>
+    public static async removeNonExisting(instanceNames: string[], workspaceFolder: WorkspaceFolder): Promise<boolean>
     {
-        const launchConfig = workspace.getConfiguration('launch');
+        const launchConfig = workspace.getConfiguration('launch', workspaceFolder);
         let configurations: any[] = launchConfig['configurations'];
         
         let configNames = instanceNames.map(i => `${i} (Go Current)`);
@@ -170,7 +171,7 @@ export class PostDeployController implements IWorkspaceService
         
         try
         {
-            await launchConfig.update('configurations', configurations, null)
+            await launchConfig.update('configurations', configurations, vscode.ConfigurationTarget.WorkspaceFolder)
             return updated;
         }
         catch (error)
