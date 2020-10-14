@@ -188,7 +188,7 @@ export class BaseUiService extends UiService
             }
             else if (choice === Resources.addLicensePackage)
             {
-                let licensePackageId = await window.showInputBox({prompt: Resources.specifyLicensePackage});
+                let licensePackageId = await window.showInputBox({prompt: Resources.specifyLicensePackage, ignoreFocusOut: true});
                 if (licensePackageId)
                 {
                     await newProjectService.addLicensePackage(licensePackageId);

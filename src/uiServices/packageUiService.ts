@@ -87,16 +87,13 @@ export class PackageUiService extends UiService
             });
             this._outputChannel.appendLine(output.output);
             this._outputChannel.appendLine("Dependencies downloaded.");
-            if (output.dllsLocked)
+            window.showInformationMessage(Resources.dependenciesDownloadedReload, Constants.buttonReloadWindow).then(result => 
             {
-                window.showInformationMessage(Resources.dependenciesDownloadedReload, Constants.buttonReloadWindow).then(result => 
+                if (result === Constants.buttonReloadWindow)
                 {
-                    if (result === Constants.buttonReloadWindow)
-                    {
-                        commands.executeCommand("workbench.action.reloadWindow");
-                    }
-                });
-            }
+                    commands.executeCommand("workbench.action.reloadWindow");
+                }
+            });
         }
         catch (e)
         {
