@@ -134,7 +134,7 @@ export class PackageService implements IWorkspaceService
             while (count < 10)
             {
                 await this.delay(500);
-                let newLock = await this._packagesPsService.testNetPackagesLocked(assemblyProbingDir);
+                let newLock = await this._packagesPsService.testNetPackagesLocked(projectDir, assemblyProbingDir);
                 if (!newLock)
                     break;
                 count ++
