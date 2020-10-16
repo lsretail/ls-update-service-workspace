@@ -28,6 +28,15 @@ export class PackageGroup
 
 export class Package
 {
+    constructor(id?: string, version?: string)
+    {
+        if (id)
+            this.id = id;
+        
+        if (version !== undefined)
+            this.version = version;
+    }
+
     id: string;
     version: string;
     optional?: boolean;

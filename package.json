@@ -2,15 +2,21 @@
     "name": "go-current-workspace",
     "displayName": "Go Current Workspace",
     "description": "Go Current Workspace brings you the power of Go Current to your Visual Studio Code workspace.",
-    "version": "0.5.2-developer",
+    "version": "0.5.3-developer",
     "publisher": "lsretail",
     "repository": {
         "type": "git",
-        "url": "https://bitbucket.lsretail.com/projects/GOC/repos/workspace"
+        "url": "https://github.com/lsretail/go-current-workspace.git"
     },
-    "author": {
-        "name": "Team Thunderbolt"
+    "bugs": {
+        "url": "https://github.com/lsretail/go-current-workspace/issues"
     },
+    "license": "https://github.com/lsretail/go-current-examples/blob/master/LICENSE.txt",
+    "keywords": [
+        "Dynamics 365 Business Central",
+        "AL",
+        "Go Current"
+    ],
     "icon": "images/icon.png",
     "engines": {
         "vscode": "^1.48.0"

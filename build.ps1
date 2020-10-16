@@ -45,9 +45,10 @@ if ($GitCommit -and $BuildNumber)
     Copy-Item $PackagePath $PackageBackupPath
     $GitCommit = $GitCommit.Substring(0, 8)
 
+    Set-Content -Path (Join-Path $PSScriptRoot 'commit') -Value $GitCommit
     if ($Branch -eq $ReleaseBranch)
     {
-        $Version = "$Version+$GitCommit"
+        $Version = "$Version"
     }
     else
     {

@@ -1,53 +1,78 @@
-# Go Current Workspace README
+# Go Current Workspace 
 
 *Go Current Workspace* brings you the power of Go Current to your workspace in Visual Studio Code.
 
-## Features
+With this extension, you can ...
 
-### Install Go Current Packages from VS Code
-
-1. Open the *command palette (ctrl+p)->Go Current: Install packages*.
-2. From the drop-down, select the packages you want to install.
-    * Note: Your project must be configured beforehand with the packages available, see *How to add packages to your project* below.
-3. A Go Current dialog will appear, you might be presented with some arguments and additional components.
-4. Click *Install* when ready.
-
-![Install Packages](./images/install-packages.gif)
-
-### Check for Updates
-
-1. Open the *command palette (ctrl+p)->Go Current: Check for Updates*.
-* If updates available, a notification will appear in the right lower corner.
-2. Click *Update* on any of the notification to start the update process.
-
-### Uninstall Packages
-
-1. Open the *command palette (ctrl+p)->Go Current: Uninstall Packages*.
-2. From the drop down, select the packages you want to uninstall.
-
-### Add (Go Current) Instance to Your Workspace
-
-If you installed an instance (LS Central / Business Central), outside of VS Code and want to mange it from your workspace, you can add it with the command *Add Instance to Your Workspace*:
-
-1. Open the *command palette (ctrl+p)->Go Current: Add Instance to Your Workspace*.
-2. Select an instance from the drop-down list.
-* If the selected instance is an LS Central / Business Central instance, it will be added to your *launch.json*.
+* Easily install Go Current packages from VS Code to support your development...
+    * Such as a new LS Central environment for AL Extension development.
+* Get update notifications.
+* Update your installed packages to the latest version.
+* Remove installed packages.
+* Add Go Current Workspace to your project with *Go Current: Go!*.
+* Create Go Current packages from within VS Code.
+* Create Go Current packages for your Business Central app.
+* Autogeneration of *launch.json* file.
+* Handful of AL Extension development helpers.
 
 ## Requirements
 
-* Go Current client needs to be installed on the computer - which is installed with the extension.
+* Go Current client needs to be installed on the computer, get it on our partner (partner portal](https://portal.lsretail.com/Products/LS-Central-LS-Nav/Downloads/Go-Current).
 
-## Extension Settings
+## Documentation
 
-No settings at the moment.
+Read more about how to use the extension and features in our documentation here: https://help.gocurrent.lsretail.com/docs/workspace/overview.html
 
-## Known Issues
+## Support
+If you encounter bugs with the extension, ensure you have the latest version of Go Current Workspace and Visual Studio Code before reporting them through GitHub https://github.com/lsretail/go-current-workspace/issues.
 
-* Nothing happens when Go Current Workspace commands are issued in VS Code.
-
-    * Workaround: Restart VS Code.
+## License
+The extension is made available under the MIT license.
 
 ## Release Notes
+
+### 0.5.0
+This release focuses on improved AL development support with Business Central specific commands for better development flow.
+
+A more readable and easier project file configuration (gocurrent.json).
+
+Now you can easily start using Go Current Workspace with your own project to extend LS Central with the new *Go!* command.
+
+And last and not least, the ability to create a Go Current package from within VS Code!
+
+New AL specific commands:
+* *Download Dependencies (.alpackages + .netpackages)*
+    * Downloads dependency apps into .alpackages folder and dot net add-ins into .netpackages defined in gocurrent.json from a Go Current server.
+* *Start App Data Upgrade*
+    * Performs data upgrade (Start-NavAppDataUpgrade) on all pending apps for a selected installation, which comes in handy when projects app version is incremented.
+* *Unpublish App*
+    * Unpublishes the app defined in *app.json* from selected installation. Which comes in handy when the app exists in the database under a different scope.
+* *Compile and Create Package*
+    * Downloads the necessary dependencies, compiles the app against them, and creates a Go Current package.
+* *Create Package*
+    * Creates an app package from an existing app in the root of the AL project.
+
+New *gocurrent.json* features:
+
+* Variables can now be used in basic text fields and version fields.
+* New built-in variables:
+    * ${currentBranch} and ${projectDir}
+    * AL specific: ${alAppVersion}, ${alAppName}, ${alAppPublisher}, ${alAppId}, ${alAppDescription}, ${alAppProjectDir}
+* Variable functions:
+    * Variables can be manipulated with built-in functions.
+    * ${variableName:parts(3)}, ${variableName:preReleaseLabel}, ${variableName:branchLabel}, ${variableName:maxLength(10)},
+* New variable declarations:
+    * Branch priority filter
+    * Get version from AL app project file (app.json)
+* New properties with autocomplete for package creation:
+    * name, displayName, description, version, files, command, instance, ...
+    * Property *versionVariables* becomes *variables*
+* Version Targets
+    * You can now create Go Current packages for different release targets, such as Release, ReleaseCandidate, Dev or your custom target.
+        * For example, your release candidate package will get a pre-release package version 1.0.0-rc.1, your dev package 1.0.0-branch-name.10 and of course, you release 1.0.0
+    * In the same way, you can have different dependencies based on the selected target.
+
+... including bug fixes and various UX improvements.
 
 ### 0.4.0
 
@@ -73,41 +98,3 @@ No settings at the moment.
 
 * Initial release.
 * Able to install, update and remove package groups, defined on project level.
-
-## How to Add Packages to Your Project
-
-Create a file *.gocurrent/gocurrent.json* relative to your project directory with the following structure:
-
-```
-{
-    "devPackageGroups": [
-        {
-            "name": "Package group",
-            "description": "Deploy this package group to enhance your development.",
-            "packages": [
-                { 
-                    "id": "server",
-                    "version": "1.0"
-                },
-                {
-                    "id": "windows-client",
-                    "version": "1.0"
-                }
-            ]
-        },
-        {
-            "name": "Another group"
-            "description": "Packages needed on the build server"
-            "packages": [
-                {
-                    "id": "compiler"
-                    "version": "1.0"
-                }
-            ]
-        }
-    ]
-}
-```
-
-This example adds two options to you workspace, *Package group* and *Another group*.
-Must make sure the package listed under each group are available on your Go Current server.

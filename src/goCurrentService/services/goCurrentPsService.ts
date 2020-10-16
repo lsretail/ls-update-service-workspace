@@ -4,6 +4,7 @@ import {PackageInfo} from '../../interfaces/packageInfo';
 import { Server, Package } from '../../models/projectFile';
 import { GoCurrentVersion } from '../../interfaces/goCurrentVersion';
 import { Event, EventEmitter } from 'vscode';
+import { PackageWithName } from '../interfaces/PackageWithName';
 
 export class GoCurrentPsService
 {
@@ -25,6 +26,11 @@ export class GoCurrentPsService
     public get onDidInitilize(): Event<GoCurrentPsService>
     {
         return this._onDidInitialize.event;
+    }
+
+    public get powerShell()
+    {
+        return this._powerShell;
     }
 
     private getNewPowerShell() : PowerShell
@@ -108,7 +114,52 @@ export class GoCurrentPsService
         }
     }
 
-    public testPackageAvailable(packageId: string, servers: Server[])
+    public getUpdates(
+        packages: Package[],
+        instanceName?: string,
+        servers?: Server[]
+    ): Promise<PackageInfo[]>
+    {
+        let param = {
+            packages: `'${JSON.stringify(packages)}'`
+        }
+
+        if (instanceName)
+            param['InstanceName'] = `'${instanceName}'`;
+
+        if (servers)
+            param['Servers'] = `'${JSON.stringify(servers)}'`;
+
+        return this._powerShell.executeCommandSafe("Get-Updates", true, param);
+    }
+
+    public getPackage(
+        packageId: string,
+        versionQuery: string,
+        servers?: Server[]
+    ): Promise<PackageWithName>
+    {
+        let param = {
+            packageId: `'${packageId}'`,
+            versionQuery: `'${versionQuery}'`
+        }
+
+        if (servers)
+            param['Servers'] = `'${JSON.stringify(servers)}'`;
+
+        return this._powerShell.executeCommandSafe("Get-Package", true, param);
+    }
+
+    public testNewerVersion(newVersion: string, oldVersion: string): Promise<boolean>
+    {
+        let param = {
+            newVersion: newVersion,
+            oldVersion: oldVersion
+        }
+        return this._powerShell.executeCommandSafe("Test-NewerVersion", true, param);
+    }
+
+    public testPackageAvailable(packageId: string, servers?: Server[])
     {
         let param = {
             PackageId: `'${packageId}'`
@@ -120,22 +171,27 @@ export class GoCurrentPsService
         return this._powerShell.executeCommandSafe("Test-PackageAvailable", true, param);
     }
 
-    public installBasePackages() : Promise<PackageInfo[]>
-    {
-        return this._powerShell.executeCommandSafe("Install-BasePackages", true, {});
-    }
-
-    public getAvailableBaseUpdates() : Promise<PackageInfo[]>
-    {
-        return this._powerShell.executeCommandSafe("Get-AvailableBaseUpdates", true, {});
-    }
-
     public testInstanceExists(instanceName: string): Promise<boolean>
     {
         return this._powerShell.executeCommandSafe("Test-InstanceExists", true, {"InstanceName": instanceName});
     }
 
-    public isInstalled(packages: string[], instanceName: string): Promise<boolean>
+    public isInstalled(packages: string[], instanceName?: string): Promise<boolean>
+    {
+        let args = {
+            any: true
+        };
+
+        if (packages && packages.length > 0)
+            args["Packages"] = packages;
+
+        if (instanceName)
+            args["InstanceName"] = instanceName;
+
+        return this._powerShell.executeCommandSafe("Test-IsInstalled", true, args)
+    }
+
+    public filterInstalled(packages: string[], instanceName?: string): Promise<string[]>
     {
         let args = {};
 

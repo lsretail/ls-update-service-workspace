@@ -77,6 +77,16 @@ function New-Package
     return ConvertTo-Json $Package.Path
 }
 
+function Test-NewerVersion
+{
+    param(
+        $NewVersion,
+        $OldVersion
+    )
+
+    return ConvertTo-Json ((ConvertTo-GocSemanticVersion -Version $NewVersion) -gt (ConvertTo-GocSemanticVersion -Version $OldVersion)) -Compress
+}
+
 function New-AlPackage
 {
     param(

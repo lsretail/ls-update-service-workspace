@@ -1,4 +1,4 @@
-import { commands, window, ExtensionContext, workspace } from 'vscode';
+import { commands, window, ExtensionContext, workspace, Uri } from 'vscode';
 import * as vscode from 'vscode'
 import { Constants } from '../constants';
 import { DeployService } from '../deployService/services/deployService';
@@ -10,6 +10,13 @@ import { PostDeployController } from '../postDeployController';
 import Resources from '../resources';
 import { WorkspaceFilesService } from '../services/workspaceFilesService';
 import { WorkspaceContainer, WorkspaceContainerEvent } from '../workspaceService/services/workspaceContainer';
+import { Package } from '../models/projectFile';
+import path = require('path');
+import { JsonData } from '../jsonData';
+import { fsHelpers } from '../fsHelpers';
+import { format } from 'util';
+import { PackageUiService } from './packageUiService';
+import { InstallHelpers } from '../helpers/installHelpers';
 
 export class BaseUiService extends UiService
 {
@@ -42,32 +49,7 @@ export class BaseUiService extends UiService
         this._wsWorkspaceFileServices.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this, subscriptions);
         this._disposable = vscode.Disposable.from(...subscriptions);
 
-        this._goCurrentPsService.getGoCurrentVersion().then(gocVersion => {
-            let goCurrentInstalled = gocVersion.IsInstalled;
-
-            if (!goCurrentInstalled || !gocVersion.HasRequiredVersion)
-            {
-                if (!gocVersion.HasRequiredVersion)
-                {
-                    window.showWarningMessage(`You do not have the required version of the Go Current client, v${gocVersion.RequiredVersion}, you have v${gocVersion.CurrentVersion}. Please update and reload your workspace.`);
-                    console.warn(`You do not have the required version of the Go Current client, v${gocVersion.RequiredVersion}, you have v${gocVersion.CurrentVersion}. Please update and reload your workspace.`)
-                }
-                else
-                {
-                    console.warn("Go Current not installed!")
-                    window.showWarningMessage("Go Current is not installed, extension will not load.");
-                }
-                
-                commands.executeCommand("setContext", Constants.goCurrentExtensionActive, false);
-                commands.executeCommand("setContext", Constants.goCurrentDeployActive, false);
-                commands.executeCommand("setContext", Constants.goCurrentAlActive, false);
-                commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
-            }
-            else
-            {
-                this.checkForBaseUpdate();
-            }
-        });
+        this.checkGoCurrentInstalled();
     }
 
     private onWorkspaceChanges(e: WorkspaceContainerEvent<WorkspaceFilesService>)
@@ -101,31 +83,108 @@ export class BaseUiService extends UiService
         this._goCurrentPsService.openGoCurrentWizard();
     }
 
+    private async checkGoCurrentInstalled()
+    {
+        let gocVersion = await this._goCurrentPsService.getGoCurrentVersion();
+        let goCurrentInstalled = gocVersion.IsInstalled;
+
+        if (!goCurrentInstalled || !gocVersion.HasRequiredVersion)
+        {
+            let message = "Go Current is not installed, extension will not load.";
+            let buttons = [Constants.buttonVisitWebsite];
+            if (!gocVersion.HasRequiredVersion)
+            {
+                message = `You do not have the required version of the Go Current client, v${gocVersion.RequiredVersion}, you have v${gocVersion.CurrentVersion}. Please update and reload your workspace.`;
+             
+                let packageObj: Package = { id: "go-current-client", version: ""};
+                let updates = await this._goCurrentPsService.getUpdates([packageObj]);
+
+                if (updates.length > 0)
+                    buttons = [Constants.buttonUpdate, Constants.buttonLater];
+            }
+
+            let result = await window.showWarningMessage(message, ...buttons);
+            if (result === Constants.buttonVisitWebsite)
+            {
+                vscode.env.openExternal(Uri.parse(Constants.gocHelpUrl));
+            }
+            else if (result === Constants.buttonUpdate)
+            {
+                InstallHelpers.installPackage("go-current-client", this._goCurrentPsService, {reload: true, reloadText: Resources.goCurrentUpdated})
+            }
+            
+            commands.executeCommand("setContext", Constants.goCurrentExtensionActive, false);
+            commands.executeCommand("setContext", Constants.goCurrentDeployActive, false);
+            commands.executeCommand("setContext", Constants.goCurrentAlActive, false);
+            commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
+        }
+        else
+        {
+            await this.checkForBaseUpdate();
+        }
+    }
+
+    private async checkForGocWorkspaceUpdates()
+    {
+        let packageId = 'go-current-workspace'
+        
+        if (!await this._goCurrentPsService.testPackageAvailable(packageId))
+            return;
+
+        let packageObj: Package = { id: packageId, version: ""};
+        let updates = await this._goCurrentPsService.getUpdates([packageObj]);
+
+        if (updates.length === 0)
+            return;
+
+        let newVersion = updates.filter(p => p.Id === packageId)[0].Version;
+        let currentVersion = await this.getCurrentVersion();
+
+        let isNewer = await this._goCurrentPsService.testNewerVersion(newVersion, currentVersion);
+
+        if (!isNewer)
+            return;
+
+        let result = await window.showInformationMessage(format(Resources.gocWorkspaceUpdateAvailable, newVersion), Constants.buttonUpdate);
+        if (result !== Constants.buttonUpdate)
+            return;
+        
+        InstallHelpers.installPackage(packageId, this._goCurrentPsService, {reload: true, reloadText: Resources.gocWorkspaceUpdated});
+    }
+
+    private async checkForUpdates(packages: string[])
+    {
+        packages = await this._goCurrentPsService.filterInstalled(packages);
+
+        let updates = await this._goCurrentPsService.getUpdates(packages.map(p => new Package(p, "")));
+
+        for (let update of updates)
+        {
+            let packageItem = await this._goCurrentPsService.getPackage(update.Id, "");
+            window.showInformationMessage(format(Resources.updateAvailable, packageItem.Name, update.Version.split('+')[0]), Constants.buttonUpdate, Constants.buttonLater).then(result => 
+            {
+                if (result === Constants.buttonUpdate)
+                {
+                    InstallHelpers.installPackage(update.Id, this._goCurrentPsService, {restartPowerShell: true});
+                }
+            });
+        }
+    }
+
+    private async getCurrentVersion(): Promise<string>
+    {
+        let packagePath = path.join(this.context.extensionUri.fsPath, 'package.json');
+        if (!fsHelpers.existsSync(packagePath))
+            return;
+
+        let jsonContent = JSON.parse(await fsHelpers.readFile(packagePath));
+        return jsonContent.version
+    }
+
     private async checkForBaseUpdate()
     {
-        let buttons: string[] = [Constants.buttonUpdate, Constants.buttonLater];
-        var packages = await this._goCurrentPsService.getAvailableBaseUpdates();
-        if (packages.length === 0)
-            return;
-        let packagesString = packages.map(p => `${p.Id} v${p.Version}`).join(', ');
-        window.showInformationMessage(`Update available for "Go Current" (${packagesString})`, ...buttons).then(async result => {
-            if (result === Constants.buttonUpdate)
-            {
-                let packages = await this._goCurrentPsService.installBasePackages();
-                window.showInformationMessage("Updated: " + packages.map(p => `${p.Id} v${p.Version}`).join(', '));
-                let workspaceExtension = packages.filter(p => p.Id === 'go-current-workspace');
-                let clientUpdated = packages.filter(p => p.Id === 'go-current-client');
-                if (workspaceExtension.length === 1)
-                {
-                    PostDeployController.processVsExtension(workspaceExtension[0]);
-                }
-                if (clientUpdated.length > 0)
-                {
-                    PostDeployController.processGoCurrent();
-                }
-            }
-        });
-        
+        await this.checkForGocWorkspaceUpdates();
+        await this.checkForUpdates(["go-current-server", "go-current-client", "ls-package-tools"]);
     }
 
     private async newProject()

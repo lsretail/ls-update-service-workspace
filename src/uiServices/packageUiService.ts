@@ -8,12 +8,13 @@ import { UiService } from "../extensionController";
 import { GoCurrentPsService } from "../goCurrentService/services/goCurrentPsService";
 import GitHelpers from "../helpers/gitHelpers";
 import { UiHelpers } from "../helpers/uiHelpers";
-import { Package } from "../models/projectFile";
+import { Package, Server } from "../models/projectFile";
 import { PackagePsService } from "../packageService/services/packagePsService";
 import { PackageService } from "../packageService/services/packageService";
 import Resources from "../resources";
 import { WorkspaceContainer } from "../workspaceService/services/workspaceContainer";
 import { WorkspaceFilesService } from "../services/workspaceFilesService";
+import { InstallHelpers } from "../helpers/installHelpers";
 
 export class PackageUiService extends UiService
 {
@@ -153,8 +154,13 @@ export class PackageUiService extends UiService
             if (!workspaceFolder)
                 return;
 
-            if (!await this.ensureGoCurrentServer(workspaceFolder))
+            let checkingServer = this.ensureGoCurrentServer(workspaceFolder);
+            let checkingPackageTools = this.ensurePackageTools(workspaceFolder);
+
+            if (!(await checkingServer) || !(await checkingPackageTools))
+            {
                 return;
+            }
     
             let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
 
@@ -228,69 +234,68 @@ export class PackageUiService extends UiService
             Controller.handleError(e);
             this._outputChannel.appendLine('Error occurd while compiling and creating package:');
             this._outputChannel.appendLine(Controller.getErrorMessage(e));
-        }   
+        }
     }
 
     private async ensureGoCurrentServer(workspaceFolder: WorkspaceFolder): Promise<boolean>
     {
         let gocVersion = await this._packagePsService.getGoCurrentServerVersion();
 
-        if (!gocVersion.IsInstalled)
-        {
-            let result = await window.showWarningMessage("Go Current server is required for this operation.", Constants.buttonInstall);
-            if (result === Constants.buttonInstall)
-            {
-                this.installGocServer(workspaceFolder);
-            }
-            return false;
-        }
-        if (!gocVersion.HasRequiredVersion)
-        {
-            let result = await window.showWarningMessage(`Go Current server v${gocVersion.RequiredVersion} or greater is required for this operation, you have v${gocVersion.CurrentVersion}.`, Constants.buttonUpdate);
-            if (result === Constants.buttonUpdate)
-            {
-                this.installGocServer(workspaceFolder);
-            }
-            return false;
-        }
-        return true;
-    }
-
-    private async installGocServer(workspaceFolder: WorkspaceFolder)
-    {
         let packageId = 'go-current-server'
 
-        let result = await window.withProgress({
-            location: ProgressLocation.Notification
-        }, async (progress, token) => 
+        if (gocVersion.IsInstalled && gocVersion.HasRequiredVersion)
+            return true;
+    
+        let deployService = this._wsDeployServices.getService(workspaceFolder);
+        let servers = await deployService.getServers();
+        let isAvailable = await this._goCurrentPsService.testPackageAvailable(packageId, servers);
+
+        let message = "Go Current server is required for this operation.";
+        let button = Constants.buttonInstall
+        if (gocVersion.IsInstalled)
         {
-            progress.report({message: "Starting ..."})
-            
-            let deployService = this._wsDeployServices.getService(workspaceFolder);
-            let servers = await deployService.getServers();
-
-            let isAvailable = await this._goCurrentPsService.testPackageAvailable(packageId, servers);
-
-            if (isAvailable)
-            {
-                progress.report({message: Resources.installationStartedInANewWindow})
-                let packages: Package[] = [{id: packageId, version: ''}];
-                return await this._goCurrentPsService.installPackages(packages, undefined, servers);
-            }
-            else
-            {
-                vscode.env.openExternal(Uri.parse(Constants.gocServerUrl));
-                return null;
-            }
-        });
-
-        if (result && result.filter(p => p.Id === packageId).length > 0)
-        {
-            let result = await window.showInformationMessage(Resources.goCurrentServerUpdated, Constants.buttonReloadWindow)
-            if (result === Constants.buttonReloadWindow)
-            {
-                commands.executeCommand("workbench.action.reloadWindow");
-            }
+            message = `Go Current server v${gocVersion.RequiredVersion} or greater is required for this operation, you have v${gocVersion.CurrentVersion}.`
+            button = Constants.buttonUpdate;
         }
+        if (!isAvailable)
+            button = Constants.buttonVisitWebsite;
+        
+        let result = await window.showWarningMessage(message, button);
+
+        if (result === Constants.buttonInstall || result === Constants.buttonUpdate)
+        {
+            InstallHelpers.installPackage("go-current-server", this._goCurrentPsService, {restartPowerShell: true});
+        }
+        else if (result === Constants.buttonVisitWebsite)
+        {
+            vscode.env.openExternal(Uri.parse(Constants.gocServerUrl));
+        }
+        return false;
+    }
+
+    private async ensurePackageTools(workspaceFolder: WorkspaceFolder)
+    {
+        let packageId = "ls-package-tools"
+        if (await this._goCurrentPsService.isInstalled([packageId]))
+            return true;
+
+        let deployService = this._wsDeployServices.getService(workspaceFolder);
+        let servers = await deployService.getServers();
+        let isAvailable = await this._goCurrentPsService.testPackageAvailable(packageId, servers);
+
+        let message = "LSPackageTools are required for this operation."
+        let button = Constants.buttonInstall;
+        if (!isAvailable)
+            button = Constants.buttonVisitWebsite;
+
+        let result = await window.showWarningMessage(message, button);
+
+        if (result === Constants.buttonInstall)
+            InstallHelpers.installPackage(packageId, this._goCurrentPsService, {restartPowerShell: true});
+        else if (result === Constants.buttonVisitWebsite)
+            vscode.env.openExternal(Uri.parse(Constants.packageToolsUrl));
+
+        return false;
+
     }
 }

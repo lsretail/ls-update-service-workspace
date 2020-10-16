@@ -21,6 +21,7 @@ export class Constants
 
     static alProjectFileName = "app.json";
 
+    static buttonVisitWebsite = "Visit Website";
     static buttonInstall = "Install";
     static buttonUpdate = "Update";
     static buttonLater = "Later";
@@ -30,5 +31,7 @@ export class Constants
     static buttonYes = "Yes"
     static buttonNo = "No"
 
-    static gocServerUrl = "https://portal.lsretail.com/Products/LS-Central-LS-Nav/Downloads/Go-Current";
+    static gocHelpUrl = "https://help.gocurrent.lsretail.com/";
+    static gocServerUrl = "https://help.gocurrent.lsretail.com/docs/server/install.html";
+    static packageToolsUrl = "https://help.gocurrent.lsretail.com/docs/ls-central/package-tools/overview.html";
 }

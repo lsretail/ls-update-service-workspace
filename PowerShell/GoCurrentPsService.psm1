@@ -116,6 +116,31 @@ function Install-Packages
     return (ConvertTo-Json $Installed -Depth 100 -Compress)
 }
 
+function Get-Updates
+{
+    param(
+        $Packages,
+        $InstanceName,
+        [string] $Servers
+    )
+    $ServersObj = ConvertTo-ServersObj -Servers $Servers
+    $Packages = ConvertFrom-Json $Packages
+
+    return ConvertTo-Json (@($Packages | Get-GocUpdates -InstanceName $InstanceName -Server $ServersObj)) -Compress -Depth 100
+}
+
+function Get-Package
+{
+    param(
+        $PackageId, 
+        $VersionQuery,
+        [string] $Servers
+    )
+
+    $ServersObj = ConvertTo-ServersObj -Servers $Servers
+    return ConvertTo-Json (Get-GocPackage -Id $PackageId -VersionQuery $VersionQuery -Server $ServersObj) -Compress -Depth 100
+}
+
 function Test-PackageAvailable
 {
     param(
@@ -149,7 +174,8 @@ function Test-IsInstalled
 {
     param(
         $Packages,
-        $InstanceName
+        $InstanceName,
+        [switch] $Any
     )
 
     if ($InstanceName)
@@ -157,44 +183,28 @@ function Test-IsInstalled
         return ConvertTo-Json (Test-GocInstanceExists -InstanceName $InstanceName) -Compress
     }
 
+    $AllInstalled = @()
     foreach ($Package in $Packages)
     {
         $Installed = $Package | Get-GocInstalledPackage -InstanceName $InstanceName
         if ($Installed)
         {
-            return ConvertTo-Json $true -Compress
+            if ($Any)
+            {
+                return ConvertTo-Json $true -Compress
+            }
+            else
+            {
+                $AllInstalled += $Package    
+            }
+            
         }
     }
-    return ConvertTo-Json $false -Compress
-}
-
-function Get-AvailableBaseUpdates()
-{
-    $Packages = @(
-        'go-current-client',
-        'go-current-workspace'
-    )
-    $Updates = @($Packages | Get-GocUpdates)
-    return (ConvertTo-Json $Updates -Compress -Depth 100)
-}
-
-function Install-BasePackages()
-{
-    $Packages = @(
-        @{ Id = 'go-current-client'; Version = "" },
-        @{ Id = 'go-current-workspace'; Version = "" }
-    )
-    return Install-Packages -Packages $Packages
-}
-
-function Install-BaseAsAdmin($OutputPath)
-{
-    $Packages = @(
-        'go-current-client',
-        'go-current-workspace'
-    )
-    $Result = @($Packages | Install-GocPackage)
-    Set-Content -Value (ConvertTo-Json $Result -Depth 100 -Compress) -Path $OutputPath
+    if ($Any)
+    {
+        return ConvertTo-Json $false -Compress    
+    }
+    return ConvertTo-Json ($AllInstalled) -Depth 100 -Compress
 }
 
 function Invoke-OpenGoCurrentWizard

@@ -11,6 +11,9 @@ export default class Resources
     static checkingForUpdates = "Checking for updates ...";
     static dependenciesAddedToProject = '%s dependencies were added to your gocurrent.json file.';
     static noDependenciesAddedToProject = 'You already have all the dependencies covered.';
+    static gocWorkspaceUpdateAvailable = 'New update available for Go Current Workspace v%s.'
+    static gocWorkspaceUpdated = 'Go Current Workspace was updated, reload to enable it.'
+    static updateAvailable = 'New update available for "%s" v%s'
 
     static chooseLicenseFile = "Choose license file.";
     static addLicensePackage = "Add your license package (recommended).";

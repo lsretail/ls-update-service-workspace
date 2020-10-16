@@ -53,6 +53,15 @@ export class PowerShell
         return this._debug;
     }
 
+    public restart()
+    {
+        this._shell.dispose().catch(error => {
+            if (this._debug)
+                console.error(`Error from PowerShell: ${error}`)
+        });
+        this._shell = null;
+    }
+
     public getNewPowerShell() : PowerShell
     {
         let powerShell = new PowerShell(this.isDebug);

@@ -11,7 +11,6 @@ import {UpdateAvailable} from '../../models/updateAvailable';
 import {PackageInfo} from '../../interfaces/packageInfo';
 import { DeploymentResult } from '../../models/deploymentResult'
 import GitHelpers from '../../helpers/gitHelpers'
-import { trace } from 'console'
 import { AppError } from '../../errors/AppError'
 import { GoCurrentPsService } from '../../goCurrentService/services/goCurrentPsService'
 import { IWorkspaceService } from '../../workspaceService/interfaces/IWorkspaceService'
