@@ -173,9 +173,9 @@ function Test-InstanceExists($InstanceName)
 function Test-IsInstalled
 {
     param(
-        $Packages,
+        [array] $Packages,
         $InstanceName,
-        [switch] $Any
+        [boolean] $Any
     )
 
     if ($InstanceName)
@@ -197,7 +197,6 @@ function Test-IsInstalled
             {
                 $AllInstalled += $Package    
             }
-            
         }
     }
     if ($Any)

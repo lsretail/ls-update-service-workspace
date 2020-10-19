@@ -141,7 +141,7 @@ export class NewProjectService
         if (projectData.devPackageGroups[0])
         {
             let licensePackage = new ProjectFilePackage();
-            licensePackage.id = packageId;
+            licensePackage.id = packageId.trim();
             licensePackage.version = '^'
 
             if (!projectData.devPackageGroups[0].packages)
