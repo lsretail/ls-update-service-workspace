@@ -41,7 +41,7 @@ export class AlUiService extends UiService
         this.registerCommand("go-current.al.unpublishApp", async () => await this.alUnpublishApp());
         this.registerCommand("go-current.al.upgradeData", async () => await this.alUpgradeData());
         this.registerCommand("go-current.al.publishApp", async () => await this.alPublishApp());
-        this.registerCommand("go-current.al.addNewDependencies", (...args) => this.alAddNewDependencies(args));
+        this.registerCommand("go-current.al.addNewDependencies", async (...args) => await this.alAddNewDependencies(args));
 
         this._disposable = this._wsAlServices.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this);
     }

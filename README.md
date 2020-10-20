@@ -17,7 +17,7 @@ With this extension, you can ...
 
 ## Requirements
 
-* Go Current client needs to be installed on the computer, get it on our partner (partner portal](https://portal.lsretail.com/Products/LS-Central-LS-Nav/Downloads/Go-Current).
+* Go Current client needs to be installed on the computer, get it on our partner [partner portal](https://portal.lsretail.com/Products/LS-Central-LS-Nav/Downloads/Go-Current).
 
 ## Documentation
 
@@ -31,7 +31,7 @@ The extension is made available under the MIT license.
 
 ## Release Notes
 
-### 0.5.0
+### 1.0.0
 This release focuses on improved AL development support with Business Central specific commands for better development flow.
 
 A more readable and easier project file configuration (gocurrent.json).

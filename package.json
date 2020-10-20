@@ -2,7 +2,7 @@
     "name": "go-current-workspace",
     "displayName": "Go Current Workspace",
     "description": "Go Current Workspace brings you the power of Go Current to your Visual Studio Code workspace.",
-    "version": "0.5.4-developer",
+    "version": "1.0.0-developer",
     "publisher": "lsretail",
     "repository": {
         "type": "git",

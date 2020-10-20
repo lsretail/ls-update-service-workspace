@@ -32,6 +32,9 @@ export class AppIdHelpers
 
         for (let item of items)
         {
+            if (item === undefined || item === null)
+                continue;
+
             if (item.alAppId && pattern.test(item.alAppId))
             {
                 list.push(item.alAppId);
