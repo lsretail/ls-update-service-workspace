@@ -258,7 +258,7 @@ function New-AlPackage
         $AlProjectFilePath,
         [Parameter(Mandatory = $true)]
         $GocProjectFilePath,
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         $AppPath,
         $OutputDir,
         $DefaultOutputDir,
@@ -276,6 +276,14 @@ function New-AlPackage
 
     $GoCProject = Get-ProjectFile -Path $GocProjectFilePath -Target $Target -BranchName $BranchName -Variables $Variables
 
+    $Files = $GoCProject.InputPath
+
+    if ($AppPath)
+    {
+        $Files = @($Files | Where-Object { !$_.EndsWith('.app') })
+        $Files += $AppPath
+    }
+
     $Dependencies = @()
     foreach ($Dep in $DepdenciesGroup.Packages)
     {
@@ -290,7 +298,7 @@ function New-AlPackage
         Name = Get-FirstValue $GoCProject.Name, $AlProject.Name
         Description = Get-FirstValue $GoCProject.Description, $AlProject.Description
         Version = Get-FirstValue $GoCProject.Version, $AlProject.Version
-        Path = $AppPath
+        Path = $Files
         OutputDir = Get-FirstValue $OutputDir, $GoCProject.OutputDir, $DefaultOutputDir
         Dependencies = $Dependencies
     }
@@ -502,9 +510,9 @@ function Invoke-AlProjectBuild
 function New-AlProjectPackage
 {
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         $ProjectDir,
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         $AppPath,
         $OutputDir,
         [string] $Target,
