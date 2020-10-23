@@ -124,56 +124,61 @@ export class BaseUiService extends UiService
         }
     }
 
-    private async checkForGocWorkspaceUpdates()
+    public static async checkForGocWorkspaceUpdates(goCurrentPsService: GoCurrentPsService, context: ExtensionContext): Promise<boolean>
     {
         let packageId = 'go-current-workspace'
         
-        if (!await this._goCurrentPsService.testPackageAvailable(packageId))
-            return;
+        if (!await goCurrentPsService.testPackageAvailable(packageId))
+            return false;
 
         let packageObj: Package = { id: packageId, version: ""};
-        let updates = await this._goCurrentPsService.getUpdates([packageObj]);
+        let updates = await goCurrentPsService.getUpdates([packageObj]);
 
         if (updates.length === 0)
-            return;
+            return false;
 
         let newVersion = updates.filter(p => p.Id === packageId)[0].Version;
-        let currentVersion = await this.getCurrentVersion();
+        let currentVersion = await this.getCurrentVersion(context);
 
-        let isNewer = await this._goCurrentPsService.testNewerVersion(newVersion, currentVersion);
+        let isNewer = await goCurrentPsService.testNewerVersion(newVersion, currentVersion);
 
         if (!isNewer)
-            return;
+            return false;
 
-        let result = await window.showInformationMessage(format(Resources.gocWorkspaceUpdateAvailable, newVersion), Constants.buttonUpdate);
-        if (result !== Constants.buttonUpdate)
+        window.showInformationMessage(format(Resources.gocWorkspaceUpdateAvailable, newVersion), Constants.buttonUpdate).then(result => 
+        {
+            if (result !== Constants.buttonUpdate)
             return;
         
-        InstallHelpers.installPackage(packageId, this._goCurrentPsService, {reload: true, reloadText: Resources.gocWorkspaceUpdated});
+            InstallHelpers.installPackage(packageId, goCurrentPsService, {reload: true, reloadText: Resources.gocWorkspaceUpdated});    
+        });
+
+        return true;
     }
 
-    private async checkForUpdates(packages: string[])
+    public static async checkForUpdates(packages: string[], goCurrentPsService: GoCurrentPsService): Promise<boolean>
     {
-        packages = await this._goCurrentPsService.filterInstalled(packages);
+        packages = await goCurrentPsService.filterInstalled(packages);
 
-        let updates = await this._goCurrentPsService.getUpdates(packages.map(p => new Package(p, "")));
+        let updates = await goCurrentPsService.getUpdates(packages.map(p => new Package(p, "")));
 
         for (let update of updates)
         {
-            let packageItem = await this._goCurrentPsService.getPackage(update.Id, "");
+            let packageItem = await goCurrentPsService.getPackage(update.Id, "");
             window.showInformationMessage(format(Resources.updateAvailable, packageItem.Name, update.Version.split('+')[0]), Constants.buttonUpdate, Constants.buttonLater).then(result => 
             {
                 if (result === Constants.buttonUpdate)
                 {
-                    InstallHelpers.installPackage(update.Id, this._goCurrentPsService, {restartPowerShell: true});
+                    InstallHelpers.installPackage(update.Id, goCurrentPsService, {restartPowerShell: true});
                 }
             });
         }
+        return updates.length > 0;
     }
 
-    private async getCurrentVersion(): Promise<string>
+    private static async getCurrentVersion(context: ExtensionContext): Promise<string>
     {
-        let packagePath = path.join(this.context.extensionUri.fsPath, 'package.json');
+        let packagePath = path.join(context.extensionUri.fsPath, 'package.json');
         if (!fsHelpers.existsSync(packagePath))
             return;
 
@@ -183,8 +188,8 @@ export class BaseUiService extends UiService
 
     private async checkForBaseUpdate()
     {
-        await this.checkForGocWorkspaceUpdates();
-        await this.checkForUpdates(["go-current-server", "go-current-client", "ls-package-tools"]);
+        await BaseUiService.checkForGocWorkspaceUpdates(this._goCurrentPsService, this.context);
+        await BaseUiService.checkForUpdates(["go-current-server", "go-current-client", "ls-package-tools"], this._goCurrentPsService);
     }
 
     private async newProject()

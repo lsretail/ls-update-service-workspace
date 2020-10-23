@@ -15,6 +15,7 @@ import Resources from "../resources";
 import { WorkspaceContainer, WorkspaceContainerEvent } from "../workspaceService/services/workspaceContainer";
 import * as util from 'util'
 import { PackageInfo } from "../interfaces/packageInfo";
+import { BaseUiService } from "./BaseUiService";
 
 export class DeployUiService extends UiService
 {
@@ -193,7 +194,11 @@ export class DeployUiService extends UiService
             location: vscode.ProgressLocation.Notification,
             title: Resources.checkingForUpdates
         }, async (progress, token) => {
-            return await this.checkForUpdatesSilent();
+
+            let update = await BaseUiService.checkForGocWorkspaceUpdates(this._goCurrentPsService, this.context);
+            update = update || await BaseUiService.checkForUpdates(["go-current-server", "go-current-client", "ls-package-tools"], this._goCurrentPsService);
+
+            return (await this.checkForUpdatesSilent()) || update;
         });
 
         if (!anyUpdates)
