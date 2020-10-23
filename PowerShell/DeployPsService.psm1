@@ -37,7 +37,7 @@ function Install-PackageGroup
     return Install-Packages -InstanceName $InstanceName -Packages $Packages -Arguments $PackageGroup.Arguments -Servers $Servers
 }
 
-function Get-AvailableUpdates()
+function Get-AvailableUpdates
 {
     param(
         $ProjectFilePath,

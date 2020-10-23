@@ -369,13 +369,46 @@ export class DeployService implements IWorkspaceService
     public async checkForUpdate(deployment: Deployment) : Promise<PackageInfo[]>
     {
         let servers: Server[] = [];
+        let target = deployment.target;
+        
         if (deployment.id)
         {
-            let packageGroup = this.getPackageGroup((await this._projectFile.getData()), deployment.id)
+            let projectData = (await this._projectFile.getData());
+            let packageGroup = this.getPackageGroup(projectData, deployment.id)
+            
+            let devTarget = this.getDevTarget(projectData, packageGroup)
+
+            if (devTarget.length === 1)
+                target = devTarget[0];
+            else if (devTarget.length > 0 && (!target || !devTarget.includes(target)))
+                target = devTarget[0];
+
             servers = await this.getServers(packageGroup);
         }
         
-        return await this._deployPsService.getAvailableUpdates(this._projectFile.uri.fsPath, deployment.id, deployment.instanceName, GitHelpers.getBranchName(this._workspacePath), deployment.target, servers);
+        return await this._deployPsService.getAvailableUpdates(
+            this._projectFile.uri.fsPath, 
+            deployment.id, 
+            deployment.instanceName, 
+            GitHelpers.getBranchName(this._workspacePath), 
+            target, 
+            servers
+        );
+    }
+
+    public getDevTarget(projectFile: ProjectFile, packageGroup: PackageGroup): string[]
+    {
+        if (typeof(packageGroup.devTarget) === 'string')
+            return [packageGroup.devTarget];
+        if (Array.isArray(packageGroup.devTarget))
+            return <string[]>packageGroup.devTarget;
+
+        if (typeof(projectFile.devTarget) === 'string')
+            return [projectFile.devTarget];
+        if (Array.isArray(projectFile.devTarget))
+            return <string[]>projectFile.devTarget;
+
+        return [];
     }
 
     public async isInstance(packageGroupId: string) : Promise<boolean>
