@@ -49,10 +49,10 @@ export class PackageUiService extends UiService
 
     async activate(): Promise<void>
     {
-        this.registerCommand("go-current.al.downloadDependencies", () => this.alDownloadDependencies());
-        this.registerCommand("go-current.al.compileAndPackage", () => this.alCompileAndPackage());
-        this.registerCommand("go-current.al.newPackage", () => this.alNewPackage());
-        this.registerCommand("go-current.newPackage", () => this.newPackage());
+        this.registerCommand("ls-update-service.al.downloadDependencies", () => this.alDownloadDependencies());
+        this.registerCommand("ls-update-service.al.compileAndPackage", () => this.alCompileAndPackage());
+        this.registerCommand("ls-update-service.al.newPackage", () => this.alNewPackage());
+        this.registerCommand("ls-update-service.newPackage", () => this.newPackage());
     }
 
     private async alDownloadDependencies() 

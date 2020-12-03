@@ -37,12 +37,12 @@ export class DeployUiService extends UiService
 
     async activate(): Promise<void>
     {
-        this.registerCommand("go-current.deploy", async () => await this.install());
-        this.registerCommand("go-current.checkForUpdates", async () => await this.checkForUpdates());
-        this.registerCommand("go-current.update", async () => await this.update());
-        this.registerCommand("go-current.remove", async () => await this.remove());
-        this.registerCommand("go-current.addInstanceToWorkspace", async () => await this.addInstanceToWorkspace());
-        this.registerCommand("go-current.viewResolvedProjectFile", (...args) => this.viewResolvedProjectFile());
+        this.registerCommand("ls-update-service.deploy", async () => await this.install());
+        this.registerCommand("ls-update-service.checkForUpdates", async () => await this.checkForUpdates());
+        this.registerCommand("ls-update-service.update", async () => await this.update());
+        this.registerCommand("ls-update-service.remove", async () => await this.remove());
+        this.registerCommand("ls-update-service.addInstanceToWorkspace", async () => await this.addInstanceToWorkspace());
+        this.registerCommand("ls-update-service.viewResolvedProjectFile", (...args) => this.viewResolvedProjectFile());
 
         let subscriptions: vscode.Disposable[] = [];
         this._wsDeployServices.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this, subscriptions);

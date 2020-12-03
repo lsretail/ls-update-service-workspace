@@ -37,11 +37,11 @@ export class AlUiService extends UiService
 
     async activate(): Promise<void>
     {
-        this.registerCommand("go-current.al.repopulateLaunchJson", async () => await this.rePopulateLaunchJson());
-        this.registerCommand("go-current.al.unpublishApp", async () => await this.alUnpublishApp());
-        this.registerCommand("go-current.al.upgradeData", async () => await this.alUpgradeData());
-        this.registerCommand("go-current.al.publishApp", async () => await this.alPublishApp());
-        this.registerCommand("go-current.al.addNewDependencies", async (...args) => await this.alAddNewDependencies(args));
+        this.registerCommand("ls-update-service.al.repopulateLaunchJson", async () => await this.rePopulateLaunchJson());
+        this.registerCommand("ls-update-service.al.unpublishApp", async () => await this.alUnpublishApp());
+        this.registerCommand("ls-update-service.al.upgradeData", async () => await this.alUpgradeData());
+        this.registerCommand("ls-update-service.al.publishApp", async () => await this.alPublishApp());
+        this.registerCommand("ls-update-service.al.addNewDependencies", async (...args) => await this.alAddNewDependencies(args));
 
         this._disposable = this._wsAlServices.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this);
     }

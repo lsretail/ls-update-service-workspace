@@ -1,9 +1,9 @@
 
 export class Constants
 {
-    static extensionName = 'Go Current';
-    static goCurrentExtensionActive = "go-current.active";
-    static goCurrentDebug = "go-current.debug";
+    static extensionName = 'LS Retail Update Service Workspace';
+    static goCurrentExtensionActive = "ls-update-service.active";
+    static goCurrentDebug = "ls-update-service.debug";
 
     static projectFileName = "gocurrent.json";
     static projectDataFileName = "data.json";
@@ -13,11 +13,11 @@ export class Constants
     static vscodeWorkspaceDirName = ".vscode";
     static vscodeLaunchFileName = "launch.json";
 
-    static goCurrentProjectFileActive = "go-current.projectFile.active";
-    static goCurrentProjectFileHasInactiveWorkspaces = "go-current.projectFile.hasInactiveWorkspaces";
-    static goCurrentDeployActive = "go-current.deploy.active";
-    static goCurrentAlActive = "go-current.al.active";
-    static goCurrentDeployUpdatesAvailable = "go-current.deploy.updatesAvailable";
+    static goCurrentProjectFileActive = "ls-update-service.projectFile.active";
+    static goCurrentProjectFileHasInactiveWorkspaces = "ls-update-service.projectFile.hasInactiveWorkspaces";
+    static goCurrentDeployActive = "ls-update-service.deploy.active";
+    static goCurrentAlActive = "ls-update-service.al.active";
+    static goCurrentDeployUpdatesAvailable = "ls-update-service.deploy.updatesAvailable";
 
     static alProjectFileName = "app.json";
 

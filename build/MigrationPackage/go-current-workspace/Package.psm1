@@ -2,7 +2,7 @@ $ErrorActionPreference = 'stop'
 
 function Install-Package
 {
-    Write-Progress -Id 217 -Activity 'Installing LS Retail Update Service Workspace' -Status "Initializing" -PercentComplete 10
+    Write-Progress -Id 217 -Activity 'Installing Go Current Workspace' -Status "Initializing" -PercentComplete 10
 
     $CodePath = Get-Code
 
@@ -13,7 +13,7 @@ function Install-Package
         $FilePath
     )
 
-    Write-Progress -Id 217 -Activity 'Installing LS Retail Update Service Workspace' -Status "Installing" -PercentComplete 20
+    Write-Progress -Id 217 -Activity 'Installing Go Current Workspace' -Status "Installing" -PercentComplete 20
 
     $ErrorActionPreference = 'continue'
     & $CodePath @Arguments | Write-Host
@@ -25,10 +25,10 @@ function Install-Package
     {
         Write-Host "Code path: $CodePath"
         Write-Host "Extension path: $FilePath"
-        throw "Error occured while installing LS Retail Update Service Workspace (exit code $LASTEXITCODE)."
+        throw "Error occured while installing Go Current Workspace (exit code $LASTEXITCODE)."
     }
     
-    Write-Progress -Id 217 -Activity 'Installing LS Retail Update Service Workspace' -Status "Done" -PercentComplete 100
+    Write-Progress -Id 217 -Activity 'Installing Go Current Workspace' -Status "Done" -PercentComplete 100
 }
 
 function Get-Code
@@ -55,16 +55,24 @@ function Get-Code
 }
 
 function Remove-Package
-{ 
-    Write-Progress -Id 217 -Activity 'Removing LS Retail Update Service Workspace' -Status "Removing" -PercentComplete 20
-    $CodePath = Get-Code
+{
+    try 
+    {
+        Write-Progress -Id 217 -Activity 'Removing Go Current Workspace' -Status "Removing" -PercentComplete 20
+        $CodePath = Get-Code
 
-    $Arguments = @(
-        '--uninstall-extension'
-        'lsretail.go-current-workspace'
-    )
+        $Arguments = @(
+            '--uninstall-extension'
+            'lsretail.go-current-workspace'
+        )
 
-    & $CodePath @Arguments | Write-Host
+        & $CodePath @Arguments | Write-Host
+    }
+    catch 
+    {
+        # Ignore
+    }
+    
 
-    Write-Progress -Id 217 -Activity 'Removing LS Retail Update Service Workspace' -Status "Done" -PercentComplete 100
+    Write-Progress -Id 217 -Activity 'Removing Go Current Workspace' -Status "Done" -PercentComplete 100
 }

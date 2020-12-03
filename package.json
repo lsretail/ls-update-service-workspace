@@ -1,8 +1,8 @@
 {
-    "name": "go-current-workspace",
-    "displayName": "Go Current Workspace",
+    "name": "ls-update-service-workspace",
+    "displayName": "LS Retail Update Service Workspace",
     "description": "Go Current Workspace brings you the power of Go Current to your Visual Studio Code workspace.",
-    "version": "1.0.1-developer",
+    "version": "1.1.0-developer",
     "publisher": "lsretail",
     "repository": {
         "type": "git",
@@ -27,191 +27,191 @@
     "activationEvents": [
         "workspaceContains:.gocurrent/gocurrent.json",
         "workspaceContains:gocurrent.json",
-        "onCommand:go-current.newProject",
-        "onCommand:go-current.openWizard"
+        "onCommand:ls-update-service.newProject",
+        "onCommand:ls-update-service.openWizard"
     ],
     "main": "./out/extension.js",
     "contributes": {
         "commands": [
             {
-                "command": "go-current.newProject",
+                "command": "ls-update-service.newProject",
                 "title": "Go!",
-                "category": "Go Current"
+                "category": "LS Update Service"
             },
             {
-                "command": "go-current.deploy",
+                "command": "ls-update-service.deploy",
                 "title": "Install Packages",
-                "category": "Go Current"
+                "category": "LS Update Service"
             },
             {
-                "command": "go-current.remove",
+                "command": "ls-update-service.remove",
                 "title": "Remove Packages",
-                "category": "Go Current"
+                "category": "LS Update Service"
             },
             {
-                "command": "go-current.update",
+                "command": "ls-update-service.update",
                 "title": "Updates Available!",
-                "category": "Go Current"
+                "category": "LS Update Service"
             },
             {
-                "command": "go-current.checkForUpdates",
+                "command": "ls-update-service.checkForUpdates",
                 "title": "Check for Updates",
-                "category": "Go Current"
+                "category": "LS Update Service"
             },
             {
-                "command": "go-current.experimental",
+                "command": "ls-update-service.experimental",
                 "title": "Experimental, run at your own risk!",
-                "category": "Go Current"
+                "category": "LS Update Service"
             },
             {
-                "command": "go-current.openWizard",
+                "command": "ls-update-service.openWizard",
                 "title": "Open App",
-                "category": "Go Current"
+                "category": "LS Update Service"
             },
             {
-                "command": "go-current.addInstanceToWorkspace",
+                "command": "ls-update-service.addInstanceToWorkspace",
                 "title": "Add Instance to Your Workspace",
-                "category": "Go Current"
+                "category": "LS Update Service"
             },
             {
-                "command": "go-current.viewResolvedProjectFile",
-                "title": "Go Current: View Resolved Project File",
-                "category": "Go Current"
+                "command": "ls-update-service.viewResolvedProjectFile",
+                "title": "LS Update Service: View Resolved Project File",
+                "category": "LS Update Service"
             },
             {
-                "command": "go-current.al.repopulateLaunchJson",
+                "command": "ls-update-service.al.repopulateLaunchJson",
                 "title": "Re-populate launch.json",
-                "category": "Go Current AL"
+                "category": "LS Update Service AL"
             },
             {
-                "command": "go-current.al.unpublishApp",
+                "command": "ls-update-service.al.unpublishApp",
                 "title": "Unpublish App",
-                "category": "Go Current AL"
+                "category": "LS Update Service AL"
             },
             {
-                "command": "go-current.al.upgradeData",
+                "command": "ls-update-service.al.upgradeData",
                 "title": "Start App Data Upgrade",
-                "category": "Go Current AL"
+                "category": "LS Update Service AL"
             },
             {
-                "command": "go-current.al.downloadDependencies",
+                "command": "ls-update-service.al.downloadDependencies",
                 "title": "Download Dependencies (.alpackages + .netpackages)",
-                "category": "Go Current AL"
+                "category": "LS Update Service AL"
             },
             {
-                "command": "go-current.al.compileAndPackage",
+                "command": "ls-update-service.al.compileAndPackage",
                 "title": "Compile and Create Package",
-                "category": "Go Current AL"
+                "category": "LS Update Service AL"
             },
             {
-                "command": "go-current.al.newPackage",
+                "command": "ls-update-service.al.newPackage",
                 "title": "Create Package",
-                "category": "Go Current AL"
+                "category": "LS Update Service AL"
             },
             {
-                "command": "go-current.newPackage",
+                "command": "ls-update-service.newPackage",
                 "title": "Create Package",
-                "category": "Go Current"
+                "category": "LS Update Service"
             },
             {
-                "command": "go-current.al.addNewDependencies",
-                "title": "Go Current: Import dependencies from app.json",
-                "category": "Go Current AL"
+                "command": "ls-update-service.al.addNewDependencies",
+                "title": "LS Update Service: Import dependencies from app.json",
+                "category": "LS Update Service AL"
             }
         ],
         "menus": {
             "commandPalette": [
                 {
-                    "command": "go-current.newProject",
-                    "when": "!go-current.projectFile.active && workspaceFolderCount || go-current.projectFile.hasInactiveWorkspaces"
+                    "command": "ls-update-service.newProject",
+                    "when": "!ls-update-service.projectFile.active && workspaceFolderCount || ls-update-service.projectFile.hasInactiveWorkspaces"
                 },
                 {
-                    "command": "go-current.deploy",
-                    "when": "go-current.deploy.active"
+                    "command": "ls-update-service.deploy",
+                    "when": "ls-update-service.deploy.active"
                 },
                 {
-                    "command": "go-current.remove",
-                    "when": "go-current.deploy.active"
+                    "command": "ls-update-service.remove",
+                    "when": "ls-update-service.deploy.active"
                 },
                 {
-                    "command": "go-current.update",
-                    "when": "go-current.deploy.active && go-current.deploy.updatesAvailable"
+                    "command": "ls-update-service.update",
+                    "when": "ls-update-service.deploy.active && ls-update-service.deploy.updatesAvailable"
                 },
                 {
-                    "command": "go-current.checkForUpdates",
-                    "when": "go-current.deploy.active"
+                    "command": "ls-update-service.checkForUpdates",
+                    "when": "ls-update-service.deploy.active"
                 },
                 {
-                    "command": "go-current.experimental",
-                    "when": "go-current.experimental.active && go-current.debug"
+                    "command": "ls-update-service.experimental",
+                    "when": "ls-update-service.experimental.active && ls-update-service.debug"
                 },
                 {
-                    "command": "go-current.openWizard",
-                    "when": "go-current.active"
+                    "command": "ls-update-service.openWizard",
+                    "when": "ls-update-service.active"
                 },
                 {
-                    "command": "go-current.addInstanceToWorkspace",
-                    "when": "go-current.deploy.active"
+                    "command": "ls-update-service.addInstanceToWorkspace",
+                    "when": "ls-update-service.deploy.active"
                 },
                 {
-                    "command": "go-current.al.repopulateLaunchJson",
-                    "when": "go-current.al.active"
+                    "command": "ls-update-service.al.repopulateLaunchJson",
+                    "when": "ls-update-service.al.active"
                 },
                 {
-                    "command": "go-current.al.unpublishApp",
-                    "when": "go-current.al.active"
+                    "command": "ls-update-service.al.unpublishApp",
+                    "when": "ls-update-service.al.active"
                 },
                 {
-                    "command": "go-current.al.upgradeData",
-                    "when": "go-current.al.active"
+                    "command": "ls-update-service.al.upgradeData",
+                    "when": "ls-update-service.al.active"
                 },
                 {
-                    "command": "go-current.al.downloadDependencies",
-                    "when": "go-current.al.active"
+                    "command": "ls-update-service.al.downloadDependencies",
+                    "when": "ls-update-service.al.active"
                 },
                 {
-                    "command": "go-current.al.compileAndPackage",
-                    "when": "go-current.al.active"
+                    "command": "ls-update-service.al.compileAndPackage",
+                    "when": "ls-update-service.al.active"
                 },
                 {
-                    "command": "go-current.al.newPackage",
-                    "when": "go-current.al.active"
+                    "command": "ls-update-service.al.newPackage",
+                    "when": "ls-update-service.al.active"
                 },
                 {
-                    "command": "go-current.newPackage",
-                    "when": "go-current.deploy.active && !go-current.al.active"
+                    "command": "ls-update-service.newPackage",
+                    "when": "ls-update-service.deploy.active && !ls-update-service.al.active"
                 },
                 {
-                    "command": "go-current.al.addNewDependencies",
+                    "command": "ls-update-service.al.addNewDependencies",
                     "when": "false"
                 },
                 {
-                    "command": "go-current.viewResolvedProjectFile",
+                    "command": "ls-update-service.viewResolvedProjectFile",
                     "when": "false"
                 }
             ],
             "explorer/context": [
                 {
-                    "command": "go-current.al.addNewDependencies",
-                    "when": "go-current.al.active && resourceFilename == gocurrent.json",
-                    "group": "Go Current"
+                    "command": "ls-update-service.al.addNewDependencies",
+                    "when": "ls-update-service.al.active && resourceFilename == gocurrent.json",
+                    "group": "LS Update Service"
                 },
                 {
-                    "command": "go-current.viewResolvedProjectFile",
-                    "when": "go-current.al.active && resourceFilename == gocurrent.json",
-                    "group": "Go Current"
+                    "command": "ls-update-service.viewResolvedProjectFile",
+                    "when": "ls-update-service.al.active && resourceFilename == gocurrent.json",
+                    "group": "LS Update Service"
                 }
             ],
             "editor/context": [
                 {
-                    "command": "go-current.al.addNewDependencies",
-                    "when": "go-current.al.active && resourceFilename == gocurrent.json",
-                    "group": "Go Current"
+                    "command": "ls-update-service.al.addNewDependencies",
+                    "when": "ls-update-service.al.active && resourceFilename == gocurrent.json",
+                    "group": "LS Update Service"
                 },
                 {
-                    "command": "go-current.viewResolvedProjectFile",
-                    "when": "go-current.al.active && resourceFilename == gocurrent.json",
-                    "group": "Go Current"
+                    "command": "ls-update-service.viewResolvedProjectFile",
+                    "when": "ls-update-service.al.active && resourceFilename == gocurrent.json",
+                    "group": "LS Update Service"
                 }
             ]
         },
@@ -234,7 +234,7 @@
             }
         ],
         "configuration": {
-            "title": "Go Current Workspace",
+            "title": "LS Retail Update Service Workspace",
             "properties": {
                 "go-current-workspace.debug": {
                     "type": "boolean",

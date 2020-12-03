@@ -40,8 +40,8 @@ export class BaseUiService extends UiService
 
     async activate(): Promise<void>
     {
-        this.registerCommand("go-current.newProject", () => this.newProject());
-        this.registerCommand("go-current.openWizard", () => this.openWizard());
+        this.registerCommand("ls-update-service.newProject", () => this.newProject());
+        this.registerCommand("ls-update-service.openWizard", () => this.openWizard());
 
         commands.executeCommand("setContext", Constants.goCurrentExtensionActive, true);
 

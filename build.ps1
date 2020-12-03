@@ -100,8 +100,8 @@ if (Test-Path $PackageBackupPath)
 
 Import-Module GoCurrentServer
 $Package = @{
-    'Id' = 'go-current-workspace'
-    'Name' = "Go Current Workspace"
+    'Id' = 'ls-update-service-workspace'
+    'Name' = "LS Update Service Workspace"
     'Version' = $Version
     'IncludePaths' = @(
         (Get-Item (Join-Path $PSScriptRoot "*.vsix")),

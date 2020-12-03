@@ -1,6 +1,6 @@
-# Go Current Workspace 
+# LS Retail Update Service Workspace
 
-*Go Current Workspace* brings you the power of Go Current to your workspace in Visual Studio Code.
+*LS Retail Update Service Workspace* brings you the power of LRUS to your workspace in Visual Studio Code.
 
 With this extension, you can ...
 
