@@ -3,7 +3,7 @@ export class Constants
 {
     static extensionName = 'LS Retail Update Service Workspace';
     static goCurrentExtensionActive = "ls-update-service.active";
-    static goCurrentDebug = "ls-update-service.debug";
+    static goCurrentDebug = "ls-update-service-workspace.debug";
 
     static projectFileName = "gocurrent.json";
     static projectDataFileName = "data.json";
@@ -18,6 +18,10 @@ export class Constants
     static goCurrentDeployActive = "ls-update-service.deploy.active";
     static goCurrentAlActive = "ls-update-service.al.active";
     static goCurrentDeployUpdatesAvailable = "ls-update-service.deploy.updatesAvailable";
+
+    static configurationSectionId = 'ls-update-service-workspace';
+    static configurationDebug = 'debug'
+    static configurationdDevWorkspaces = 'devPackageGroupWorkspaceDirs'
 
     static alProjectFileName = "app.json";
 

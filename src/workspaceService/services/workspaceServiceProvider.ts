@@ -1,9 +1,10 @@
-import { Disposable, Event, EventEmitter, workspace, WorkspaceFolder, WorkspaceFoldersChangeEvent } from "vscode";
-import { UiService } from "../../extensionController";
+import { Disposable, Event, EventEmitter, workspace, WorkspaceFolder } from "vscode";
+import { IWorkspaceEntry } from "../interfaces/IWorkspaceEntry";
 import { IWorkspaceService } from "../interfaces/IWorkspaceService";
+import { WorkspaceFoldersExChangeEvent } from "./workspaceFoldersExChangeEvent";
 import { Type, WorkspaceService } from "./workspaceService";
 
-export class WorkspaceContainer<TService extends IWorkspaceService>
+export class WorkspaceServiceProvider<TService extends IWorkspaceService>
 {
     private _workspaceService: WorkspaceService;
     private _type: Type<TService>;
@@ -21,7 +22,7 @@ export class WorkspaceContainer<TService extends IWorkspaceService>
         this._disposable = Disposable.from(...subscriptions);
     }
 
-    private onWorkspaceChanges(workspaceChanges: WorkspaceFoldersChangeEvent)
+    private onWorkspaceChanges(workspaceChanges: WorkspaceFoldersExChangeEvent)
     {
         let event = new WorkspaceContainerEvent(this, workspaceChanges, this._subscriptionsByWorkspace);
         
@@ -63,29 +64,36 @@ export class WorkspaceContainer<TService extends IWorkspaceService>
         return this._workspaceService.anyInactive(this._type);
     }
 
-    getActiveServices(): Promise<TService[]>
+    getServices(
+        options: {
+            serviceFilter?: (service: TService) => Promise<boolean>,
+            workspaceFilter?: (workspace: IWorkspaceEntry) => Promise<boolean>
+            active?: boolean
+        }
+    ): Promise<TService[]>
     {
-        return this._workspaceService.getActiveServices(this._type);
+        return this._workspaceService.getServices(this._type, options);
     }
 
-    async getActiveWorkspaces(): Promise<WorkspaceFolder[]>
+    getWorkspaces(
+        options: {
+            serviceFilter?: (service: TService) => Promise<boolean>,
+            workspaceFilter?: (workspace: IWorkspaceEntry) => Promise<boolean>
+            active?: boolean
+        }
+    ): Promise<WorkspaceFolder[]>
     {
-        return this._workspaceService.getActiveWorkspaces(this._type);
-    }
-
-    async getInactiveWorkspaces(): Promise<WorkspaceFolder[]>
-    {
-        return this._workspaceService.getInactiveWorkspaces(this._type);
+        return this._workspaceService.getWorkspaces(this._type, options);
     }
 }
 
 export class WorkspaceContainerEvent<TService extends IWorkspaceService>
 {
-    public workspaceChanges: WorkspaceFoldersChangeEvent;
-    public workspaceContainer: WorkspaceContainer<TService>;
+    public workspaceChanges: WorkspaceFoldersExChangeEvent;
+    public workspaceContainer: WorkspaceServiceProvider<TService>;
     private _subscriptionsByWorkspace: Map<string, Disposable[]>;
 
-    constructor(workspaceContainer: WorkspaceContainer<TService>, workspaceChanges: WorkspaceFoldersChangeEvent,subscriptionsByWorkspace: Map<string, Disposable[]>)
+    constructor(workspaceContainer: WorkspaceServiceProvider<TService>, workspaceChanges: WorkspaceFoldersExChangeEvent,subscriptionsByWorkspace: Map<string, Disposable[]>)
     {
         this._subscriptionsByWorkspace = subscriptionsByWorkspace;
         this.workspaceChanges = workspaceChanges;

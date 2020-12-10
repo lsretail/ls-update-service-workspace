@@ -100,9 +100,19 @@ function Get-ProjectFile
         $Result.InputPath = @()
         foreach ($File in @($ProjectFile.files))
         {
+            $File = Resolve-VersionTarget -Value $File -Target $Target
             if ($File -is [string])
             {
+                
                 $Result.InputPath += [System.IO.Path]::Combine($ProjectDir, (Resolve-VariablesInString -Value $File @ResolveContainer))
+            }
+            elseif ($null -eq $File)
+            {
+                continue
+            }
+            elseif (('SourcePath' -iin $File.PSobject.Properties.name) -and ('Destination' -iin $File.PSobject.Properties.name))
+            {
+                $Result.InputPath += Resolve-AdvancedFilePath -Value $File @ResolveContainer
             }
             else
             {
@@ -589,26 +599,27 @@ function Resolve-Version
 function Resolve-VersionTarget
 {
     param(
-        $Version,
+        [Alias('Version')]
+        $Value,
         $Target
     )
 
-    if ($Version -is [string])
+    if ($Value -is [string])
     {
-        return $Version
+        return $Value
     }
     
-    if ($Target -and ($Target -in $Version.PSobject.Properties.name))
+    if ($Target -and ($Target -in $Value.PSobject.Properties.name))
     {
-        return $Version.$Target
+        return $Value.$Target
     }
-    elseif ($Version.PSobject.Properties.name -match 'default')
+    elseif ($Value.PSobject.Properties.name -match 'default')
     {
-        return $Version.default
+        return $Value.default
     }
     else
     {
-        return $Version
+        return $Value
     }
 }
 
@@ -802,6 +813,46 @@ function Resolve-VariableBranchFilter
         $Arguments.BranchToLabelMap = $BranchToLabelMap
     }
     ConvertTo-BranchPriorityPreReleaseFilter @Arguments 
+}
+
+function Resolve-AdvancedFilePath
+{
+    param(
+        $Value,
+        [hashtable] $ProjectVariables,
+        [hashtable] $ResolveCache,
+        $ProjectDir,
+        $Target,
+        $BranchName,
+        $BranchToLabelMap
+    )
+
+    $ResolveContainer = @{
+        ProjectVariables = $ProjectVariables
+        ResolveCache = $ResolveCache
+        ProjectDir = $ProjectDir
+        Target = $Target
+        BranchName = $BranchName
+        BranchToLabelMap = $BranchToLabelMap
+    }
+    
+    if (('SourcePath' -iin $Value.PSobject.Properties.name) -and ('Destination' -iin $Value.PSobject.Properties.name))
+    {
+        $Hashtable = @{
+            SourcePath = @()
+            Destination = $Value.Destination
+        }
+        foreach ($Item in $Value.SourcePath)
+        {
+            $Hashtable.SourcePath += [System.IO.Path]::Combine($ProjectDir, (Resolve-VariablesInString -Value $Item @ResolveContainer))
+        }
+
+        return $Hashtable
+    }
+    else
+    {   
+        return $Value
+    }
 }
 
 Export-ModuleMember -Function '*-ProjectFile*'

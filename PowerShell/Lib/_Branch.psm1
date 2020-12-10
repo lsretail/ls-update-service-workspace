@@ -59,43 +59,24 @@ function ConvertTo-PreReleaseLabel
 {
     <#
         .SYNOPSIS
-            Convert specified label, build number and a commit hash to a pre-release label.
+            Convert specified label to pre-release label.
         
         .DESCRIPTION
-            A utility function to format a pre-release label to 
+            A utility function to format a pre-release label.
 
         .EXAMPLE
-            PS> ConvertTo-PreReleaseLabel -Label 'this is a beta' -BuildNumber 1 -CommitHash 'ca82a6dff817ec66f44342007202690a93763949'
-            this-is-a-beta.1+ca82a6dff8
+            PS> ConvertTo-PreReleaseLabel -Label 'this is a beta'
+            this-is-a-beta
 
-            PS> ConvertTo-PreReleaseLabel -Label 'alpha' -BuildNumber 10 -CommitHash 'ca82a6dff817ec66f44342007202690a93763949'
-            alpha.10+ca82a6dff8
+            PS> ConvertTo-PreReleaseLabel -Label 'alpha'
+            alpha
     #>
     param(
         [Parameter(Mandatory = $true)]
-        [string] $Label,
-        [int] $BuildNumber,
-        [string] $CommitHash,
-        [int] $CommitLength = 8
+        [string] $Label
     )
 
-    if ($BuildNumber)
-    {
-        $Label += ".$BuildNumber"
-    }
-
-    if ($CommitHash)
-    {
-        if ($CommitHash.Length -gt $CommitLength)
-        {
-            $CommitHash = $CommitHash.Substring(0, $CommitLength)
-        }
-        $Label += "+$CommitHash"
-    }
-    
-    $Label = [regex]::Replace($Label, "[^a-zA-Z0-9-.+]", "-")  
-
-    return $Label
+    return [regex]::Replace($Label, "[^a-zA-Z0-9-.+]", "-")  
 }
 
 function ConvertTo-BranchPriorityPreReleaseFilter

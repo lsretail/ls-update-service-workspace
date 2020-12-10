@@ -16,7 +16,15 @@ function Get-AlDependencies
     
     $Deps = ConvertTo-HashtableList $Dependencies
 
-    $Resolved = @($Deps | Get-GocUpdates | Where-Object { $PackageIds.Contains($_.Id)})
+    $AllResolved = $Deps | Get-GocUpdates
+
+    $Resolved = @($AllResolved | Where-Object { $PackageIds.Contains($_.Id)})
+
+    if ($PackageIds.Contains('bc-application'))
+    {
+        $Additionals = @('bc-system-application', 'bc-base-application')
+        $Resolved += $AllResolved | Where-Object {$Additionals.Contains($_.Id)}
+    }
 
     $TempDir = Join-Path $OutputDir 'Temp'
     $GatherDir = Join-Path $TempDir '.gather'

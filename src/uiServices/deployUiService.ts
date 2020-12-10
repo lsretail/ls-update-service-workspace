@@ -1,6 +1,6 @@
 import { utils } from "mocha";
 import * as vscode from "vscode";
-import { commands, ExtensionContext, QuickPickOptions, window, workspace, WorkspaceFolder, WorkspaceFoldersChangeEvent } from "vscode";
+import { commands, ExtensionContext, QuickPickOptions, window, workspace, WorkspaceFolder } from "vscode";
 import { Constants } from "../constants";
 import Controller from "../controller";
 import { DeployService } from "../deployService/services/deployService";
@@ -12,37 +12,40 @@ import { Deployment } from "../models/deployment";
 import { PackageGroup } from "../models/projectFile";
 import { UpdateAvailable } from "../models/updateAvailable";
 import Resources from "../resources";
-import { WorkspaceContainer, WorkspaceContainerEvent } from "../workspaceService/services/workspaceContainer";
+import { WorkspaceServiceProvider, WorkspaceContainerEvent } from "../workspaceService/services/workspaceServiceProvider";
 import * as util from 'util'
 import { PackageInfo } from "../interfaces/packageInfo";
 import { BaseUiService } from "./BaseUiService";
+import { WorkspaceHelpers } from "../helpers/workspaceHelpers";
+import { Logger } from "../interfaces/logger";
 
 export class DeployUiService extends UiService
 {
-    private _wsDeployServices: WorkspaceContainer<DeployService>;
+    private _wsDeployServices: WorkspaceServiceProvider<DeployService>;
     private _goCurrentPsService: GoCurrentPsService;
 
     private _disposable: vscode.Disposable;
 
     constructor(
         context: ExtensionContext, 
-        wsDeployServices: WorkspaceContainer<DeployService>,
+        logger: Logger,
+        wsDeployServices: WorkspaceServiceProvider<DeployService>,
         goCurrentPsService: GoCurrentPsService
     )
     {
-        super(context);
+        super(context, logger);
         this._wsDeployServices = wsDeployServices;
         this._goCurrentPsService = goCurrentPsService;
     }
 
     async activate(): Promise<void>
     {
-        this.registerCommand("ls-update-service.deploy", async () => await this.install());
-        this.registerCommand("ls-update-service.checkForUpdates", async () => await this.checkForUpdates());
-        this.registerCommand("ls-update-service.update", async () => await this.update());
-        this.registerCommand("ls-update-service.remove", async () => await this.remove());
-        this.registerCommand("ls-update-service.addInstanceToWorkspace", async () => await this.addInstanceToWorkspace());
-        this.registerCommand("ls-update-service.viewResolvedProjectFile", (...args) => this.viewResolvedProjectFile());
+        this.registerCommand("ls-update-service.deploy", this.install);
+        this.registerCommand("ls-update-service.checkForUpdates", this.checkForUpdates);
+        this.registerCommand("ls-update-service.update", this.update);
+        this.registerCommand("ls-update-service.remove", this.remove);
+        this.registerCommand("ls-update-service.addInstanceToWorkspace", this.addInstanceToWorkspace);
+        this.registerCommand("ls-update-service.viewResolvedProjectFile", this.viewResolvedProjectFile);
 
         let subscriptions: vscode.Disposable[] = [];
         this._wsDeployServices.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this, subscriptions);
@@ -94,7 +97,20 @@ export class DeployUiService extends UiService
 
     private async install()
     {
-        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsDeployServices.getActiveWorkspaces());
+        let activeWorkspaces = await this._wsDeployServices.getWorkspaces({
+            serviceFilter: async service => await service.hasPackageGroups(),
+            active: true
+        })
+
+        //await this._wsDeployServices.getActiveWorkspaces(async service => await service.hasPackageGroups());
+
+        if (activeWorkspaces.length === 0)
+        {
+            window.showInformationMessage("Nothing to install.");
+            return;
+        }
+
+        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(activeWorkspaces);
         if (!workspaceFolder)
             return;
 
@@ -212,7 +228,7 @@ export class DeployUiService extends UiService
         let buttons: string[] = [Constants.buttonUpdate, Constants.buttonLater];
         commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
         let anyUpdates = false;
-        for (let deployService of (await this._wsDeployServices.getActiveServices()))
+        for (let deployService of (await this._wsDeployServices.getServices({active: true})))
         {
             deployService.UpdatesAvailable = new Array<UpdateAvailable>();
             let updates = await deployService.checkForUpdates();
@@ -274,7 +290,7 @@ export class DeployUiService extends UiService
     {
         let picks = new Array<QuickPickItemPayload<DeployService, UpdateAvailable>>();
 
-        for (let service of await this._wsDeployServices.getActiveServices())
+        for (let service of await this._wsDeployServices.getServices({active: true}))
         {
             for (let entry of service.UpdatesAvailable)
             {
@@ -313,7 +329,7 @@ export class DeployUiService extends UiService
 
     private async anyUpdatesPending() : Promise<boolean>
     {
-        for (let service of await this._wsDeployServices.getActiveServices())
+        for (let service of await this._wsDeployServices.getServices({active: true}))
         {
             if (service.UpdatesAvailable && service.UpdatesAvailable.length > 0)
                 return true;
@@ -324,7 +340,18 @@ export class DeployUiService extends UiService
 
     private async remove()
     {
-        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsDeployServices.getActiveWorkspaces());
+        let workspaces = await this._wsDeployServices.getWorkspaces({
+            active: true,
+            serviceFilter: service => service.hasPackagesInstalled()}
+        );
+
+        if (!workspaces || workspaces.length === 0)
+        {
+            window.showInformationMessage("Nothing to remove.")
+            return;
+        }
+
+        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(workspaces);
 
         if (!workspaceFolder)
             return;
@@ -388,7 +415,7 @@ export class DeployUiService extends UiService
 
     private async addInstanceToWorkspace()
     {
-        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsDeployServices.getActiveWorkspaces());
+        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsDeployServices.getWorkspaces({active: true}));
 
         if (!workspaceFolder)
             return;
@@ -433,9 +460,14 @@ export class DeployUiService extends UiService
         return selected.payload;
     }
 
-    async viewResolvedProjectFile(): Promise<void>
+    async viewResolvedProjectFile(item): Promise<void>
     {
-        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsDeployServices.getActiveWorkspaces());
+        if (!item || !item.fsPath)
+            return;
+            
+        let filePath = item.fsPath;
+
+        let workspaceFolder = WorkspaceHelpers.getWorkspaceForPath(filePath);
 
         if (!workspaceFolder)
             return;
@@ -457,9 +489,8 @@ export class DeployUiService extends UiService
             'Resolved Go Current Project File',
             vscode.ViewColumn.One,
             {}
-          );
-          
-          panel.webview.html = '<pre>' + JSON.stringify(projectFileResolved, null, 4) + '<br>' + JSON.stringify(projectFileResolved, null, 4)+ '</pre>';
-
+        );
+        
+        panel.webview.html = '<pre>' + JSON.stringify(projectFileResolved, null, 4) + '<br>' + JSON.stringify(projectFileResolved, null, 4) +'</pre>';
     }   
 }

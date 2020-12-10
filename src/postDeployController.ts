@@ -48,7 +48,7 @@ export class PostDeployController implements IWorkspaceService
             await PostDeployController.removeAlLaunchConfig(instanceName, this._workspaceFolder);
     }
 
-    public static async addAlLaunchConfig(packageInfos: PackageInfo[], workspaceFolder: WorkspaceFolder): Promise<boolean>
+    public static async addAlLaunchConfig(packageInfos: PackageInfo[], workspaceFolder: WorkspaceFolder, removeNoneExisting: boolean = false): Promise<boolean>
     {
         const launchConfig = workspace.getConfiguration('launch', workspaceFolder);
         let configurations: any[] = launchConfig['configurations'];
@@ -76,10 +76,23 @@ export class PostDeployController implements IWorkspaceService
 
         let updated = false;
 
+        // Start by removing non-existing
+        if (removeNoneExisting)
+        {
+            let configNames = packageInfos.map(i => `${i.InstanceName} (Go Current)`);
+
+            let count = configurations.length;
+            configurations = configurations.filter(s => !(s.type === 'al' && s.name.includes("(Go Current)") && !configNames.includes(s.name)));
+            updated = count - configurations.length > 0
+        }
+
         let instancesUpdated = []
 
         for (let packageInfo of packageInfos)
         {
+            if (packageInfo.Id !== 'bc-server' || !packageInfo.Info)
+                continue;
+
             // Check if exists
             let exists = configurations.filter(s => s.type === 'al' && s.name.includes("(Go Current)") && s.serverInstance === packageInfo.Info.ServerInstance)
             if (exists.length > 0)

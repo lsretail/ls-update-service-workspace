@@ -13,6 +13,8 @@ import { ProjectFileHelpers } from "../../helpers/projectFileHelpers";
 export class NewProjectService
 {
     private static _lsCentralAppId = '5ecfc871-5d82-43f1-9c54-59685e82318d';
+    private static _bcApplicationPackageId = "bc-application";
+    private static _bcSystemSymbolsPackageId = "bc-system-symbols";
     private static _appIdToPackageMap = {
         "63ca2fa4-4f03-4f2b-a480-172fef340d3f": "bc-system-application",
         "437dbf0e-84ff-417a-965d-ed2bb9650972": "bc-base-application",
@@ -66,17 +68,17 @@ export class NewProjectService
 
         let appIds = AppIdHelpers.getAppIdsFromAppJson(appJsonData);
 
+        NewProjectService.addDependenciesToProjectFile(
+            projectFileData, 
+            appJsonData
+        );
+
         if (appIds.includes(NewProjectService._lsCentralAppId) && projectFileData.variables?.lsCentralVersion?.alAppId)
         {
             projectFileData.variables.lsCentralVersion.alAppId = NewProjectService._lsCentralAppId;
         }
 
         projectFileData.id = appJsonData.name.toLowerCase().replace(/[^a-z0-9-]/g, "-") + '-app';
-
-        NewProjectService.addDependenciesToProjectFile(
-            projectFileData, 
-            appJsonData
-        );
 
         this.projectFile.save();
 
@@ -177,13 +179,26 @@ export class NewProjectService
 
         let count = 0;
 
-        if (appJson.application)
+        if (appJson.application && !existingIds.includes(this._bcApplicationPackageId))
         {
             count++;
             let newDep = new ProjectFilePackage();
-            newDep.id = 'bc-application';
+            newDep.id = this._bcApplicationPackageId;
             let version = new VersionFromAlApp();
             version.alAppId = 'application';
+            version.alAppIdType = 'fromMinorToNextMajor';
+            version.alAppParts = 3
+            newDep.version = version;
+            projectFile.dependencies.push(newDep);
+        }
+
+        if (appJson.platform && !existingIds.includes(this._bcSystemSymbolsPackageId))
+        {
+            count++;
+            let newDep = new ProjectFilePackage();
+            newDep.id = this._bcSystemSymbolsPackageId;
+            let version = new VersionFromAlApp();
+            version.alAppId = 'platform';
             version.alAppIdType = 'fromMinorToNextMajor';
             version.alAppParts = 3
             newDep.version = version;

@@ -1,8 +1,8 @@
 import { IWorkspaceService } from '../interfaces/IWorkspaceService'
 import { Disposable, Event, EventEmitter, Uri, workspace, WorkspaceFolder, WorkspaceFoldersChangeEvent } from "vscode";
-import { WorkspaceContainer } from './workspaceContainer';
-import { AlPsService } from '../../alService/services/alPsService';
-import { AlService } from '../../alService/services/alService';
+import { WorkspaceServiceProvider } from './workspaceServiceProvider';
+import { WorkspaceFoldersExChangeEvent } from './workspaceFoldersExChangeEvent';
+import { IWorkspaceEntry } from '../interfaces/IWorkspaceEntry';
 
 export interface Type<T> extends Function { 
     new (...args: any[]): T; 
@@ -10,13 +10,14 @@ export interface Type<T> extends Function {
 
 export class WorkspaceService
 {
-    private _services: Map<string, (workspaceFolder: WorkspaceFolder) => any> = new Map<string, (workspaceFolder: WorkspaceFolder) => any>();
+    private _activateServices: Map<string, (workspaceFolder: IWorkspaceEntry) => any> = new Map<string, (workspaceFolder: IWorkspaceEntry) => any>();
+    private _isActiveServices: Map<string, (workspaceFolder: WorkspaceFolder) => Promise<boolean>> = new Map<string, (workspaceFolder: WorkspaceFolder) => Promise<boolean>>();
 
     private _workspaceServices: Map<string, Map<string, IWorkspaceService>> = new Map<string, Map<string, IWorkspaceService>>();
 
-    private _workspaceFolders: Array<WorkspaceFolder> = [];
+    private _workspaceFolders: Array<IWorkspaceEntry> = [];
 
-    private _onDidChangeWorkspaceFolders = new EventEmitter<WorkspaceFoldersChangeEvent>();
+    private _onDidChangeWorkspaceFolders = new EventEmitter<WorkspaceFoldersExChangeEvent>();
     private _disposables: Disposable[] = [];
 
     constructor()
@@ -29,16 +30,18 @@ export class WorkspaceService
         this._disposables.push(workspace.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this));
     }
 
-    get onDidChangeWorkspaceFolders(): Event<WorkspaceFoldersChangeEvent>
+    get onDidChangeWorkspaceFolders(): Event<WorkspaceFoldersExChangeEvent>
     {
         return this._onDidChangeWorkspaceFolders.event;
     }
 
     private onWorkspaceChanges(e: WorkspaceFoldersChangeEvent)
     {
+        this.removeVirtualWorkspaces(e.added);
+
         for (let added of e.added)
         {
-            this.addWorkspace(added);
+            this.addWorkspace(added, false);
         }
 
         for (let removed of e.removed)
@@ -46,7 +49,13 @@ export class WorkspaceService
             this.removeWorkspace(removed);
         }
 
-        this._onDidChangeWorkspaceFolders.fire(e);
+        let event: WorkspaceFoldersExChangeEvent = {
+            added: e.added,
+            removed: e.removed,
+            virtual: false
+        }
+
+        this._onDidChangeWorkspaceFolders.fire(event);
     }
 
     dispose()
@@ -54,14 +63,26 @@ export class WorkspaceService
         Disposable.from(...this._disposables).dispose
     }
 
-    register<TService extends IWorkspaceService>(type: Type<TService>, registration: (workspaceFolder: WorkspaceFolder) => TService): WorkspaceContainer<TService>
+    register<TService extends IWorkspaceService>(
+        type: Type<TService>, 
+        activate: (workspaceFolder: IWorkspaceEntry) => TService,
+        isActive?: (workspaceFolder: WorkspaceFolder) => Promise<boolean>
+    ): WorkspaceServiceProvider<TService>
     {
-        this._services.set(this.getTypeKey(type), registration);
+        this._activateServices.set(this.getTypeKey(type), activate);
+        
+        if (isActive)
+            this._isActiveServices.set(this.getTypeKey(type), isActive);
+        else
+            this._isActiveServices.set(this.getTypeKey(type), () => Promise.resolve(true));
     
-        return new WorkspaceContainer<TService>(this, type);
+        return new WorkspaceServiceProvider<TService>(this, type);
     }
 
-    getService<TService extends IWorkspaceService>(type: Type<TService>, workspaceFolder: WorkspaceFolder): TService
+    getService<TService extends IWorkspaceService>(
+        type: Type<TService>, 
+        workspaceFolder: WorkspaceFolder
+    ): TService
     {
         let workspaceKey = WorkspaceService.getWorkspaceKey(workspaceFolder);
         if (!this._workspaceServices.has(workspaceKey))
@@ -69,10 +90,20 @@ export class WorkspaceService
         
         if (!this._workspaceServices.get(workspaceKey).has(this.getTypeKey(type)))
         {
-            if (!this._services.has(this.getTypeKey(type)))
+            if (!this._activateServices.has(this.getTypeKey(type)))
                 throw `No service registered for ${this.getTypeKey(type)}`;
 
-            this._workspaceServices.get(workspaceKey).set(this.getTypeKey(type), this._services.get(this.getTypeKey(type))(workspaceFolder));
+            let workspaceEntry = this._workspaceFolders.filter(w => WorkspaceService.getWorkspaceKey(w.workspaceFolder) === workspaceKey)[0];
+
+            if (!workspaceEntry)
+                throw `Workspace not registered: ${workspaceKey}.`
+
+            this._workspaceServices
+                .get(workspaceKey)
+                .set(
+                    this.getTypeKey(type), 
+                    this._activateServices.get(this.getTypeKey(type))(workspaceEntry)
+                );
         }
 
         return <TService>this._workspaceServices.get(workspaceKey).get(this.getTypeKey(type));
@@ -82,7 +113,7 @@ export class WorkspaceService
     {
         for (let workspaceFolder of this._workspaceFolders)
         {
-            let service = this.getService<TService>(type, workspaceFolder);
+            let service = this.getService<TService>(type, workspaceFolder.workspaceFolder);
             if (await service.isActive())
                 return true;
         }
@@ -94,7 +125,7 @@ export class WorkspaceService
     {
         for (let workspaceFolder of this._workspaceFolders)
         {
-            let service = this.getService<TService>(type, workspaceFolder);
+            let service = this.getService<TService>(type, workspaceFolder.workspaceFolder);
             if (!(await service.isActive()))
                 return true;
         }
@@ -102,24 +133,25 @@ export class WorkspaceService
         return false;
     }
 
-    async getActiveServices<TService extends IWorkspaceService>(type: Type<TService>): Promise<TService[]>
+    /*async getActiveServices<TService extends IWorkspaceService>(type: Type<TService>): Promise<TService[]>
     {
         let services: TService[] = [];
         for(let workspaceFolder of this._workspaceFolders)
         {
-            if (await this.getService(type, workspaceFolder).isActive())
-                services.push(this.getService(type, workspaceFolder));
+            if (await this.getService(type, workspaceFolder.workspaceFolder).isActive())
+                services.push(this.getService(type, workspaceFolder.workspaceFolder));
         }
         return services;
     }
 
-    async getActiveWorkspaces<TService extends IWorkspaceService>(type: Type<TService>): Promise<WorkspaceFolder[]>
+    async getActiveWorkspaces<TService extends IWorkspaceService>(type: Type<TService>, filter?: (service: TService) => Promise<boolean>): Promise<WorkspaceFolder[]>
     {
         let workspaceFolders: WorkspaceFolder[] = [];
         for(let workspaceFolder of this._workspaceFolders)
         {
-            if (await this.getService(type, workspaceFolder).isActive())
-                workspaceFolders.push(workspaceFolder);
+            let service = this.getService(type, workspaceFolder.workspaceFolder);
+            if (service.isActive() && (!filter || filter && (await filter(service))))
+                workspaceFolders.push(workspaceFolder.workspaceFolder);
         }
         return workspaceFolders;
     }
@@ -129,72 +161,192 @@ export class WorkspaceService
         let workspaceFolders: WorkspaceFolder[] = [];
         for(let workspaceFolder of this._workspaceFolders)
         {
-            if (!await this.getService(type, workspaceFolder).isActive())
-                workspaceFolders.push(workspaceFolder);
+            if (!await this.getService(type, workspaceFolder.workspaceFolder).isActive())
+                workspaceFolders.push(workspaceFolder.workspaceFolder);
         }
         return workspaceFolders;
+    }*/
+
+    public get workspaceEntries(): IWorkspaceEntry[]
+    {
+        return this._workspaceFolders;
     }
 
-    private addWorkspaces(workspaceFolders: readonly WorkspaceFolder[])
-    {
-        if (!workspaceFolders)
-            return;
-
-        for (let workspaceFolder of workspaceFolders)
-        {
-            this.addWorkspace(workspaceFolder);
+    async getWorkspaces<TService extends IWorkspaceService>(
+        type: Type<TService>, 
+        options: {
+            serviceFilter?: (service: TService) => Promise<boolean>,
+            workspaceFilter?: (workspace: IWorkspaceEntry) => Promise<boolean>
+            active?: boolean
         }
+    ): Promise<WorkspaceFolder[]>
+    {
+        if (!options.workspaceFilter)
+            options.workspaceFilter = (workspace: IWorkspaceEntry) => Promise.resolve(true);
 
-        let e: WorkspaceFoldersChangeEvent = {
-            added: workspaceFolders,
-            removed: []
+        if (!options.serviceFilter)
+            options.serviceFilter = (service) => Promise.resolve(true);
+
+        let workspaces: WorkspaceFolder[] = [];
+
+        for(let workspaceFolder of this._workspaceFolders)
+        {
+            if (!(await options.workspaceFilter(workspaceFolder)))
+                continue;
+
+            if (!(await this.checkActive(options.active, type, workspaceFolder.workspaceFolder)))
+                continue;
+
+            let service = this.getService(type, workspaceFolder.workspaceFolder);
+            if (await options.serviceFilter(service))
+                workspaces.push(workspaceFolder.workspaceFolder);
+        }
+        return workspaces;
+    }
+
+    async getServices<TService extends IWorkspaceService>(
+        type: Type<TService>, 
+        options: {
+            serviceFilter?: (service: TService) => Promise<boolean>,
+            workspaceFilter?: (workspace: IWorkspaceEntry) => Promise<boolean>
+            active?: boolean
+        }
+    ): Promise<TService[]>
+    {
+        if (!options.workspaceFilter)
+            options.workspaceFilter = (workspace: IWorkspaceEntry) => Promise.resolve(true);
+
+        if (!options.serviceFilter)
+            options.serviceFilter = (service) => Promise.resolve(true);
+
+        let services: TService[] = [];
+
+        for(let workspaceFolder of this._workspaceFolders.filter(options.workspaceFilter))
+        {
+            if (!(await this.checkActive(options.active, type, workspaceFolder.workspaceFolder)))
+                continue;
+
+            let service = this.getService(type, workspaceFolder.workspaceFolder);
+            if (options.serviceFilter(service))
+            services.push(service);
+        }
+        return services;
+    }
+
+    private async checkActive<TService extends IWorkspaceService>(
+        active: boolean | undefined, 
+        type: Type<TService>, 
+        workspaceFolder: WorkspaceFolder
+    ): Promise<boolean>
+    {
+        if (active === undefined || active === null)
+            return true;
+        
+        let isActiveAction = this._isActiveServices.get(this.getTypeKey(type));
+        let isActive = await isActiveAction(workspaceFolder);
+        if (isActive === false)
+            return active == isActive;
+        
+        let service = this.getService(type, workspaceFolder);
+        return active == await service.isActive();
+    }
+
+    public addWorkspaces(workspaceFolders: readonly WorkspaceFolder[])
+    {
+        this.removeVirtualWorkspaces(workspaceFolders);
+
+        let newFolders = this.addWorkspacesCommon(workspaceFolders, false)
+
+        if (newFolders.length === 0)
+            return;
+        
+        let e: WorkspaceFoldersExChangeEvent = {
+            added: newFolders,
+            removed: [],
+            virtual: false
         }
 
         this._onDidChangeWorkspaceFolders.fire(e);
     }
 
-    private addWorkspace(workspaceFolder: WorkspaceFolder)
+    private addWorkspacesCommon(workspaceFolders: readonly WorkspaceFolder[], virtual: boolean): WorkspaceFolder[]
     {
-        if (this._workspaceFolders.filter(w => w.uri.fsPath !== workspaceFolder.uri.fsPath))
-            this._workspaceFolders.push(workspaceFolder);
-
-        /*if (this._deployServices[Controller.getWorkspaceKey(workspaceFolder)])
+        if (!workspaceFolders || workspaceFolders.length === 0)
             return;
 
-        this.debugLog(`Adding workspace ${workspaceFolder.uri.fsPath}.`)
+        let newWorkspaceFolders: WorkspaceFolder[] = [];
+
+        for (let workspaceFolder of workspaceFolders)
+        {
+            if (this.addWorkspace(workspaceFolder, virtual))
+                newWorkspaceFolders.push(workspaceFolder);
+        }
+
+        return newWorkspaceFolders;
+    }
+
+    public addVirtualWorkspaces(workspaceFolders: readonly WorkspaceFolder[])
+    {
+        let newFolders = this.addWorkspacesCommon(workspaceFolders, true);
+
+        if (newFolders.length === 0)
+            return;
         
-        
-        // Deploy Service
-        let deployService = new DeployService(
-            projectFile,
-            new JsonData<WorkspaceData>(path.join(workspaceFolder.uri.fsPath, Constants.goCurrentWorkspaceDirName+"\\"+Constants.projectDataFileName), true, new WorkspaceData()),
-            this._deployPsService,
-            workspaceFolder.uri.fsPath
-        );
-        deployService.onDidProjectFileChange(this.onProjecFileChange, this);
-        this._deployServices[Controller.getWorkspaceKey(workspaceFolder)] = deployService;
+        let e: WorkspaceFoldersExChangeEvent = {
+            added: newFolders,
+            removed: [],
+            virtual: true
+        }
 
-        // PostDeployService
-        let postDeployController = new PostDeployController(workspaceFolder);
-        deployService.onDidPackagesDeployed(postDeployController.onPackagesDeployed, postDeployController);
-        deployService.onDidInstanceRemoved(postDeployController.onInstanceRemoved, postDeployController);
-        deployService.onDidInstanceRemoved(this.onDeploymentRemoved, this);
+        this._onDidChangeWorkspaceFolders.fire(e);
+    }
 
-        this._postDeployControllers[Controller.getWorkspaceKey(workspaceFolder)] = postDeployController;
+    private addWorkspace(workspaceFolder: WorkspaceFolder, virtual: boolean): boolean
+    {
+        if (this._workspaceFolders.filter(w => w.workspaceFolder.uri.fsPath === workspaceFolder.uri.fsPath).length === 0)
+        {
+            this._workspaceFolders.push({
+                virtual: virtual,
+                workspaceFolder: workspaceFolder
+            });
+            return true
+        }
+        return false
+    }
 
-        // AL Service
-        this._alServices[Controller.getWorkspaceKey(workspaceFolder)] = new AlService(
-            deployService,
-            this.getAlPsService(),
-            workspaceFolder
-        );
+    private removeVirtualWorkspaces(workspaceFolders: readonly WorkspaceFolder[])
+    {
+        if (!workspaceFolders || workspaceFolders.length === 0)
+            return;
 
-        // Package Service
-        this._packageServices[Controller.getWorkspaceKey(workspaceFolder)] = new PackageService(
-            this.getPackagePsService(),
-            this.getAlExtensionService(),
-            projectFile
-        );*/
+        let removeWorkspaceFolders: WorkspaceFolder[] = [];
+        for (let workspaceFolder of workspaceFolders)
+        {
+            let matching = this._workspaceFolders.filter(w => 
+                w.virtual && 
+                w.workspaceFolder.uri.fsPath !== workspaceFolder.uri.fsPath
+            )[0];
+
+            if (matching)
+            {
+                let idx = this._workspaceFolders.indexOf(matching)
+                if (idx > -1)
+                    this._workspaceFolders.splice(idx, 1);
+
+                removeWorkspaceFolders.push(workspaceFolder);
+            }
+        }
+
+        if (removeWorkspaceFolders.length === 0)
+            return;
+
+        let e: WorkspaceFoldersExChangeEvent = {
+            added: [],
+            removed: removeWorkspaceFolders,
+            virtual: true
+        }
+
+        this._onDidChangeWorkspaceFolders.fire(e);
     }
 
     private async removeWorkspace(workspaceFolder: WorkspaceFolder)
@@ -212,7 +364,7 @@ export class WorkspaceService
         }
         services.clear()
 
-        let idx = this._workspaceFolders.findIndex(w => w.uri.fsPath === workspaceFolder.uri.fsPath);
+        let idx = this._workspaceFolders.findIndex(w => w.workspaceFolder.uri.fsPath === workspaceFolder.uri.fsPath);
 
         if (idx > 0)
             this._workspaceFolders.splice(idx, 1);

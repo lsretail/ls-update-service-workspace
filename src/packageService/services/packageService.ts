@@ -8,6 +8,7 @@ import { IWorkspaceService } from "../../workspaceService/interfaces/IWorkspaceS
 import path = require("path");
 import { AppJson } from "../../newProjectService/interfaces/appJson";
 import { WorkspaceHelpers } from "../../helpers/workspaceHelpers";
+import { PowerShellError } from "../../PowerShell";
 
 export class PackageService implements IWorkspaceService
 {
@@ -87,12 +88,22 @@ export class PackageService implements IWorkspaceService
             outputChannel(output);
     
             outputChannel("Compiling app ...");
-            output = await this._packagesPsService.invokeCompile(
-                projectDir, 
-                this._alExtensionService.compilerPath, 
-                tempDir
-            );
-            outputChannel(output);
+            try
+            {
+                output = await this._packagesPsService.invokeCompile(
+                    projectDir, 
+                    this._alExtensionService.compilerPath, 
+                    tempDir
+                );
+                outputChannel(output);
+            }
+            catch (error)
+            {
+                let errorOutput = this.getVerbose(error);
+                if (errorOutput.length > 0)
+                    outputChannel(errorOutput);
+                throw error;
+            }
     
             outputChannel("Creating package ...");
             let packagePath = await this.newAlPackage(projectDir, target, branchName);
@@ -110,6 +121,23 @@ export class PackageService implements IWorkspaceService
             }            
         }
         
+    }
+
+    private getVerbose(error: PowerShellError | any): string
+    {
+        if (!(error instanceof PowerShellError))
+            return "";
+
+        let errorStart = '!!!'
+        try
+        {
+            return (<string>error.rawError.message.split(errorStart)[0]).trim();
+        }
+        catch
+        {
+            // Ignore
+        }
+        return "";
     }
 
     public async downloadAlDependencies(

@@ -20,14 +20,6 @@ export class DeployPsService
         this._modulePath = modulePath;
     }
 
-    private getNewPowerShell() : PowerShell
-    {
-        let powerShell = new PowerShell(this._powerShell.isDebug);
-        powerShell.addModuleFromPath(this._modulePath);
-        powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
-        return powerShell;
-    }
-
     public async isAdmin(): Promise<boolean>
     {
         if (!this._isAdmin)
@@ -83,7 +75,7 @@ export class DeployPsService
         if (servers)
             param['Servers'] = `'${JSON.stringify(servers)}'`;
 
-        let powerShell = this.getNewPowerShell();
+        let powerShell = this._powerShell.getNewPowerShell();
         try
         {
             let result = await powerShell.executeCommandSafe("Install-PackageGroup", true, param);

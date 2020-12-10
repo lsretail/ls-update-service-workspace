@@ -17,6 +17,8 @@ import { PackageUiService } from './uiServices/packageUiService';
 import { PackagePsService } from './packageService/services/packagePsService';
 import { AlExtensionService } from './packageService/services/alExtensionService';
 import { PostDeployController } from './postDeployController';
+import { VirtualWorkspaces } from './helpers/virtualWorkspaces';
+import { Logger } from './interfaces/logger';
 
 export async function activate(context: vscode.ExtensionContext)
 {
@@ -28,9 +30,21 @@ export async function activate(context: vscode.ExtensionContext)
 
     let services: Array<any> = [];
 
-    let config = vscode.workspace.getConfiguration('ls-update-service');
+    let config = vscode.workspace.getConfiguration(Constants.configurationSectionId);
 
-    let powerShell = new PowerShell(config.get('debug'));
+    let debug = config.get(Constants.configurationDebug, false);
+
+    let logger = new Logger();
+    if (debug)
+    {
+        let outputChannel = vscode.window.createOutputChannel("LS Workspace Debug");
+        logger.setLogger(outputChannel.appendLine, outputChannel);
+    }
+
+    logger.info("Initializing extension...");
+
+    let powerShell = new PowerShell(logger, debug);
+
     let goCurrentPsService = new GoCurrentPsService(powerShell, context.asAbsolutePath("PowerShell\\GoCurrentPsService.psm1"));
     let deployPsService = new DeployPsService(powerShell, context.asAbsolutePath("PowerShell\\DeployPsService.psm1"));
     let alPsService = new AlPsService(powerShell, context.asAbsolutePath("PowerShell\\AlPsService.psm1"));
@@ -38,48 +52,57 @@ export async function activate(context: vscode.ExtensionContext)
     let workspaceService = new WorkspaceService();
     let outputChannel = vscode.window.createOutputChannel("Go Current Workspace");
 
-    let wsWorkspaceFilesServices = workspaceService.register(WorkspaceFilesService, workspaceFolder => {
-        return new WorkspaceFilesService(workspaceFolder);
+    let wsWorkspaceFilesServices = workspaceService.register(WorkspaceFilesService, workspaceEntry => {
+        return new WorkspaceFilesService(workspaceEntry.workspaceFolder);
     });
 
-    let wsPostDeployServices = workspaceService.register(PostDeployController, workspaceFolder => {
-        return new PostDeployController(workspaceFolder);
+    let wsPostDeployServices = workspaceService.register(PostDeployController, workspaceEntry => {
+        return new PostDeployController(workspaceEntry.workspaceFolder);
     });
 
-    let wsDeployServices = workspaceService.register(DeployService, workspaceFolder => {
-        let postDeployService = wsPostDeployServices.getService(workspaceFolder);
-        let filesService = wsWorkspaceFilesServices.getService(workspaceFolder);
+    let virtualWorkspaceService = new VirtualWorkspaces(logger, workspaceService);
+    services.push(virtualWorkspaceService);
+
+    let wsDeployServices = workspaceService.register(DeployService, workspaceEntry => {
+        let postDeployService = wsPostDeployServices.getService(workspaceEntry.workspaceFolder);
+        let filesService = wsWorkspaceFilesServices.getService(workspaceEntry.workspaceFolder);
         let deployService =  new DeployService(
             filesService.projectFile,
             filesService.workspaceData,
             deployPsService,
             goCurrentPsService,
-            workspaceFolder.uri.fsPath
+            workspaceEntry.workspaceFolder.uri.fsPath
         );
 
-        deployService.onDidPackagesDeployed(postDeployService.onPackagesDeployed, postDeployService);
-        deployService.onDidInstanceRemoved(postDeployService.onInstanceRemoved, postDeployService);
-        deployService.onDidInstanceRemoved(this.onDeploymentRemoved, this);
+        if (!workspaceEntry.virtual)
+        {
+            deployService.onDidPackagesDeployed(postDeployService.onPackagesDeployed, postDeployService);
+            deployService.onDidInstanceRemoved(postDeployService.onInstanceRemoved, postDeployService);
+        }
+        deployService.onDidPackagesDeployed(p => {virtualWorkspaceService.updateLaunchJson(workspaceEntry.workspaceFolder, p)});
+        deployService.onDidInstanceRemoved(i => { virtualWorkspaceService.removeFromLaunchJson(workspaceEntry.workspaceFolder, [i])});
+        
+        //deployService.onDidInstanceRemoved(this.onDeploymentRemoved, this);
 
         return deployService;
     });
 
-    let wsAlServices = workspaceService.register(AlService, workspaceFolder => {
-        let deployService = wsDeployServices.getService(workspaceFolder);
-        let filesService = wsWorkspaceFilesServices.getService(workspaceFolder);
+    let wsAlServices = workspaceService.register(AlService, workspaceEntry => {
+        let deployService = wsDeployServices.getService(workspaceEntry.workspaceFolder);
+        let filesService = wsWorkspaceFilesServices.getService(workspaceEntry.workspaceFolder);
     
         return new AlService(
             deployService,
             alPsService,
             filesService.appJson,
-            workspaceFolder 
+            workspaceEntry.workspaceFolder 
         )
     });
 
     let packagePsService = new PackagePsService(powerShell, context.asAbsolutePath("PowerShell\\PackagePsService.psm1"));
 
-    let wsPackageServices = workspaceService.register(PackageService, workspaceFolder => {
-        let filesService = wsWorkspaceFilesServices.getService(workspaceFolder)
+    let wsPackageServices = workspaceService.register(PackageService, workspaceEntry => {
+        let filesService = wsWorkspaceFilesServices.getService(workspaceEntry.workspaceFolder)
         return new PackageService(
             packagePsService,
             new AlExtensionService(),
@@ -89,7 +112,8 @@ export async function activate(context: vscode.ExtensionContext)
     });
 
     let baseUiService = new BaseUiService(
-        context, 
+        context,
+        logger,
         goCurrentPsService,
         wsDeployServices,
         wsWorkspaceFilesServices
@@ -98,6 +122,7 @@ export async function activate(context: vscode.ExtensionContext)
 
     let deployUiService = new DeployUiService(
         context, 
+        logger,
         wsDeployServices, 
         goCurrentPsService
     );
@@ -105,13 +130,16 @@ export async function activate(context: vscode.ExtensionContext)
 
     let alUiService = new AlUiService(
         context,
+        logger,
         wsAlServices,
-        wsDeployServices
+        wsDeployServices,
+        virtualWorkspaceService
     );
     services.push(alUiService);
 
     let packageUiService = new PackageUiService(
         context,
+        logger,
         wsDeployServices,
         wsAlServices,
         wsPackageServices,
@@ -123,7 +151,7 @@ export async function activate(context: vscode.ExtensionContext)
     services.push(packageUiService);
 
     // Adding the workspace service last, to use workspace events for setup.
-    services.push(workspaceService);
+    services.push(workspaceService);    
 
     for (let service of services)
         await service.activate();

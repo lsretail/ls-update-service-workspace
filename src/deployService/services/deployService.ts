@@ -91,10 +91,23 @@ export class DeployService implements IWorkspaceService
         return this._projectFile.exists() && this._goCurrentPsService.isGocInstalled();
     }
 
+    public async hasPackageGroups(): Promise<boolean>
+    {
+        let projectData = await this._projectFile.getData();
+        let value = (projectData?.devPackageGroups?.length ?? 0) > 0;
+        return value;
+    }
+
+    public async hasPackagesInstalled(): Promise<boolean>
+    {
+        let data = await this._workspaceData.getData();
+        return !!data.deployments && data.deployments.length > 0;
+    }
+
     public getPackageGroups() : Thenable<Array<PackageGroup>>
     {
         return this._projectFile.getData().then(projectFile => {
-            return projectFile.devPackageGroups;
+            return projectFile.devPackageGroups ?? [];
         });
     }
 
@@ -102,7 +115,8 @@ export class DeployService implements IWorkspaceService
     {
         return this._projectFile.getData().then(projectFile => {
             let groups = new Array<PackageGroup>();
-            for (let group of projectFile.devPackageGroups)
+
+            for (let group of projectFile.devPackageGroups ?? [])
             {
                 let resolvedGroup = this.getPackageGroupResolved(projectFile, group.id)
                 groups.push(resolvedGroup);
@@ -121,7 +135,7 @@ export class DeployService implements IWorkspaceService
             dependencies.packages = projectFile.dependencies;
             return dependencies
         }
-        for (let item of projectFile.devPackageGroups)
+        for (let item of projectFile.devPackageGroups ?? [])
         {
             if (item.id !== id)
                 continue;
@@ -158,7 +172,7 @@ export class DeployService implements IWorkspaceService
             dependencies.packages = projectFile.dependencies;
             return dependencies
         }
-        for (let item of projectFile.devPackageGroups)
+        for (let item of projectFile.devPackageGroups ?? [])
         {
             if (item.id !== id)
                 continue;
@@ -445,7 +459,7 @@ export class DeployService implements IWorkspaceService
     {
         let projectFile = await this._projectFile.getData();
         let groups = [];
-        for (let entry of projectFile.devPackageGroups)
+        for (let entry of projectFile.devPackageGroups ?? [])
         {
             let group = await this._deployPsService.getPackageGroup(this._projectFile.uri.fsPath,  entry.id, target, GitHelpers.getBranchName(this._workspacePath));
             groups.push(group);

@@ -9,7 +9,7 @@ import { NewProjectService } from '../newProjectService/services/newProjectServi
 import { PostDeployController } from '../postDeployController';
 import Resources from '../resources';
 import { WorkspaceFilesService } from '../services/workspaceFilesService';
-import { WorkspaceContainer, WorkspaceContainerEvent } from '../workspaceService/services/workspaceContainer';
+import { WorkspaceServiceProvider, WorkspaceContainerEvent } from '../workspaceService/services/workspaceServiceProvider';
 import { Package } from '../models/projectFile';
 import path = require('path');
 import { JsonData } from '../jsonData';
@@ -17,22 +17,24 @@ import { fsHelpers } from '../fsHelpers';
 import { format } from 'util';
 import { PackageUiService } from './packageUiService';
 import { InstallHelpers } from '../helpers/installHelpers';
+import { Logger } from '../interfaces/logger';
 
 export class BaseUiService extends UiService
 {
     private _goCurrentPsService: GoCurrentPsService;
-    private _wsDeployServices: WorkspaceContainer<DeployService>;
-    private _wsWorkspaceFileServices: WorkspaceContainer<WorkspaceFilesService>;
+    private _wsDeployServices: WorkspaceServiceProvider<DeployService>;
+    private _wsWorkspaceFileServices: WorkspaceServiceProvider<WorkspaceFilesService>;
     private _disposable: vscode.Disposable;
 
     constructor(
         context: ExtensionContext,
+        logger: Logger,
         goCurrentPsService: GoCurrentPsService,
-        wsDeployServices: WorkspaceContainer<DeployService>,
-        wsWorkspaceFileServices: WorkspaceContainer<WorkspaceFilesService>
+        wsDeployServices: WorkspaceServiceProvider<DeployService>,
+        wsWorkspaceFileServices: WorkspaceServiceProvider<WorkspaceFilesService>
     )
     {
-        super(context);
+        super(context, logger);
         this._goCurrentPsService = goCurrentPsService;
         this._wsDeployServices = wsDeployServices;
         this._wsWorkspaceFileServices = wsWorkspaceFileServices;
@@ -40,8 +42,8 @@ export class BaseUiService extends UiService
 
     async activate(): Promise<void>
     {
-        this.registerCommand("ls-update-service.newProject", () => this.newProject());
-        this.registerCommand("ls-update-service.openWizard", () => this.openWizard());
+        this.registerCommand("ls-update-service.newProject", this.newProject);
+        this.registerCommand("ls-update-service.openWizard", this.openWizard);
 
         commands.executeCommand("setContext", Constants.goCurrentExtensionActive, true);
 
@@ -194,7 +196,7 @@ export class BaseUiService extends UiService
 
     private async newProject()
     {
-        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsDeployServices.getInactiveWorkspaces());
+        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsDeployServices.getWorkspaces({active: false}));
 
         if (!workspaceFolder)
             return

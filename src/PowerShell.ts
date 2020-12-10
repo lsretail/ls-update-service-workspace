@@ -2,10 +2,12 @@
 //import Shell, { PSCommand } from 'node-powershell'
 import * as Shell from 'node-powershell'
 import { PSCommand } from 'node-powershell'
+import { Logger } from './interfaces/logger';
 
 export class PowerShell
 {
     private _debug: boolean;
+    private _logger: Logger;
     private _shell: any;
     private _modulePaths: string[] = [];
     private _inExecution: number = 0;
@@ -14,8 +16,9 @@ export class PowerShell
     private _runNextCommand: string;
     private _relaunchCount = 0;
 
-    constructor(debug: boolean = false)
+    constructor(logger: Logger, debug: boolean)
     {
+        this._logger = logger;
         this._debug = debug;
     }
 
@@ -64,7 +67,7 @@ export class PowerShell
 
     public getNewPowerShell() : PowerShell
     {
-        let powerShell = new PowerShell(this.isDebug);
+        let powerShell = new PowerShell(this._logger, this.isDebug);
         for (var path of this._modulePaths)
         {
             powerShell.addModuleFromPath(path);
@@ -216,13 +219,14 @@ export class PowerShell
             let rest = split.join('\n');
             powerShellError = new PowerShellError(firstLine, rest, false);
         }
-        throw powerShellError; 
+        powerShellError.rawError = error;
+        throw powerShellError;
     }
 
     private log(message: any)
     {
         if (this._debug)
-            console.log(message);
+            this._logger.debug(message);
     }
 
     public dispose()
@@ -239,6 +243,7 @@ export class PowerShellError extends Error
     public scriptStackTrace: string;
     public fromJson: boolean;
     public type: string;
+    public rawError: any;
 
     constructor(message: string, scriptStackTrace: string, fromJson: boolean, type: string = 'unknown')
     {

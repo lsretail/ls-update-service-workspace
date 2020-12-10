@@ -12,32 +12,34 @@ import { Package, Server } from "../models/projectFile";
 import { PackagePsService } from "../packageService/services/packagePsService";
 import { PackageService } from "../packageService/services/packageService";
 import Resources from "../resources";
-import { WorkspaceContainer } from "../workspaceService/services/workspaceContainer";
+import { WorkspaceServiceProvider } from "../workspaceService/services/workspaceServiceProvider";
 import { WorkspaceFilesService } from "../services/workspaceFilesService";
 import { InstallHelpers } from "../helpers/installHelpers";
+import { Logger } from "../interfaces/logger";
 
 export class PackageUiService extends UiService
 {
-    private _wsDeployServices: WorkspaceContainer<DeployService>;
-    private _wsAlServices: WorkspaceContainer<AlService>;
-    private _wsPackageService: WorkspaceContainer<PackageService>;
+    private _wsDeployServices: WorkspaceServiceProvider<DeployService>;
+    private _wsAlServices: WorkspaceServiceProvider<AlService>;
+    private _wsPackageService: WorkspaceServiceProvider<PackageService>;
     private _outputChannel: OutputChannel;
     private _packagePsService: PackagePsService;
     private _goCurrentPsService: GoCurrentPsService;
-    private _wsWorkspaceFilesServices: WorkspaceContainer<WorkspaceFilesService>;
+    private _wsWorkspaceFilesServices: WorkspaceServiceProvider<WorkspaceFilesService>;
     
     constructor(
         context: ExtensionContext, 
-        wsDeployServices: WorkspaceContainer<DeployService>,
-        wsAlServices: WorkspaceContainer<AlService>,
-        wsPackageService: WorkspaceContainer<PackageService>,
+        logger: Logger,
+        wsDeployServices: WorkspaceServiceProvider<DeployService>,
+        wsAlServices: WorkspaceServiceProvider<AlService>,
+        wsPackageService: WorkspaceServiceProvider<PackageService>,
         packagePsService: PackagePsService,
         goCurrentPsService: GoCurrentPsService,
-        wsWorkspaceFilesServices: WorkspaceContainer<WorkspaceFilesService>,
+        wsWorkspaceFilesServices: WorkspaceServiceProvider<WorkspaceFilesService>,
         outputChannel: OutputChannel
     )
     {
-        super(context);
+        super(context, logger);
         this._wsDeployServices = wsDeployServices;
         this._wsAlServices = wsAlServices;
         this._outputChannel = outputChannel;
@@ -62,7 +64,7 @@ export class PackageUiService extends UiService
         this._outputChannel.show();
         try
         {
-            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getActiveWorkspaces());
+            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
             if (!workspaceFolder)
                 return;
     
@@ -109,7 +111,7 @@ export class PackageUiService extends UiService
         var outputChannel = this._outputChannel;
         try
         {
-            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getActiveWorkspaces());
+            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
             if (!workspaceFolder)
                 return;
 
@@ -123,7 +125,7 @@ export class PackageUiService extends UiService
         
             outputChannel.clear();
             outputChannel.show();
-            outputChannel.appendLine('Compiling and creating package ...');
+            outputChannel.appendLine('Starting to compile and creating a package ...');
 
             await window.withProgress({
                 location: ProgressLocation.Notification,
@@ -150,7 +152,7 @@ export class PackageUiService extends UiService
         var outputChannel = this._outputChannel;
         try
         {
-            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsWorkspaceFilesServices.getActiveWorkspaces());
+            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsWorkspaceFilesServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
             if (!workspaceFolder)
                 return;
 
@@ -203,7 +205,7 @@ export class PackageUiService extends UiService
         outputChannel.appendLine('Creating package ...');
         try
         {
-            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsWorkspaceFilesServices.getActiveWorkspaces());
+            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsWorkspaceFilesServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
 
             if (!workspaceFolder)
                 return;

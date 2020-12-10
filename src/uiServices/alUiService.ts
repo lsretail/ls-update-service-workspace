@@ -1,47 +1,51 @@
 import path = require("path");
 import { format } from "util";
-import { OutputChannel, ProgressLocation, ExtensionContext, QuickPickOptions, window, WorkspaceFoldersChangeEvent, workspace, commands, Disposable } from "vscode";
+import { ProgressLocation, ExtensionContext, QuickPickOptions, window, commands, Disposable, WorkspaceFolder } from "vscode";
 import { AlService } from "../alService/services/alService";
 import { Constants } from "../constants";
 import { DeployService } from "../deployService/services/deployService";
 import { UiService } from "../extensionController";
 import { fsHelpers } from "../fsHelpers";
 import { UiHelpers } from "../helpers/uiHelpers";
+import { VirtualWorkspaces } from "../helpers/virtualWorkspaces";
 import { WorkspaceHelpers } from "../helpers/workspaceHelpers";
+import { Logger } from "../interfaces/logger";
 import { PackageInfo } from "../interfaces/packageInfo";
 import { QuickPickItemPayload } from "../interfaces/quickPickItemPayload";
-import { JsonData } from "../jsonData";
-import { AppJson } from "../newProjectService/interfaces/appJson";
 import { NewProjectService } from "../newProjectService/services/newProjectService";
-import { PackageService } from "../packageService/services/packageService";
+import { PostDeployController } from "../postDeployController";
 import Resources from "../resources";
-import { WorkspaceFilesService } from "../services/workspaceFilesService";
-import { WorkspaceContainer, WorkspaceContainerEvent } from "../workspaceService/services/workspaceContainer";
+import { WorkspaceService } from "../workspaceService/services/workspaceService";
+import { WorkspaceServiceProvider, WorkspaceContainerEvent } from "../workspaceService/services/workspaceServiceProvider";
 
 export class AlUiService extends UiService
 {
-    private _wsAlServices: WorkspaceContainer<AlService>;
-    private _wsDeployService: WorkspaceContainer<DeployService>;
+    private _wsAlServices: WorkspaceServiceProvider<AlService>;
+    private _wsDeployService: WorkspaceServiceProvider<DeployService>;
+    private _virtualWorkspaces: VirtualWorkspaces;
     private _disposable: Disposable;
     
     constructor(
         context: ExtensionContext, 
-        wsAlServices: WorkspaceContainer<AlService>,
-        wsDeployService: WorkspaceContainer<DeployService>
+        logger: Logger,
+        wsAlServices: WorkspaceServiceProvider<AlService>,
+        wsDeployService: WorkspaceServiceProvider<DeployService>,
+        virtualWorkspaces: VirtualWorkspaces
     )
     {
-        super(context);
+        super(context, logger);
         this._wsAlServices = wsAlServices;
         this._wsDeployService = wsDeployService;
+        this._virtualWorkspaces = virtualWorkspaces;
     }
 
     async activate(): Promise<void>
     {
-        this.registerCommand("ls-update-service.al.repopulateLaunchJson", async () => await this.rePopulateLaunchJson());
-        this.registerCommand("ls-update-service.al.unpublishApp", async () => await this.alUnpublishApp());
-        this.registerCommand("ls-update-service.al.upgradeData", async () => await this.alUpgradeData());
-        this.registerCommand("ls-update-service.al.publishApp", async () => await this.alPublishApp());
-        this.registerCommand("ls-update-service.al.addNewDependencies", async (...args) => await this.alAddNewDependencies(args));
+        this.registerCommand("ls-update-service.al.repopulateLaunchJson", this.rePopulateLaunchJson);
+        this.registerCommand("ls-update-service.al.unpublishApp", this.alUnpublishApp);
+        this.registerCommand("ls-update-service.al.upgradeData", this.alUpgradeData);
+        this.registerCommand("ls-update-service.al.publishApp", this.alPublishApp);
+        this.registerCommand("ls-update-service.al.addNewDependencies", this.alAddNewDependencies);
 
         this._disposable = this._wsAlServices.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this);
     }
@@ -54,11 +58,11 @@ export class AlUiService extends UiService
             let deployService = this._wsDeployService.getService(workspaceFolder);
             let subscriptions: Disposable[] = [];
             
-            alService.appJson.onDidChange(e => {
+            alService.appJson.onDidChange(() => {
                 this.checkAndUpdateIfActive();
             }, this, subscriptions);
 
-            deployService.onDidProjectFileChange(e => {
+            deployService.onDidProjectFileChange(() => {
                 this.checkAndUpdateIfActive();
             },this, subscriptions);
 
@@ -76,13 +80,26 @@ export class AlUiService extends UiService
 
     private async rePopulateLaunchJson()
     {
-        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getActiveWorkspaces());
-        if (!workspaceFolder)
+        let workspaces = await this._wsAlServices.getWorkspaces({
+            active: true,
+            workspaceFilter: workspace => Promise.resolve(!workspace.virtual)
+        });
+
+        if (workspaces.length === 0)
             return;
         
-        let alService: AlService = this._wsAlServices.getService(workspaceFolder);
-
-        let updated = await alService.rePopulateLaunchJson();
+        let updated = await window.withProgress({
+            location: ProgressLocation.Notification,
+            title: "Updating launch.json..."
+        }, async () => {
+            let updated: boolean = false;
+            let cache = new Map<string, PackageInfo[]>();
+            for (let workspace of workspaces)
+            {
+                updated = updated || await this.populateWorkspace(workspace, cache);
+            }
+            return updated;
+        });
 
         if (!updated)
         {
@@ -90,15 +107,43 @@ export class AlUiService extends UiService
         }
     }
 
+    private async populateWorkspace(workspaceFolder: WorkspaceFolder, addCache: Map<string, PackageInfo[]>): Promise<boolean>
+    {
+        let linkedWorkspaces = this._virtualWorkspaces.getWorkspacesLinkedFrom(workspaceFolder);
+        linkedWorkspaces.push(workspaceFolder);
+
+        let packages: PackageInfo[] = []
+
+        for (let linkedWorkspace of linkedWorkspaces)
+        {
+            let linkedKey = WorkspaceService.getWorkspaceKey(linkedWorkspace)
+            if (!addCache.has(linkedKey))
+            {
+                let alService = this._wsAlServices.getService(linkedWorkspace);
+                let packages = await alService.getDeployedBcInstances();
+                addCache.set(linkedKey, packages);
+            }
+
+            for (let packageItem of addCache.get(linkedKey))
+            {
+                if (!packages.some(p => p.InstanceName === packageItem.InstanceName))
+                    packages.push(packageItem);
+            }
+        }
+
+        let updated = await PostDeployController.addAlLaunchConfig(packages, workspaceFolder, true);
+        return updated
+    }
+
     private async alUnpublishApp()
     {
-        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getActiveWorkspaces());
+        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
         if (!workspaceFolder)
             return;
 
         let alService: AlService = this._wsAlServices.getService(workspaceFolder);
         
-        let instance = await this.showAlInstancePicks(alService);
+        let instance = await this.showAlInstancePicks(await this.getAllAlInstances());
 
         if (!instance)
             return
@@ -116,10 +161,8 @@ export class AlUiService extends UiService
             window.showInformationMessage(`App already unpublished.`);
     }
 
-    private async showAlInstancePicks(alService: AlService): Promise<PackageInfo>
-    {
-        let instances = await alService.getInstances();
-        
+    private async showAlInstancePicks(instances: PackageInfo[]): Promise<PackageInfo>
+    {        
         let picks: QuickPickItemPayload<PackageInfo>[] = [];
         for (let instance of instances)
         {
@@ -134,15 +177,31 @@ export class AlUiService extends UiService
         return selected.payload;
     }
 
+    private async getAllAlInstances(): Promise<PackageInfo[]>
+    {
+        let alServices = await this._wsAlServices.getServices({active: true});
+        let instances: PackageInfo[] = [];
+        for (let service of alServices)
+        {
+            for (let instance of (await service.getInstances()))
+            {
+                if (!instances.filter(i => i.InstanceName === instance.InstanceName)[0])
+                    instances.push(instance);
+            }
+        }
+        instances.sort((a, b) => (a.InstanceName > b.InstanceName) ? 1 : -1)
+        return instances;
+    }
+
     private async alUpgradeData()
     {
-        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getActiveWorkspaces());
+        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
         if (!workspaceFolder)
             return;
 
         let alService: AlService = this._wsAlServices.getService(workspaceFolder);
         
-        let instance = await this.showAlInstancePicks(alService);
+        let instance = await this.showAlInstancePicks(await alService.getInstances());
 
         if (!instance)
             return
@@ -164,12 +223,12 @@ export class AlUiService extends UiService
         }
     }
 
-    async alAddNewDependencies(items: any[]): Promise<void>
+    async alAddNewDependencies(item: any): Promise<void>
     {
-        if (!items[0])
+        if (!item || !item.fsPath)
             return;
 
-        let filePath = items[0].fsPath;
+        let filePath = item.fsPath;
 
         let workspaceFolder = WorkspaceHelpers.getWorkspaceForPath(filePath);
 
@@ -195,7 +254,7 @@ export class AlUiService extends UiService
 
     async alPublishApp(): Promise<void>
     {
-        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getActiveWorkspaces());
+        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getWorkspaces({active: true}));
         if (!workspaceFolder)
             return;
 
@@ -208,7 +267,7 @@ export class AlUiService extends UiService
             return;
         }
 
-        let instance = await this.showAlInstancePicks(alService);
+        let instance = await this.showAlInstancePicks(await alService.getInstances());
 
         if (!instance)
             return

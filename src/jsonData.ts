@@ -2,6 +2,7 @@
 import {fsHelpers} from './fsHelpers'
 import {Uri, workspace, FileSystemWatcher, EventEmitter, Disposable, RelativePattern, Event} from 'vscode';
 import * as path from 'path'
+import { watchFile, unwatchFile } from 'fs';
 
 export class JsonData<TData>
 {
@@ -13,6 +14,7 @@ export class JsonData<TData>
     private _disposable: Disposable;
     private _onDidChange = new EventEmitter<JsonData<TData>>();
     private _existsCache: boolean;
+    private _watchChanges: boolean;
 
     constructor(fileUri: string | Uri, watchChanges: boolean = false, defaultData: TData = null)
     {
@@ -25,27 +27,14 @@ export class JsonData<TData>
 
         this._uri = fileUri;
         this._defaultData = defaultData;
+        this._watchChanges = watchChanges;
         
         if (watchChanges)
         {
-            let workspaceDir = workspace.getWorkspaceFolder(fileUri)
-            if (!workspaceDir)
-                throw "Internal error: Only files in workspace can be watched.";
-            let relativeFilePath = fileUri.fsPath.replace(workspaceDir.uri.fsPath, "");
-            if (relativeFilePath.startsWith("\\") || relativeFilePath.startsWith("/"))
-                relativeFilePath = relativeFilePath.substr(1, relativeFilePath.length - 1);
-            this._watcher = workspace.createFileSystemWatcher(
-                new RelativePattern(workspaceDir, relativeFilePath),
-                false,
-                false,
-                false
-            );
-
-            let subscriptions: Disposable[] = [];
-            this._watcher.onDidCreate(this.onCreated, this, subscriptions)
-            this._watcher.onDidChange(this.onChange, this, subscriptions);
-            this._watcher.onDidDelete(this.onDelete, this, subscriptions)
-            this._disposable = Disposable.from(...subscriptions);
+            watchFile(fileUri.fsPath, (curr, prev) => 
+            {
+                this.onDidChange(null);
+            });
         }
     }
 
@@ -136,6 +125,10 @@ export class JsonData<TData>
 
     public dispose()
     {
+        if (this._watchChanges)
+        {
+            unwatchFile(this.uri.fsPath);
+        }
         if (this._watcher)
         {
             this._watcher.dispose();

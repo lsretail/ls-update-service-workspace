@@ -1,4 +1,6 @@
 import { InputBoxOptions, QuickPickItem, QuickPickOptions, window, workspace, WorkspaceFolder } from "vscode";
+import { resolveCliPathFromVSCodeExecutablePath } from "vscode-test";
+import Controller from "../controller";
 import { DataHelpers } from "../dataHelpers";
 import { DeployPsService } from "../deployService/services/deployPsService";
 import { GoCurrentPsService } from "../goCurrentService/services/goCurrentPsService";
@@ -21,7 +23,7 @@ export class UiHelpers
         }
         else if (picks.length === 1)
         {
-            let workspaceFolder = DataHelpers.getEntryByProperty<WorkspaceFolder>(workspace.workspaceFolders, "name", picks[0].label);
+            let workspaceFolder = DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", picks[0].label);
             return workspaceFolder;
         }
         let options: QuickPickOptions = {"placeHolder": placeHolder};
@@ -30,7 +32,7 @@ export class UiHelpers
         if (!pick)
             return;
 
-        return DataHelpers.getEntryByProperty<WorkspaceFolder>(workspace.workspaceFolders, "name", pick.label)
+        return DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", pick.label)
     }
 
     public static async showTargetPicks(targets: string[]): Promise<string>
@@ -54,6 +56,32 @@ export class UiHelpers
             return;
         return selected.label;
     }
+
+    /*async showInstancePicks(instances: string[], exludeInstances: string[] = [], placeholder: string = "Selected an instance") : Promise<string[]>
+    {
+        let picks: QuickPickItemPayload<string[]>[] = [];
+
+        for (let entry of instances)
+        {
+            let instanceName = entry[0].InstanceName;
+
+            if (exludeInstances.includes(instanceName))
+                continue;
+
+            let description = entry.filter(p => p.Selected).map(p => `${p.Id}`).join(', ');
+            picks.push({
+                "label": instanceName,
+                "description": description,
+                "payload": entry
+            });
+        }
+        var options: QuickPickOptions = {};
+        options.placeHolder = placeholder
+        let selected = await window.showQuickPick(picks, options);
+        if (!selected)
+            return;
+        return selected.payload;
+    }*/
 
     public static async getOrShowInstanceNamePick(suggestedName: string, goCurrentPsService: GoCurrentPsService) : Promise<string>
     {
@@ -95,5 +123,20 @@ export class UiHelpers
             instanceName = `${suggestedName}-${idx}`
         }
         return instanceName;
+    }
+
+    public static async errorWrapper(action: (...args: any[]) => any, args: any[], thisArg?: any)
+    {
+        try
+        {
+            await action.bind(thisArg)(...args);
+        }
+        catch(error)
+        {
+            if (!Controller.handleError(error))
+            {
+                window.showErrorMessage(`Unexpected error occured: ${error}.`);
+            }
+        }
     }
 }

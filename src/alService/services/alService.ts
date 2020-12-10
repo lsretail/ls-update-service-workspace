@@ -50,7 +50,19 @@ export class AlService implements IWorkspaceService
 
     public async rePopulateLaunchJson(): Promise<boolean>
     {
-        let toPopulate = [];
+        let toPopulate = await this.getDeployedBcInstances()
+
+        let updated = await PostDeployController.addAlLaunchConfig(toPopulate, this._workspaceFolder)
+
+        let instances = (await this._deployService.getDeployedInstances());
+        updated = updated || await PostDeployController.removeNonExisting(instances, this._workspaceFolder);
+
+        return updated
+    }
+
+    public async getDeployedBcInstances(): Promise<PackageInfo[]>
+    {
+        let toPopulate: PackageInfo[] = [];
 
         for (let deployment of await this._deployService.getDeployments())
         {
@@ -65,12 +77,7 @@ export class AlService implements IWorkspaceService
             toPopulate.push(serverPackage[0]);
         }
 
-        let updated = await PostDeployController.addAlLaunchConfig(toPopulate, this._workspaceFolder)
-
-        let instances = (await this._deployService.getDeployedInstances());
-        updated = updated || await PostDeployController.removeNonExisting(instances, this._workspaceFolder);
-
-        return updated
+        return toPopulate;
     }
 
     public async publishApp(isntanceName: string): Promise<void>
@@ -110,7 +117,7 @@ export class AlService implements IWorkspaceService
             if (serverPackage.length === 0)
                 continue;
 
-                instances.push(serverPackage[0]);
+            instances.push(serverPackage[0]);
         }
 
         return instances;

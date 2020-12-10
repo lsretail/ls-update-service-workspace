@@ -236,10 +236,17 @@
         "configuration": {
             "title": "LS Retail Update Service Workspace",
             "properties": {
-                "go-current-workspace.debug": {
+                "ls-update-service-workspace.debug": {
                     "type": "boolean",
                     "default": false,
-                    "description": "Enable debug mode on activation (reload required)."
+                    "description": "Enable debug mode on activation (reload required).",
+                    "scope": "application"
+                },
+                "ls-update-service-workspace.devPackageGroupWorkspaceDirs": {
+                    "type": "array",
+                    "default": [],
+                    "description": "List of workspaces containing development package groups, available to install.",
+                    "scope": "resource"
                 }
             }
         }
