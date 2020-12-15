@@ -15,7 +15,7 @@ export class NewProjectService
     private static _lsCentralAppId = '5ecfc871-5d82-43f1-9c54-59685e82318d';
     private static _bcApplicationPackageId = "bc-application";
     private static _bcSystemSymbolsPackageId = "bc-system-symbols";
-    private static _appIdToPackageMap = {
+    private static _appIdToPackageMap: {[key: string]: string} = {
         "63ca2fa4-4f03-4f2b-a480-172fef340d3f": "bc-system-application",
         "437dbf0e-84ff-417a-965d-ed2bb9650972": "bc-base-application",
         "dd0be2ea-f733-4d65-bb34-a28f4624fb14": "bc-test-library-assert",
@@ -56,7 +56,7 @@ export class NewProjectService
         return fsHelpers.existsSync(alProjectPath);
     }
 
-    async newAlProject(context: ExtensionContext): Promise<string>
+    async newAlProject(context: ExtensionContext, appIdToPackageIdMap: {[_: string]: string}): Promise<string>
     {
         let templatePath = context.asAbsolutePath("assets\\gocurrentAl.json");
 
@@ -70,7 +70,8 @@ export class NewProjectService
 
         NewProjectService.addDependenciesToProjectFile(
             projectFileData, 
-            appJsonData
+            appJsonData,
+            appIdToPackageIdMap
         );
 
         if (appIds.includes(NewProjectService._lsCentralAppId) && projectFileData.variables?.lsCentralVersion?.alAppId)
@@ -153,11 +154,12 @@ export class NewProjectService
         await this.projectFile.save();
     }
 
-    public async addDependenciesToProjectFileWithLoad(): Promise<number>
+    public async addDependenciesToProjectFileWithLoad(appIdToPackageIdMap: {[_: string]: string}): Promise<number>
     {
         let count = NewProjectService.addDependenciesToProjectFile(
             await this.projectFile.getData(),
-            await this.appJson.getData()
+            await this.appJson.getData(),
+            appIdToPackageIdMap
         )
 
         if (count > 0)
@@ -166,7 +168,7 @@ export class NewProjectService
         return count;
     }
 
-    public static addDependenciesToProjectFile(projectFile: ProjectFile, appJson: AppJson): number
+    public static addDependenciesToProjectFile(projectFile: ProjectFile, appJson: AppJson, appIdToPackageIdMap: {[_: string]: string}): number
     {
         let gocIds = AppIdHelpers.getAppIdsFromGoCurrentJson(projectFile);
         let appIds = AppIdHelpers.getAppIdsFromAppJson(appJson);
@@ -213,6 +215,13 @@ export class NewProjectService
             {
                 newDep.id = this._appIdToPackageMap[newApp];
                 version.alAppParts = 3
+                if (existingIds.includes(newDep.id))
+                    continue;
+            }
+            else if (appIdToPackageIdMap[newApp])
+            {
+                newDep.id = appIdToPackageIdMap[newApp];
+                version.alAppParts = 4
                 if (existingIds.includes(newDep.id))
                     continue;
             }

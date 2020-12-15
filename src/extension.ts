@@ -22,7 +22,7 @@ import { Logger } from './interfaces/logger';
 
 export async function activate(context: vscode.ExtensionContext)
 {
-    console.log('Activating Go Current Workspace!');
+    console.log('Activating LS Update Service Workspace!');
 
     process.on('unhandledRejection', (reason) => {
         console.log(reason);
@@ -37,7 +37,7 @@ export async function activate(context: vscode.ExtensionContext)
     let logger = new Logger();
     if (debug)
     {
-        let outputChannel = vscode.window.createOutputChannel("LS Workspace Debug");
+        let outputChannel = vscode.window.createOutputChannel("LS Update Service Debug");
         logger.setLogger(outputChannel.appendLine, outputChannel);
     }
 
@@ -50,7 +50,7 @@ export async function activate(context: vscode.ExtensionContext)
     let alPsService = new AlPsService(powerShell, context.asAbsolutePath("PowerShell\\AlPsService.psm1"));
 
     let workspaceService = new WorkspaceService();
-    let outputChannel = vscode.window.createOutputChannel("Go Current Workspace");
+    let outputChannel = vscode.window.createOutputChannel("LS Update Service");
 
     let wsWorkspaceFilesServices = workspaceService.register(WorkspaceFilesService, workspaceEntry => {
         return new WorkspaceFilesService(workspaceEntry.workspaceFolder);
@@ -133,7 +133,8 @@ export async function activate(context: vscode.ExtensionContext)
         logger,
         wsAlServices,
         wsDeployServices,
-        virtualWorkspaceService
+        virtualWorkspaceService,
+        wsWorkspaceFilesServices
     );
     services.push(alUiService);
 
@@ -160,5 +161,5 @@ export async function activate(context: vscode.ExtensionContext)
 export function deactivate() {
     vscode.commands.executeCommand("setContext", Constants.goCurrentExtensionActive, false);
     vscode.commands.executeCommand("setContext", Constants.goCurrentAlActive, false);
-    console.log("Deactivating Go Current Workspace...");
+    console.log("Deactivating LS Update Service Workspace...");
 }

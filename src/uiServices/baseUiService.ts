@@ -18,6 +18,7 @@ import { format } from 'util';
 import { PackageUiService } from './packageUiService';
 import { InstallHelpers } from '../helpers/installHelpers';
 import { Logger } from '../interfaces/logger';
+import { WorkspaceHelpers } from '../helpers/workspaceHelpers';
 
 export class BaseUiService extends UiService
 {
@@ -206,7 +207,8 @@ export class BaseUiService extends UiService
         let newProjectFilePath: string;
         if (newProjectService.isAl())
         {
-            newProjectFilePath = await newProjectService.newAlProject(this.context);
+            let appIdToPackageIdMap = await WorkspaceHelpers.getAppIdPackageIdMapFromWorkspaces(this._wsWorkspaceFileServices);
+            newProjectFilePath = await newProjectService.newAlProject(this.context, appIdToPackageIdMap);
         }
         else
         {

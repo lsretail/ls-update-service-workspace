@@ -15,6 +15,7 @@ import { QuickPickItemPayload } from "../interfaces/quickPickItemPayload";
 import { NewProjectService } from "../newProjectService/services/newProjectService";
 import { PostDeployController } from "../postDeployController";
 import Resources from "../resources";
+import { WorkspaceFilesService } from "../services/workspaceFilesService";
 import { WorkspaceService } from "../workspaceService/services/workspaceService";
 import { WorkspaceServiceProvider, WorkspaceContainerEvent } from "../workspaceService/services/workspaceServiceProvider";
 
@@ -23,6 +24,7 @@ export class AlUiService extends UiService
     private _wsAlServices: WorkspaceServiceProvider<AlService>;
     private _wsDeployService: WorkspaceServiceProvider<DeployService>;
     private _virtualWorkspaces: VirtualWorkspaces;
+    private _wsWorkspaceFileServices: WorkspaceServiceProvider<WorkspaceFilesService>;
     private _disposable: Disposable;
     
     constructor(
@@ -30,13 +32,15 @@ export class AlUiService extends UiService
         logger: Logger,
         wsAlServices: WorkspaceServiceProvider<AlService>,
         wsDeployService: WorkspaceServiceProvider<DeployService>,
-        virtualWorkspaces: VirtualWorkspaces
+        virtualWorkspaces: VirtualWorkspaces,
+        wsWorkspaceFileServices: WorkspaceServiceProvider<WorkspaceFilesService>
     )
     {
         super(context, logger);
         this._wsAlServices = wsAlServices;
         this._wsDeployService = wsDeployService;
         this._virtualWorkspaces = virtualWorkspaces;
+        this._wsWorkspaceFileServices = wsWorkspaceFileServices
     }
 
     async activate(): Promise<void>
@@ -245,7 +249,8 @@ export class AlUiService extends UiService
         
         let newProjectService = new NewProjectService(workspaceFolder);
 
-        let count = await newProjectService.addDependenciesToProjectFileWithLoad();
+        let appIdToPackageIdMap = await WorkspaceHelpers.getAppIdPackageIdMapFromWorkspaces(this._wsWorkspaceFileServices);
+        let count = await newProjectService.addDependenciesToProjectFileWithLoad(appIdToPackageIdMap);
         if (count > 0)
             window.showInformationMessage(format(Resources.dependenciesAddedToProject, count), );
         else

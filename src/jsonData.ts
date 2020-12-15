@@ -33,7 +33,7 @@ export class JsonData<TData>
         {
             watchFile(fileUri.fsPath, (curr, prev) => 
             {
-                this.onDidChange(null);
+                this.onChange(null);
             });
         }
     }
@@ -43,35 +43,16 @@ export class JsonData<TData>
         return this._onDidChange.event;
     }
 
-    private onCreated(uri: Uri)
-    {
-        if (this._saveCount > 0)
-        {
-            this._saveCount--;
-            this._onDidChange.fire(this);
-            return;
-        }
-        this._existsCache = true;
-        this._dataCache = null;
-        this._onDidChange.fire(this);
-    }
-
     private onChange(uri: Uri)
     {
-        if (this._saveCount > 0)
+        let exists = this.exists()
+        if (this._saveCount > 0 && exists)
         {
             this._saveCount--;
             this._onDidChange.fire(this);
             return;
         }
-        this._existsCache = true;
-        this._dataCache = null;
-        this._onDidChange.fire(this);
-    }
-
-    private onDelete(uri: Uri)
-    {
-        this._existsCache = false;
+        this._existsCache = exists;
         this._dataCache = null;
         this._onDidChange.fire(this);
     }

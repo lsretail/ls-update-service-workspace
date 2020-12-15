@@ -6,12 +6,12 @@
     "publisher": "lsretail",
     "repository": {
         "type": "git",
-        "url": "https://github.com/lsretail/go-current-workspace.git"
+        "url": "https://github.com/lsretail/ls-update-service-workspace.git"
     },
     "bugs": {
-        "url": "https://github.com/lsretail/go-current-workspace/issues"
+        "url": "https://github.com/lsretail/ls-update-service-workspace/issues"
     },
-    "license": "https://github.com/lsretail/go-current-examples/blob/master/LICENSE.txt",
+    "license": "https://github.com/lsretail/ls-update-service-workspace/blob/master/LICENSE.txt",
     "keywords": [
         "Dynamics 365 Business Central",
         "AL",
