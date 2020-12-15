@@ -372,7 +372,7 @@ export class WorkspaceService
 
     public static getWorkspaceKey(workspaceFolder: WorkspaceFolder)
     {
-        return workspaceFolder.uri.path;
+        return workspaceFolder.uri.fsPath;
     }
 
     private getTypeKey<TService>(type: Type<TService>): string

@@ -102,8 +102,6 @@ export class DeployUiService extends UiService
             active: true
         })
 
-        //await this._wsDeployServices.getActiveWorkspaces(async service => await service.hasPackageGroups());
-
         if (activeWorkspaces.length === 0)
         {
             window.showInformationMessage("Nothing to install.");
@@ -114,15 +112,7 @@ export class DeployUiService extends UiService
         if (!workspaceFolder)
             return;
 
-        try
-        {
-            await this.showDeployWithService(this._wsDeployServices.getService(workspaceFolder), workspaceFolder);
-        }
-        catch (e)
-        {
-            if (!Controller.handleError(e))
-                window.showErrorMessage("Error occurred while installing packages.");
-        }
+        await this.showDeployWithService(this._wsDeployServices.getService(workspaceFolder), workspaceFolder);
     }
 
     private async showDeployWithService(deployService: DeployService, workspaceFolder: WorkspaceFolder)
@@ -180,28 +170,20 @@ export class DeployUiService extends UiService
             }
         }
 
-        try
-        {
-            let deploymentResult = await window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: Resources.installationStartedInANewWindow
-            }, async (progress, token) => {
-                return await deployService.deployPackageGroup(
-                    selectedSet.payload,
-                    instanceName,
-                    selectedTarget,
-                    undefined
-                );
-            });
-            
-            if (deploymentResult.lastUpdated.length > 0)
-                window.showInformationMessage(`Package group "${deploymentResult.deployment.name}" installed: ` + deploymentResult.lastUpdated.map(p => `${p.id} v${p.version}`).join(', '))
-        }
-        catch (e)
-        { 
-            if (!Controller.handleError(e))
-                window.showErrorMessage("Error occurred while installing packages.");
-        };
+        let deploymentResult = await window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: Resources.installationStartedInANewWindow
+        }, async (progress, token) => {
+            return await deployService.deployPackageGroup(
+                selectedSet.payload,
+                instanceName,
+                selectedTarget,
+                undefined
+            );
+        });
+        
+        if (deploymentResult.lastUpdated.length > 0)
+            window.showInformationMessage(`Package group "${deploymentResult.deployment.name}" installed: ` + deploymentResult.lastUpdated.map(p => `${p.id} v${p.version}`).join(', '));
     }
 
     private async checkForUpdates()
@@ -264,26 +246,19 @@ export class DeployUiService extends UiService
 
     private async installUpdate(deployService: DeployService, update: UpdateAvailable) : Promise<boolean>
     {
-        try
+        let deploymentResult = await window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: Resources.installationStartedInANewWindow
+        }, async (progress, token) => {
+            return await deployService.installUpdate(update.packageGroupId, update.instanceName, update.guid);
+        });
+        
+        if (deploymentResult.lastUpdated.length > 0)
         {
-            let deploymentResult = await window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: Resources.installationStartedInANewWindow
-            }, async (progress, token) => {
-                return await deployService.installUpdate(update.packageGroupId, update.instanceName, update.guid);
-            });
-            
-            if (deploymentResult.lastUpdated.length > 0)
-            {
-                window.showInformationMessage(`Package group "${deploymentResult.deployment.name}" updated: ` + deploymentResult.lastUpdated.map(p => `${p.id} v${p.version}`).join(', '));
-                return true;
-            }
-            return false;
+            window.showInformationMessage(`Package group "${deploymentResult.deployment.name}" updated: ` + deploymentResult.lastUpdated.map(p => `${p.id} v${p.version}`).join(', '));
+            return true;
         }
-        catch (e) 
-        {
-            Controller.handleError(e);
-        }
+        return false;
     }
 
     private async update()

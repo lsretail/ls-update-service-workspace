@@ -35,6 +35,11 @@ export class Logger
         this.logger(`DEBUG: ${message}`);
     }
 
+    public warning(message: string)
+    {
+        this.logger(`WARNING: ${message}`);
+    }
+
     public error(message: string)
     {
         this.logger(`ERROR: ${message}`);

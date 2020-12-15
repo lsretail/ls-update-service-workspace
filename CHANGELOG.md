@@ -5,8 +5,10 @@ All notable changes to the "Go Current - Workspace" extension will be documented
 ### Added
 - Re-use development package groups from other projects, with a new VS Code setting *devPackageGroupWorkspaceDirs*.
 - Update multiple *launch.json* files for AL projects with *devPackageGroupWorkspaceDirs* set.
+- You can now turn on debug logs in the VS Code settings. The logs will appear in output-tab (CTRL+SHIFT+U), under *LS Update Service Debug*.
 
 ### Changed
+- All references to *Go Current* in the user interface have been changed to *LS Update Service*.
 - *Compile and create package* now includes AL compilation errors output if any.
 
 ### Fixed

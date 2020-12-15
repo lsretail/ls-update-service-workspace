@@ -1,9 +1,6 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import Resources from './resources'
-import {Constants} from './constants'
-import * as util from 'util'
 import { UiHelpers } from './helpers/uiHelpers';
 import { Logger } from './interfaces/logger';
 
@@ -31,7 +28,7 @@ export class UiService
     {
         var disposable = vscode.commands.registerCommand(command, async (...args) => {
             this._logger.debug(`Calling ${command}`);
-            await UiHelpers.errorWrapper(callback, args, this);
+            await UiHelpers.errorWrapper(callback, args, this._logger, this);
         }, this);
         this.context.subscriptions.push(disposable);
     }

@@ -4,6 +4,7 @@ import Controller from "../controller";
 import { DataHelpers } from "../dataHelpers";
 import { DeployPsService } from "../deployService/services/deployPsService";
 import { GoCurrentPsService } from "../goCurrentService/services/goCurrentPsService";
+import { Logger } from "../interfaces/logger";
 
 export class UiHelpers
 {
@@ -125,7 +126,7 @@ export class UiHelpers
         return instanceName;
     }
 
-    public static async errorWrapper(action: (...args: any[]) => any, args: any[], thisArg?: any)
+    public static async errorWrapper(action: (...args: any[]) => any, args: any[], logger: Logger, thisArg?: any)
     {
         try
         {
@@ -133,7 +134,7 @@ export class UiHelpers
         }
         catch(error)
         {
-            if (!Controller.handleError(error))
+            if (!Controller.handleError(error, logger))
             {
                 window.showErrorMessage(`Unexpected error occured: ${error}.`);
             }

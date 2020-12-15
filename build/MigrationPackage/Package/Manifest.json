@@ -1,0 +1,27 @@
+{
+  "Name": "Go Current Workspace",
+  "Id": "go-current-workspace",
+  "Version": "1.1.0",
+  "DisplayName": "",
+  "Description": "",
+  "Instance": false,
+  "Commands": {
+    "Install": "Package.psm1:Remove-Package",
+    "Update": "Package.psm1:Remove-Package"
+  },
+  "Dependencies": [
+    {
+      "PackageId": "ls-update-service-workspace",
+      "VersionQuery": "!^ >=1.1.0",
+      "Optional": false,
+      "OnlyRestrictVersion": false
+    }
+  ],
+  "Parameters": [],
+  "FillParameters": {},
+  "PrefetchFiles": [],
+  "StoreFiles": [],
+  "AlwaysUpdateDependencies": true,
+  "SubstituteFor": null,
+  "WindowsUpdateSensitive": false
+}

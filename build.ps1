@@ -82,7 +82,7 @@ if ($LASTEXITCODE -ne 0)
 }
 
 
-& $Vsce package --baseImagesUrl 'https://selfservice.lsretail.com/help/workspace' | Write-Host
+& $Vsce package | Write-Host
 
 if ($LASTEXITCODE -ne 0)
 {

@@ -59,15 +59,14 @@ export class PackageUiService extends UiService
 
     private async alDownloadDependencies() 
     {
-        this._outputChannel.clear();
-        this._outputChannel.hide();
-        this._outputChannel.show();
+        let workspaces = await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)});
+        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(workspaces);
+        
+        if (!workspaceFolder)
+            return;
+
         try
-        {
-            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
-            if (!workspaceFolder)
-                return;
-    
+        {    
             let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
 
             let targets = await packageService.getTargets(undefined, true);
@@ -75,7 +74,11 @@ export class PackageUiService extends UiService
 
             if (!target)
                 return;
-            
+         
+            this._outputChannel.clear();
+            this._outputChannel.hide();
+            this._outputChannel.show();
+
             this._outputChannel.appendLine("Starting dependency download ...")
             
             let output = await window.withProgress({
@@ -89,7 +92,7 @@ export class PackageUiService extends UiService
                 );
             });
             this._outputChannel.appendLine(output.output);
-            this._outputChannel.appendLine("Dependencies downloaded.");
+            this._outputChannel.appendLine("Finished!");
             window.showInformationMessage(Resources.dependenciesDownloadedReload, Constants.buttonReloadWindow).then(result => 
             {
                 if (result === Constants.buttonReloadWindow)
@@ -100,9 +103,9 @@ export class PackageUiService extends UiService
         }
         catch (e)
         {
-            Controller.handleError(e);
             this._outputChannel.appendLine('Error occurd while downloading dependencies:');
             this._outputChannel.appendLine(Controller.getErrorMessage(e));
+            throw e;
         }
     }
 
@@ -137,13 +140,14 @@ export class PackageUiService extends UiService
                     GitHelpers.getBranchName(workspaceFolder.uri.fsPath), 
                     message => outputChannel.appendLine(message)
                 );
+                outputChannel.appendLine("Finished!");
             });
         }
         catch (e)
         {
-            Controller.handleError(e);
             this._outputChannel.appendLine('Error occurd while compiling and creating package:');
             this._outputChannel.appendLine(Controller.getErrorMessage(e));
+            throw e;
         }
     }
 
@@ -187,13 +191,14 @@ export class PackageUiService extends UiService
                 );
             });
 
-            outputChannel.appendLine(`Package created ${packagePath}.`);
+            outputChannel.appendLine(`Package created: ${packagePath}.`);
+            outputChannel.appendLine("Finished!");
         }
         catch (e)
         {
-            Controller.handleError(e);
             this._outputChannel.appendLine('Error occurd while compiling and creating package:');
             this._outputChannel.appendLine(Controller.getErrorMessage(e));
+            throw e;
         }
     }
 
@@ -230,12 +235,13 @@ export class PackageUiService extends UiService
             });
 
             outputChannel.appendLine(`Package created: ${packagePath}.`)
+            outputChannel.appendLine("Finished!");
         }
         catch (e)
         {
-            Controller.handleError(e);
             this._outputChannel.appendLine('Error occurd while compiling and creating package:');
             this._outputChannel.appendLine(Controller.getErrorMessage(e));
+            throw e;
         }
     }
 

@@ -40,7 +40,7 @@ This release focuses on improved UX when working with multiple AL apps.
 
     Let's say you have two projects *A* and *B* in the same workspace or repository.
     1. In *A*, define your development package group, with your Business Central setup.
-    2. For project *B*, create or add to the file *Project-B\.vscode\settings.json*:
+    2. For project *B*, create or add to the VS Code settings file *Project-B\.vscode\settings.json*:
     ```json
     {
         ...
@@ -49,11 +49,11 @@ This release focuses on improved UX when working with multiple AL apps.
         ]
     }
     ```
-
-    Now you can:
-    * Open *A* and *B* in the same workspace and when you install a new BC instance, *launch.json* is updated for both projects.
-    * Only open *B* in VS Code, run *LS Update Service: Install Packages* and install any group defined in *A*.
-    * Run *Re-populate launch.json* and *launch.json* is updated with instances from project *A* for *A* and/or *B* depending on which are open in VS Code.
+    3. Reload or restart VS Code.
+    * Now you can:
+        * Open *A* and *B* in the same workspace and when you install a new BC instance, *launch.json* is updated for both projects.
+        * Only open *B* in VS Code, run *LS Update Service: Install Packages* and install any packages defined in *A*.
+        * Run *Re-populate launch.json* and *launch.json* is updated with Business Central instances from project *A*.
 
 * *Compile and create package* now includes AL compilation errors output if any.
 * Bugfixes:

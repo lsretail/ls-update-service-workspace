@@ -130,9 +130,13 @@ export class PowerShell
             newCommand = newCommand.addParameter(item);
         }
 
-        this._shell.addCommand(newCommand).then(value =>
+        this._shell.addCommand(newCommand).then(commands =>
         {
-            this.log(value);
+            for (let entry of commands)
+            {
+                if (entry.command)
+                    this.log(entry.command)
+            }
         }, error => 
         {
             this.log(error);

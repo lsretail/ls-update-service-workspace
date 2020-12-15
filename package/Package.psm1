@@ -61,7 +61,7 @@ function Remove-Package
 
     $Arguments = @(
         '--uninstall-extension'
-        'lsretail.go-current-workspace'
+        'lsretail.ls-update-service-workspace'
     )
 
     & $CodePath @Arguments | Write-Host

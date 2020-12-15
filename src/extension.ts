@@ -81,8 +81,7 @@ export async function activate(context: vscode.ExtensionContext)
         }
         deployService.onDidPackagesDeployed(p => {virtualWorkspaceService.updateLaunchJson(workspaceEntry.workspaceFolder, p)});
         deployService.onDidInstanceRemoved(i => { virtualWorkspaceService.removeFromLaunchJson(workspaceEntry.workspaceFolder, [i])});
-        
-        //deployService.onDidInstanceRemoved(this.onDeploymentRemoved, this);
+    
 
         return deployService;
     });

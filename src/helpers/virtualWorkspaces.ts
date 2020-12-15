@@ -4,6 +4,7 @@ import { pathToFileURL } from 'url';
 import * as vscode from 'vscode';
 import { Disposable } from "vscode";
 import { Constants } from '../constants';
+import { fsHelpers } from '../fsHelpers';
 import { Logger } from '../interfaces/logger';
 import { PackageInfo } from '../interfaces/packageInfo';
 import { PostDeployController } from '../postDeployController';
@@ -21,7 +22,10 @@ export class VirtualWorkspaces
     private _workspaceMapLinkTo: Map<string, vscode.WorkspaceFolder[]> = new Map<string, vscode.WorkspaceFolder[]>();
     private _workspaceMapLinkFrom: Map<string, vscode.WorkspaceFolder[]> = new Map<string, vscode.WorkspaceFolder[]>();
 
-    constructor(logger: Logger, workspaceService: WorkspaceService)
+    constructor(
+        logger: Logger, 
+        workspaceService: WorkspaceService
+    )
     {
         this._logger = logger;
         this._workspaceService = workspaceService;
@@ -55,6 +59,14 @@ export class VirtualWorkspaces
                     uri: vscode.Uri.file(dir)
                 };
 
+                if (!fsHelpers.existsSync(dir))
+                {
+                    this._logger.warning(`Will not add virtual workspace, it does not exists: ${dir}.`);
+                    continue;
+                }
+                
+                this._logger.info(`Added virtual workspace ${newWorkspaceFolder.uri.fsPath} from ${workspaceFolder.uri.fsPath}.`);
+
                 addWorkspaces.push(newWorkspaceFolder);
 
                 let keyTo = WorkspaceService.getWorkspaceKey(newWorkspaceFolder);
@@ -74,9 +86,6 @@ export class VirtualWorkspaces
         }
 
         this._workspaceService.addVirtualWorkspaces(addWorkspaces);
-
-        // TODO, handle removed workspaces
-        
     }
 
     removeFromLaunchJson(workspaceFolder: vscode.WorkspaceFolder, instanceNames: string[])
@@ -84,7 +93,6 @@ export class VirtualWorkspaces
         let toUpdate = this.getWorkspacesLinkedTo(workspaceFolder);
         for (let entry of toUpdate)
         {
-            //PostDeployController.removeNonExisting(instanceNames, entry)
             PostDeployController.removeAlLaunchConfig(instanceNames[0], entry)
         }
     }

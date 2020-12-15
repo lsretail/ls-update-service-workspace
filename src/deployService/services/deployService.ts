@@ -412,6 +412,9 @@ export class DeployService implements IWorkspaceService
 
     public getDevTarget(projectFile: ProjectFile, packageGroup: PackageGroup): string[]
     {
+        if (!packageGroup?.devTarget)
+            return [];
+
         if (typeof(packageGroup.devTarget) === 'string')
             return [packageGroup.devTarget];
         if (Array.isArray(packageGroup.devTarget))
