@@ -95,9 +95,10 @@ function ConvertTo-BranchPriorityPreReleaseFilter
         }
         $Label = ConvertTo-BranchPreReleaseLabel -BranchName $Branch.Trim() -BranchToLabelMap $BranchToLabelMap
         $Label = $Label.Trim()
-        if (!$Labels.Contains("*-$Label"))
+        $Filter = "*-$Label."
+        if (!$Labels.Contains($Filter))
         {
-            $Labels += "*-$Label."
+            $Labels += $Filter
         }
     }
     

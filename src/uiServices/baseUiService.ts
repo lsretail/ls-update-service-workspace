@@ -129,7 +129,7 @@ export class BaseUiService extends UiService
 
     public static async checkForGocWorkspaceUpdates(goCurrentPsService: GoCurrentPsService, context: ExtensionContext): Promise<boolean>
     {
-        let packageId = 'go-current-workspace'
+        let packageId = 'ls-update-service-workspace'
         
         if (!await goCurrentPsService.testPackageAvailable(packageId))
             return false;

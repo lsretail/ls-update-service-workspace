@@ -18,13 +18,12 @@ function Get-AlDependencies
 
     $AllResolved = $Deps | Get-GocUpdates
 
-    $Resolved = @($AllResolved | Where-Object { $PackageIds.Contains($_.Id)})
-
     if ($PackageIds.Contains('bc-application'))
     {
-        $Additionals = @('bc-system-application', 'bc-base-application')
-        $Resolved += $AllResolved | Where-Object {$Additionals.Contains($_.Id)}
+        $PackageIds += @('bc-system-application', 'bc-base-application')
     }
+
+    $Resolved = @($AllResolved | Where-Object { $PackageIds.Contains($_.Id)})
 
     $TempDir = Join-Path $OutputDir 'Temp'
     $GatherDir = Join-Path $TempDir '.gather'
@@ -309,6 +308,7 @@ function New-AlPackage
         Path = $Files
         OutputDir = Get-FirstValue $OutputDir, $GoCProject.OutputDir, $DefaultOutputDir
         Dependencies = $Dependencies
+        SubstituteFor = $GoCProject.SubstituteFor
     }
 
     if ($GoCProject.DisplayName)

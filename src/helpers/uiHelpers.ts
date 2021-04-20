@@ -58,7 +58,7 @@ export class UiHelpers
         return selected.label;
     }
 
-    /*async showInstancePicks(instances: string[], exludeInstances: string[] = [], placeholder: string = "Selected an instance") : Promise<string[]>
+    /*async showInstancePicks(instances: string[], exludeInstances: string[] = [], placeholder: string = "Select an instance") : Promise<string[]>
     {
         let picks: QuickPickItemPayload<string[]>[] = [];
 

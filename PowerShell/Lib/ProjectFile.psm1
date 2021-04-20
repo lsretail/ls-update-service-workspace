@@ -17,6 +17,8 @@ $_CurrentBranch = 'currentBranch'
 $_ProjectDir = 'ProjectDir'
 $_ReservedVariables = @($_ProjectDir, $_CurrentBranch) + $_AlAppVariables
 
+$_CircularReferenceMarker = 'CIRCULAR-REFERENCE'
+
 $_ResolveFileModified = @{}
 
 function Get-ProjectFilePackages
@@ -518,6 +520,10 @@ function Resolve-VariablesInString
         if ($ResolveCache.Keys -icontains $VariableName)
         {
             $Replacement = $ResolveCache[$VariableName]
+            if ($Replacement -eq $_CircularReferenceMarker)
+            {
+                throw "Circular reference to variable `"$VariableName`"."
+            }
         }
         elseif ($_AlAppVariables -icontains $VariableName)
         {
@@ -534,6 +540,7 @@ function Resolve-VariablesInString
         }
         elseif ($ProjectVariables.ContainsKey($VariableName))
         {
+            $ResolveCache[$VariableName] = $_CircularReferenceMarker
             $Replacement = Resolve-VersionWithFunction -VersionValue $ProjectVariables[$VariableName] -Target $Target -ProjectDir $ProjectDir -VariableName $VariableName -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap -ResolveCache $ResolveCache -ProjectVariables $ProjectVariables
             $ResolveCache[$VariableName] = $Replacement
         }
@@ -638,7 +645,7 @@ function Resolve-VersionWithFunction
 
     if ($VersionValue.GetType() -eq [string])
     {
-        return $VersionValue
+        return (Resolve-VariablesInString -Value $VersionValue -ProjectVariables $ProjectVariables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap)
     }
     
     if ($null -ne $VersionValue.AlAppId)

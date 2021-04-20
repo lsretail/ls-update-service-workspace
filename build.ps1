@@ -10,7 +10,7 @@
 
 param(
     [string] $GitCommit = $env:bamboo_planRepository_revision,
-    [string] $BuildNumber = $env:bamboo.buildNumber,
+    [string] $BuildNumber = $env:bamboo_buildNumber,
     [string] $Vsce = $env:bamboo_capability_system_builder_command_vsce,
     [string] $Npm = $env:bamboo_capability_system_builder_command_npm,
     [string] $Branch = $env:bamboo_planRepository_branch,

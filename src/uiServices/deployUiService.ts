@@ -407,7 +407,7 @@ export class DeployUiService extends UiService
         
     }
 
-    async showInstancePicks(exludeInstances: Array<string> = [], placeholder: string = "Selected an instance") : Promise<PackageInfo[]>
+    async showInstancePicks(exludeInstances: Array<string> = [], placeholder: string = "Select an instance") : Promise<PackageInfo[]>
     {
         let instances = await this._goCurrentPsService.getInstances();
 
