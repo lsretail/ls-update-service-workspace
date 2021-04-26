@@ -5,19 +5,34 @@ import { ProjectFile } from "../../models/projectFile";
 export class PackagePsService
 {
     private _modulePath: string;
+    private _imported: boolean = false;
     private _powerShell: PowerShell;
 
     constructor(powerShell: PowerShell, modulePath: string)
     {
         this._powerShell = powerShell;
-        this._powerShell.addModuleFromPath(modulePath);
-        this._powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
         this._modulePath = modulePath;
+    }
+
+    private executeCommandSafe(commandName: string, parseJson: boolean, ...args: any[]) : Promise<any>
+    {
+        this.init();
+        return this._powerShell.executeCommandSafe(commandName, parseJson, ...args);
+    }
+
+    private init()
+    {
+        if (!this._imported)
+        {
+            this._imported = true;
+            this._powerShell.addModuleFromPath(this._modulePath);
+            this._powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
+        }
     }
 
     public getGoCurrentServerVersion(): Promise<GoCurrentVersion>
     {
-        return this._powerShell.executeCommandSafe("Get-GoCurrentServerVersion", true);
+        return this.executeCommandSafe("Get-GoCurrentServerVersion", true);
     }
 
     public getTargets(projectFilePath: string, id?: string, useDevTarget?: boolean): Promise<string[]>
@@ -33,7 +48,7 @@ export class PackagePsService
         if (useDevTarget)
             param['useDevTarget'] = useDevTarget;
 
-        return this._powerShell.executeCommandSafe("Get-Targets", true, param);
+        return this.executeCommandSafe("Get-Targets", true, param);
     }
 
     public async newPackage(projectFilePath: string, target: string, branchName: string, defaultOutputDir: string): Promise<string>
@@ -118,7 +133,7 @@ export class PackagePsService
 
     public async newTempDir(): Promise<string>
     {
-        return await this._powerShell.executeCommandSafe("New-TempDir", true);
+        return await this.executeCommandSafe("New-TempDir", true);
     }
 
     public testNetPackagesLocked(...dir: string[]): Promise<boolean>
@@ -127,7 +142,7 @@ export class PackagePsService
             dir: `@("${dir.join('","')}")`
         };
 
-        return this._powerShell.executeCommandSafe("Test-NetpackageLocked", true, param);
+        return this.executeCommandSafe("Test-NetpackageLocked", true, param);
     }
 
     public async getDependencies(

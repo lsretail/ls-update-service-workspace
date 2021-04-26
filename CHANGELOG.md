@@ -1,5 +1,11 @@
 # Change Log
-All notable changes to the "Go Current - Workspace" extension will be documented in this file.
+All notable changes to the "LS Retail Update Service Workspace" extension will be documented in this file.
+
+## [1.2.0]
+### Changed
+- Support for the new parameter -UpdateInstanceMode Replace|Merge in Install-GocPackage (v0.19.0). New property added to package groups called *updateInstanceMode* and the default value is *Replace*.
+### Fixed
+- Errors thrown by the extension if Go Current isn't installed on the machine, now informs the user with a notification.
 
 ## [1.1.0] - 2020-12-14
 ### Added

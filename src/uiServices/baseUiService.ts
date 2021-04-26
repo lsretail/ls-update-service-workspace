@@ -6,16 +6,13 @@ import { UiService } from "../extensionController";
 import { GoCurrentPsService } from '../goCurrentService/services/goCurrentPsService';
 import { UiHelpers } from '../helpers/uiHelpers';
 import { NewProjectService } from '../newProjectService/services/newProjectService';
-import { PostDeployController } from '../postDeployController';
 import Resources from '../resources';
 import { WorkspaceFilesService } from '../services/workspaceFilesService';
 import { WorkspaceServiceProvider, WorkspaceContainerEvent } from '../workspaceService/services/workspaceServiceProvider';
 import { Package } from '../models/projectFile';
 import path = require('path');
-import { JsonData } from '../jsonData';
 import { fsHelpers } from '../fsHelpers';
 import { format } from 'util';
-import { PackageUiService } from './packageUiService';
 import { InstallHelpers } from '../helpers/installHelpers';
 import { Logger } from '../interfaces/logger';
 import { WorkspaceHelpers } from '../helpers/workspaceHelpers';
@@ -52,7 +49,7 @@ export class BaseUiService extends UiService
         this._wsWorkspaceFileServices.onDidChangeWorkspaceFolders(this.onWorkspaceChanges, this, subscriptions);
         this._disposable = vscode.Disposable.from(...subscriptions);
 
-        this.checkGoCurrentInstalled();
+        await this.checkGoCurrentInstalled();
     }
 
     private onWorkspaceChanges(e: WorkspaceContainerEvent<WorkspaceFilesService>)
@@ -93,9 +90,14 @@ export class BaseUiService extends UiService
 
         if (!goCurrentInstalled || !gocVersion.HasRequiredVersion)
         {
+            commands.executeCommand("setContext", Constants.goCurrentExtensionActive, false);
+            commands.executeCommand("setContext", Constants.goCurrentDeployActive, false);
+            commands.executeCommand("setContext", Constants.goCurrentAlActive, false);
+            commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
+
             let message = "Go Current is not installed, extension will not load.";
             let buttons = [Constants.buttonVisitWebsite];
-            if (!gocVersion.HasRequiredVersion)
+            if (goCurrentInstalled && !gocVersion.HasRequiredVersion)
             {
                 message = `You do not have the required version of the Go Current client, v${gocVersion.RequiredVersion}, you have v${gocVersion.CurrentVersion}. Please update and reload your workspace.`;
              
@@ -115,15 +117,10 @@ export class BaseUiService extends UiService
             {
                 InstallHelpers.installPackage("go-current-client", this._goCurrentPsService, {reload: true, reloadText: Resources.goCurrentUpdated})
             }
-            
-            commands.executeCommand("setContext", Constants.goCurrentExtensionActive, false);
-            commands.executeCommand("setContext", Constants.goCurrentDeployActive, false);
-            commands.executeCommand("setContext", Constants.goCurrentAlActive, false);
-            commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
         }
         else
         {
-            await this.checkForBaseUpdate();
+            this.checkForBaseUpdate();
         }
     }
 

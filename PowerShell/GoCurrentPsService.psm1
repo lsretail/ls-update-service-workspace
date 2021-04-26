@@ -1,5 +1,6 @@
 $ErrorActionPreference = 'stop'
 
+Import-Module (Join-Path $PSScriptRoot 'ErrorHandling.psm1')
 Import-Module (Join-Path $PSScriptRoot 'Utils.psm1')
 
 try
@@ -15,11 +16,11 @@ catch
 
 $_GoCWizardPath = $null
 
-function Get-GoCurrentVersion()
+function Get-GoCurrentVersion
 {
     $HasRequiredVersion = $false
     $CurrentVersion = ''
-    $RequiredVersion = [Version]::Parse('0.15.11')
+    $RequiredVersion = [Version]::Parse('0.19.0')
     if ($_GoCurrentInstalled)
     {
         $CurrentVersion = ((Get-Module -Name 'GoCurrent') | Select-Object -First 1).Version
@@ -57,12 +58,18 @@ function Install-Packages
         $InstanceName,
         [Array] $Packages,
         $Arguments,
-        [string] $Servers
+        [string] $Servers,
+        [string] $UpdateInstanceMode = 'Merge'
     )
+
+    if (!$UpdateInstanceMode)
+    {
+        $UpdateInstanceMode = 'Merge'
+    }
 
     $ServersObj = ConvertTo-ServersObj -Servers $Servers
 
-    $ToUpdate = @($Packages | Get-GocUpdates -InstanceName $InstanceName -Server $ServersObj)
+    $ToUpdate = @($Packages | Get-GocUpdates -InstanceName $InstanceName -Server $ServersObj -UpdateInstanceMode $UpdateInstanceMode)
 
     $WizardPath = Get-GoCurrentWizardPath
 
@@ -88,10 +95,10 @@ function Install-Packages
     [System.IO.Directory]::CreateDirectory((Split-Path $TempFilePath -Parent)) | Out-Null
     (ConvertTo-Json -InputObject $Install -Depth 100 -Compress) | Set-Content -Path $TempFilePath
 
-    $ArgumentList = @('-InstallerMetadata', $TempFilePath, '-SelectFirst')
+    $ArgumentList = @('-InstallerMetadata', "`"$TempFilePath`"", '-SelectFirst')
     if ($InstanceName)
     {
-        $ArgumentList += '-InstanceName', $InstanceName, '-UpdateInstance'
+        $ArgumentList += '-InstanceName', $InstanceName, '-UpdateInstance', '-UpdateInstanceMode', $UpdateInstanceMode
     }
 
     $Process = Start-Process -FilePath $WizardPath -ArgumentList $ArgumentList -PassThru

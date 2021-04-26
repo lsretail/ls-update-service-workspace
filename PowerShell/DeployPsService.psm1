@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'stop'
 
-Import-Module (Join-Path $PSScriptRoot 'Lib\ProjectFile.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'Lib\ProjectFile.psm1')
 Import-Module (Join-Path $PSScriptRoot 'ErrorHandling.psm1')
 Import-Module (Join-Path $PSScriptRoot 'AdminUtils.psm1')
 Import-Module (Join-Path $PSScriptRoot 'GoCurrentPsService.psm1')
@@ -32,9 +32,16 @@ function Install-PackageGroup
 
     $PackageGroup = Get-PackageGroup -ProjectFilePath $ProjectFilePath -PackageGroupId $PackageGroupId -BranchName $BranchName -Target $Target
 
+    $UpdateInstanceMode = 'Replace'
+
+    if ($PackageGroup.updateInstanceMode)
+    {
+        $UpdateInstanceMode = $PackageGroup.updateInstanceMode
+    }
+
     $Packages = $PackageGroup.Packages | Where-Object { !$_.onlyRestrictVersion}
 
-    return Install-Packages -InstanceName $InstanceName -Packages $Packages -Arguments $PackageGroup.Arguments -Servers $Servers
+    return Install-Packages -InstanceName $InstanceName -Packages $Packages -Arguments $PackageGroup.Arguments -Servers $Servers -UpdateInstanceMode $UpdateInstanceMode
 }
 
 function Get-AvailableUpdates
@@ -70,7 +77,14 @@ function Get-AvailableUpdates
     $SelectedPackages = $PackageGroup.packages | Get-GocInstalledPackage -InstanceName $InstanceName | ForEach-Object { $_.Id }
     $Packages = $PackageGroup.packages | Where-Object { (!$_.optional) -or ($_.optional -and $SelectedPackages.Contains($_.id)) }
 
-    $Updates = @($Packages | Get-GocUpdates -InstanceName $InstanceName -Server $ServersObj)
+    $UpdateInstanceMode = 'Replace'
+
+    if ($PackageGroup.updateInstanceMode)
+    {
+        $UpdateInstanceMode = $PackageGroup.updateInstanceMode
+    }
+
+    $Updates = @($Packages | Get-GocUpdates -InstanceName $InstanceName -Server $ServersObj -UpdateInstanceMode $UpdateInstanceMode)
     return (ConvertTo-Json $Updates -Compress -Depth 100)
 }
 

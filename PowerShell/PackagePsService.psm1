@@ -16,11 +16,11 @@ catch
     $_GoCurrentInstalled = $false
 }
 
-function Get-GoCurrentServerVersion()
+function Get-GoCurrentServerVersion
 {
     $HasRequiredVersion = $false
     $CurrentVersion = ''
-    $RequiredVersion = [Version]::Parse('0.15.11')
+    $RequiredVersion = [Version]::Parse('0.16.0')
     if ($_GoCurrentInstalled)
     {
         $CurrentVersion = ((Get-Module -Name 'GoCurrentServer') | Select-Object -First 1).Version

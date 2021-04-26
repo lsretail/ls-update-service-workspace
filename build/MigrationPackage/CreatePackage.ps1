@@ -5,10 +5,10 @@ Import-Module GoCurrentServer
 $GoCurrentWizard = @{
     'Id' = 'go-current-workspace'
     'Name' = 'Go Current Workspace'
-    'Version' = '1.1.0'
+    'Version' = '1.2.0'
     'OutputDir' = (Join-Path $PSScriptRoot "Package")
     'Dependencies' = @(
-        @{'PackageId' = 'ls-update-service-workspace'; 'version' = "^! >=1.1.0"}
+        @{'PackageId' = 'ls-update-service-workspace'; 'version' = "^! >=1.2.0"}
     )
     Commands = @{
         Install = 'Package.psm1:Remove-Package'

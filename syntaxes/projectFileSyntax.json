@@ -239,6 +239,11 @@
                             }
                         ]
                     },
+                    "updateInstanceMode": {
+                        "description": "Specify if requested packages in an instance should be replaced or merged while updating.",
+                        "type": "string",
+                        "enum": ["Replace", "Merge"]
+                    },
                     "packages": {
                         "type": "array",
                         "description": "Packages in the deployment group.",

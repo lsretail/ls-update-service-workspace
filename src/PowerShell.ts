@@ -14,6 +14,7 @@ export class PowerShell
     private _promiseOrder: Promise<any>;
     private _preCommand: string;
     private _runNextCommand: string;
+    private _commandsQueue: string[] = [];
     private _relaunchCount = 0;
 
     constructor(logger: Logger, debug: boolean)
@@ -88,12 +89,15 @@ export class PowerShell
         this._runNextCommand = command;
     }
 
+    public pushCommand(command: string)
+    {
+        this._commandsQueue.push(command);
+    }
+
     public addModuleFromPath(modulePath: string)
     {
-        if (this._shell)
-            this._shell.addCommand(`Import-Module ${modulePath} -DisableNameChecking`);
-        else
-            this._modulePaths.push(modulePath);
+        this._modulePaths.push(modulePath);
+        this.pushCommand(`Import-Module ${modulePath} -DisableNameChecking`);
     }
 
     private splitArguments(args: any[]): any[]
@@ -122,6 +126,12 @@ export class PowerShell
             this._shell.addCommand(this._runNextCommand);
             this._runNextCommand = undefined;
         }
+
+        for (let command of this._commandsQueue)
+        {
+            this._shell.addCommand(command);
+        }
+        this._commandsQueue.splice(0)
 
         let newCommand = new PSCommand(commandName);
         let structuredArgument = this.splitArguments(args);

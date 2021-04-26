@@ -3,33 +3,48 @@ import {PowerShell} from '../../PowerShell'
 export class AlPsService
 {
     private _modulePath: string;
+    private _imported: boolean = false;
     private _powerShell: PowerShell;
     private _isAdmin: boolean;
 
     constructor(powerShell: PowerShell, modulePath: string)
     {
         this._powerShell = powerShell;
-        this._powerShell.addModuleFromPath(modulePath);
-        this._powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
         this._modulePath = modulePath;
+    }
+
+    private executeCommandSafe(commandName: string, parseJson: boolean, ...args: any[]) : Promise<any>
+    {
+        this.init();
+        return this.executeCommandSafe(commandName, parseJson, ...args);
+    }
+
+    private init()
+    {
+        if (!this._imported)
+        {
+            this._imported = true;
+            this._powerShell.addModuleFromPath(this._modulePath);
+            this._powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
+        }
     }
 
     private async executeAsAdmin(commandName: string, parseJson: boolean, ...args: any[]) : Promise<any>
     {
         if (await this.isAdmin())
         {
-            return this._powerShell.executeCommandSafe(commandName, parseJson, ...args);
+            return this.executeCommandSafe(commandName, parseJson, ...args);
         }
         else
         {
-            return this._powerShell.executeCommandSafe(commandName + "Admin", parseJson, ...args);
+            return this.executeCommandSafe(commandName + "Admin", parseJson, ...args);
         }
     }
 
     public async isAdmin(): Promise<boolean>
     {
         if (!this._isAdmin)
-            this._isAdmin = await this._powerShell.executeCommandSafe("Test-AdminAsJson", true);
+            this._isAdmin = await this.executeCommandSafe("Test-AdminAsJson", true);
         return this._isAdmin;
     }
 

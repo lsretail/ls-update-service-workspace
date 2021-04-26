@@ -3,20 +3,18 @@ import {PowerShell} from '../../PowerShell'
 import {PackageInfo} from '../../interfaces/packageInfo';
 import { Server, Package } from '../../models/projectFile';
 import { GoCurrentVersion } from '../../interfaces/goCurrentVersion';
+import { parse } from 'path';
 
 export class DeployPsService
 {
     private _modulePath: string;
-
+    private _imported: boolean = false;
     private _powerShell: PowerShell;
-    private _powerShellLongRunning: PowerShell;
     private _isAdmin: boolean;
 
     constructor(powerShell: PowerShell, modulePath: string)
     {
-        this._powerShell = powerShell;
-        this._powerShell.addModuleFromPath(modulePath);
-        this._powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
+        this._powerShell = powerShell;    
         this._modulePath = modulePath;
     }
 
@@ -27,15 +25,31 @@ export class DeployPsService
         return this._isAdmin;
     }
 
+    private executeCommandSafe(commandName: string, parseJson: boolean, ...args: any[]) : Promise<any>
+    {
+        this.init();
+        return this._powerShell.executeCommandSafe(commandName, parseJson, ...args);
+    }
+
+    private init()
+    {
+        if (!this._imported)
+        {
+            this._imported = true;
+            this._powerShell.addModuleFromPath(this._modulePath);
+            this._powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
+        }
+    }
+
     private async executeAsAdmin(commandName: string, parseJson: boolean, ...args: any[]) : Promise<any>
     {
         if (await this.isAdmin())
         {
-            return this._powerShell.executeCommandSafe(commandName, parseJson, ...args);
+            return this.executeCommandSafe(commandName, parseJson, ...args);
         }
         else
         {
-            return this._powerShell.executeCommandSafe(commandName + "Admin", parseJson, ...args);
+            return this.executeCommandSafe(commandName + "Admin", parseJson, ...args);
         }
     }
 
@@ -44,7 +58,7 @@ export class DeployPsService
         let param = {
             'Value': 'input parameter'
         }
-        return this._powerShell.executeCommandSafe("Get-TestString", false, param);
+        return this.executeCommandSafe("Get-TestString", false, param);
     }
 
     public async installPackageGroup(
@@ -75,6 +89,7 @@ export class DeployPsService
         if (servers)
             param['Servers'] = `'${JSON.stringify(servers)}'`;
 
+        this.init();
         let powerShell = this._powerShell.getNewPowerShell();
         try
         {
@@ -115,7 +130,7 @@ export class DeployPsService
         if (servers)
             param['Servers'] = `'${JSON.stringify(servers)}'`;
 
-        return this._powerShell.executeCommandSafe("Get-AvailableUpdates", true, param);
+        return this.executeCommandSafe("Get-AvailableUpdates", true, param);
     }
 
     public removeDeployment(workspaceDataPath: string, deploymentGuid: string) : Promise<any>
@@ -149,12 +164,12 @@ export class DeployPsService
         if (servers)
             param['Servers'] = `'${JSON.stringify(servers)}'`;
         
-        return this._powerShell.executeCommandSafe("Test-IsInstance", true, param);
+        return this.executeCommandSafe("Test-IsInstance", true, param);
     }
 
     public testCanInstall(projectFilePath: string, packageGroupId: string): Promise<boolean>
     {
-        return this._powerShell.executeCommandSafe("Test-CanInstall", true, {"ProjectFilePath": projectFilePath, "packageGroupId": packageGroupId})
+        return this.executeCommandSafe("Test-CanInstall", true, {"ProjectFilePath": projectFilePath, "packageGroupId": packageGroupId})
     }
 
     public getDeployedPackages(workspaceDataPath: string, deploymentGuid: string) : Promise<PackageInfo[]>
@@ -163,7 +178,7 @@ export class DeployPsService
             'WorkspaceDataPath': `'${workspaceDataPath}'`,
             'DeploymentGuid': `'${deploymentGuid}'`,
         }
-        return this._powerShell.executeCommandSafe("Get-DeployedPackages", true, param);
+        return this.executeCommandSafe("Get-DeployedPackages", true, param);
     }
 
     public getTargets(projectFilePath: string, id?: string, useDevTarget?: boolean): Promise<string[]>
@@ -179,7 +194,7 @@ export class DeployPsService
         if (useDevTarget !== undefined)
             param['useDevTarget'] = useDevTarget;
 
-        return this._powerShell.executeCommandSafe("Get-Targets", true, param);
+        return this.executeCommandSafe("Get-Targets", true, param);
     }
 
     public getResolvedProjectFile(projectFilePath: string, target: string, branchName: string): Promise<object>
@@ -189,7 +204,7 @@ export class DeployPsService
             target: `'${target}'`,
             branchName: `'${branchName}'`
         }
-        return this._powerShell.executeCommandSafe("Get-ResolvedProjectFile", true, param);
+        return this.executeCommandSafe("Get-ResolvedProjectFile", true, param);
     }
 
     public getPackageGroup(projectFilePath: string, id: string, target: string, branchName: string): Promise<object>
@@ -200,6 +215,6 @@ export class DeployPsService
             target: `'${target}'`,
             branchName: `'${branchName}'`
         }
-        return this._powerShell.executeCommandSafe("Get-ResolvedPackageGroup", true, param);
+        return this.executeCommandSafe("Get-ResolvedPackageGroup", true, param);
     }
 }
