@@ -208,7 +208,7 @@ export class DeployUiService extends UiService
     private async checkForUpdatesSilent(): Promise<boolean>
     {
         let buttons: string[] = [Constants.buttonUpdate, Constants.buttonLater];
-        commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
+        //commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
         let anyUpdates = false;
         for (let deployService of (await this._wsDeployServices.getServices({active: true})))
         {

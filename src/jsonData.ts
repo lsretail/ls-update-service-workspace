@@ -8,6 +8,7 @@ export class JsonData<TData>
 {
     private _uri: Uri;
     private _saveCount: number = 0;
+    private _skipCount: number = 0;
     private _dataCache: TData;
     private _defaultData: TData;
     private _watcher: FileSystemWatcher;
@@ -31,6 +32,7 @@ export class JsonData<TData>
         
         if (watchChanges)
         {
+            this._skipCount++; // Skip the first event.
             watchFile(fileUri.fsPath, (curr, prev) => 
             {
                 this.onChange(null);
@@ -46,6 +48,11 @@ export class JsonData<TData>
     private onChange(uri: Uri)
     {
         let exists = this.exists()
+        if (this._skipCount > 0)
+        {
+            this._skipCount--;
+            return;
+        }
         if (this._saveCount > 0 && exists)
         {
             this._saveCount--;
