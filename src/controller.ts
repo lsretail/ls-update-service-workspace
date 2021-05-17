@@ -27,7 +27,7 @@ export default class Controller
         else if (reason instanceof PowerShellError && reason.fromJson)
         {
             window.showErrorMessage(reason.message);
-            return false;
+            return true;
         }
         else if (reason instanceof AppError)
         {

@@ -16,7 +16,7 @@ export class AlPsService
     private executeCommandSafe(commandName: string, parseJson: boolean, ...args: any[]) : Promise<any>
     {
         this.init();
-        return this.executeCommandSafe(commandName, parseJson, ...args);
+        return this._powerShell.executeCommandSafe(commandName, parseJson, ...args);
     }
 
     private init()

@@ -12,8 +12,8 @@ function Invoke-ErrorHandler
     }
 
     $Type = 'unknown'
-    if (($ErrorObject.Exception -is [LSRetail.GoCurrent.Common.Exceptions.GoCurrentException]) -or 
-        $ErrorObject.Exception -is [System.ServiceModel.FaultException])
+    if ((Test-IsGoCException -Exception $ErrorObject.Exception) -or
+        (Test-IsFaultException -Exception $ErrorObject.Exception))
     {
         $Type = 'GoCurrent'
     }
@@ -21,11 +21,43 @@ function Invoke-ErrorHandler
     Write-JsonError $ErrorObject.Exception.Message $ErrorObject.ScriptStackTrace $Type
 }
 
+function Test-IsGoCException
+{
+    param(
+        $Exception
+    )
+    try 
+    {
+        return $Exception -is [LSRetail.GoCurrent.Common.Exceptions.GoCurrentException]
+    }
+    catch 
+    {
+        # We end up here if the type hasn't been loaded.
+        return $false
+    }
+}
+
+function Test-IsFaultException
+{
+    param(
+        $Exception
+    )
+    try 
+    {
+        return $Exception -is [System.ServiceModel.FaultException]
+    }
+    catch 
+    {
+        # We end up here if the type hasn't been loaded.
+        return $false
+    }
+}
+
 function Write-JsonError
 {
     param(
         [Parameter(Mandatory)]
-        $Message, 
+        [string] $Message, 
         $ScriptStackTrace, 
         $Type
     )
