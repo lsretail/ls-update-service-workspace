@@ -19,6 +19,7 @@ export class GoCurrentPsService
     {
         this._powerShell = powerShell;
         this._powerShell.addModuleFromPath(modulePath);
+        this._powerShell.setRunWithNext("$WarningPreference = 'SilentlyContinue'");
         this._powerShell.setPreCommand("trap{if (Invoke-ErrorHandler $_) { continue };}");
         this._modulePath = modulePath;
     }

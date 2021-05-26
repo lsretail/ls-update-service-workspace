@@ -41,7 +41,9 @@ function Install-PackageGroup
 
     $Packages = $PackageGroup.Packages | Where-Object { !$_.onlyRestrictVersion}
 
-    return Install-Packages -InstanceName $InstanceName -Packages $Packages -Arguments $PackageGroup.Arguments -Servers $Servers -UpdateInstanceMode $UpdateInstanceMode
+    Assert-ValidVersionQuery -Packages $Packages
+
+    return Install-Packages -InstanceName $InstanceName -Packages $Packages -Arguments $PackageGroup.Arguments -Servers $Servers -UpdateInstanceMode $UpdateInstanceMode -Title $PackageGroup.name
 }
 
 function Get-AvailableUpdates
@@ -83,6 +85,8 @@ function Get-AvailableUpdates
     {
         $UpdateInstanceMode = $PackageGroup.updateInstanceMode
     }
+
+    Assert-ValidVersionQuery -Packages $Packages -Name $PackageGroup.name
 
     $Updates = @($Packages | Get-GocUpdates -InstanceName $InstanceName -Server $ServersObj -UpdateInstanceMode $UpdateInstanceMode)
     return (ConvertTo-Json $Updates -Compress -Depth 100)

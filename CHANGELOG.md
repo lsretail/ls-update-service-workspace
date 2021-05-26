@@ -1,6 +1,19 @@
 # Change Log
 All notable changes to the "LS Retail Update Service Workspace" extension will be documented in this file.
 
+## [1.2.2]
+### Changes
+- Added the new *ls-central-system-app* to the *app-id-to-package-id* map.
+### Fixed
+- Extension not activated after *LS Update Service: Go!*.
+- Incorrect version query format resulted in a *No updates availble* message, now tells which package has the invalid query.
+
+## [1.2.1]
+### Fixed
+- Error running AL operations, such as *LS Update Service: Unpublish*.
+- Error notifications somtimes displayed twice.
+- Cryptic error notifications [Object].
+
 ## [1.2.0]
 ### Changed
 - Support for the new parameter -UpdateInstanceMode Replace|Merge in Install-GocPackage (v0.19.0). New property added to package groups called *updateInstanceMode* and the default value is *Replace*.

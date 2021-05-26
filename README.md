@@ -31,6 +31,15 @@ The extension is made available under the MIT license.
 
 ## Release Notes
 
+
+### 1.2.0
+Changes:
+* Support for the new parameter -UpdateInstanceMode Replace|Merge in Install-GocPackage (v0.19.0). New property added to package groups called *updateInstanceMode* and the default value is *Replace*.
+
+Bugfixes:
+* Errors thrown by the extension if Go Current isn't installed on the machine, now informs the user with a notification.
+* Multiple notifications for each instance on startup.
+
 ### 1.1.0
 This release focuses on improved UX when working with multiple AL apps.
 
@@ -107,14 +116,14 @@ New *gocurrent.json* features:
 
 * New command *Add Instance to Workspace*: Add any existing LS Update Service instance to your workspace. An instance could be an LS Central / Business Central instance.
 * New command *Re-populate launch.json*: Add any LS Central instances in the workspace to the *launch.json* file.
-* Now you can add a list of GoC servers to *gocurrent.json*, globally for the file or for each specific package group.
-* Installer not really installing the extension into VS Code.
+* Now, you can add a list of GoC servers to *gocurrent.json*, globally for the file or for each specific package group.
+* Installer not installing the extension into VS Code.
 * Instances not added to the workspace if VS Code is closed during installation.
 * Plus minor enhancements and bugfixes.
 
 ### 0.2.0
 
-* New launch configuration are added to *launch.json* instead of updating existing and removed with the package.
+* New launch configurations are added to *launch.json* instead of updating existing and removed with the package.
 * Adapted to new version of LS Update Service.
 
 ### 0.1.1

@@ -41,6 +41,7 @@ function Get-GoCurrentVersion
 function Install-PackagesJson
 {
     param(
+        $Title,
         $InstanceName,
         $Packages,
         $Servers,
@@ -49,12 +50,13 @@ function Install-PackagesJson
 
     $Packages = ConvertFrom-Json $Packages
 
-    return Install-Packages -Servers $Servers -InstanceName $InstanceName -Packages $Packages
+    return Install-Packages -Servers $Servers -InstanceName $InstanceName -Packages $Packages -Title $Title
 }
 
 function Install-Packages
 {
     param(
+        $Title,
         $InstanceName,
         [Array] $Packages,
         $Arguments,
@@ -69,16 +71,18 @@ function Install-Packages
 
     $ServersObj = ConvertTo-ServersObj -Servers $Servers
 
+    Assert-ValidVersionQuery -Packages $Packages
+
     $ToUpdate = @($Packages | Get-GocUpdates -InstanceName $InstanceName -Server $ServersObj -UpdateInstanceMode $UpdateInstanceMode)
 
     $WizardPath = Get-GoCurrentWizardPath
 
     $Install = @{
-        Name = ""
+        Name = "Workspace"
         Description = ""
         PackageGroups = @(
             @{
-                Name = ""
+                Name = $Title
                 Description = ""
                 Packages = $Packages
                 Arguments = $Arguments
@@ -159,7 +163,8 @@ function Test-PackageAvailable
 
     try
     {
-        Get-GocPackage -Id $PackageId -VersionQuery "" -Server $ServersObj | Out-Null
+        $Package = Get-GocPackage -Id $PackageId -VersionQuery "" -Server $ServersObj
+        return (ConvertTo-Json  (!!$Package) -Compress)
     }
     catch
     {
@@ -237,4 +242,42 @@ function Get-GoCurrentWizardPath
 function Get-Instances
 {
     return ConvertTo-Json  @(Get-GocInstalledPackage | Where-Object { $_.InstanceName } | Group-Object -Property 'InstanceName' | Sort-Object -Property 'Name' | ForEach-Object { @(,$_.Group)}) -Depth 100 -Compress
+}
+
+function Test-NewerVersion
+{
+    param(
+        $NewVersion,
+        $OldVersion
+    )
+
+    return ConvertTo-Json ((ConvertTo-GocSemanticVersion -Version $NewVersion) -gt (ConvertTo-GocSemanticVersion -Version $OldVersion)) -Compress
+}
+
+function Assert-ValidVersionQuery
+{
+    param(
+        [Parameter(Mandatory)]
+        $Packages,
+        $Name
+    )
+    foreach ($Package in $Packages)
+    {
+        if ($Package.version)
+        {
+            try 
+            {
+                [LSRetail.GoCurrent.Common.SemanticVersioning.VersionQuery]::Parse($Package.version)
+            }
+            catch 
+            {
+                $Message = "Invalid version query format `"$($Package.version)`" for `"$($Package.id)`""
+                if ($Name)
+                {
+                    $Message = "$Message in `"$Name`""
+                }
+                throw "$Message."
+            }
+        }
+    }
 }

@@ -24,6 +24,7 @@ export class NewProjectService
         "5095f467-0a01-4b99-99d1-9ff1237d286f": "bc-test-library-variable-storage",
         "5d86850b-0d76-4eca-bd7b-951ad998e997": "bc-base-application-tests-test-libraries",
         "5ecfc871-5d82-43f1-9c54-59685e82318d": "ls-central-app",
+        "2a0547fa-f60f-401d-b1fe-c7c4be8fb230": "ls-central-system-app",
         "7ecfc871-5d82-43f1-9c54-59685e82318d": "ls-hotels-app"
     };
 
@@ -39,14 +40,16 @@ export class NewProjectService
     get projectFile()
     {
         if (!this._projectFile)
-            this._projectFile = new JsonData<ProjectFile>(ProjectFileHelpers.getProjectFilePath(this._workspaceFolder.uri.fsPath), true);
+            this._projectFile = new JsonData<ProjectFile>(ProjectFileHelpers.getProjectFilePath(this._workspaceFolder.uri.fsPath), false);
+            
         return this._projectFile;
     }
 
     get appJson()
     {
         if (!this._appJson)
-            this._appJson = new JsonData<AppJson>(path.join(this._workspaceFolder.uri.fsPath, Constants.alProjectFileName), true);
+            this._appJson = new JsonData<AppJson>(path.join(this._workspaceFolder.uri.fsPath, Constants.alProjectFileName), false);
+
         return this._appJson;
     }
 
