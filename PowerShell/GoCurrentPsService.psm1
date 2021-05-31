@@ -267,7 +267,7 @@ function Assert-ValidVersionQuery
         {
             try 
             {
-                [LSRetail.GoCurrent.Common.SemanticVersioning.VersionQuery]::Parse($Package.version)
+                [LSRetail.GoCurrent.Common.SemanticVersioning.VersionQuery]::Parse($Package.version) | Out-Null
             }
             catch 
             {

@@ -159,12 +159,14 @@ export class PowerShell
                 this.log("Data from command:");
                 this.log(data);
             }
+
             if (parseJson && data !== "")
                 return JSON.parse(data);
             else if (parseJson && data === "")
                 return null;
             else
                 return data;
+                
         }, error => 
         {
             this.log(error);

@@ -11,7 +11,7 @@ All notable changes to the "LS Retail Update Service Workspace" extension will b
 ## [1.2.1]
 ### Fixed
 - Error running AL operations, such as *LS Update Service: Unpublish*.
-- Error notifications somtimes displayed twice.
+- Error notifications sometimes displayed twice.
 - Cryptic error notifications [Object].
 
 ## [1.2.0]
