@@ -2,7 +2,7 @@ $ErrorActionPreference = 'stop'
 
 Import-Module GoCurrent
 Import-Module (Join-Path $PSScriptRoot '_Utils.psm1') -Force
-Import-Module (Join-Path $PSScriptRoot '_Branch.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'Branch.psm1') -Force
 
 $_VariableRegex = [regex]::new('\$\{(?<Name>[a-zA-Z0-9]*)(:(?<Func>[a-zA-Z0-9]+)(\((?<Args>[a-zA-Z0-9,]*)\))?)?\}')
 $_AlAppVersion = 'AlAppVersion'

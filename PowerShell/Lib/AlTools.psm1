@@ -2,59 +2,108 @@ $ErrorActionPreference = 'stop'
 
 Import-Module GoCurrent
 Import-Module (Join-Path $PSScriptRoot 'ProjectFile.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot '_Utils.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot '_ExportAppJsonFromApp.psm1') -Force
 
 function Get-AlDependencies
 {
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         $Dependencies,
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         $OutputDir,
         [switch] $Force
     )
-    $PackageIds = $Dependencies | ForEach-Object { $_.Id}
+    $Verbose = [bool]$PSBoundParameters["Verbose"]
+    Get-AlDependenciesInternal -Dependencies $Dependencies -OutputDir $OutputDir -Force:$Force -SkipPackages ([System.Collections.ArrayList]::new()) -Verbose:$Verbose
+}
+
+function Get-AlDependenciesInternal
+{
+    param(
+        [Parameter(Mandatory)]
+        $Dependencies,
+        [Parameter(Mandatory)]
+        $OutputDir,
+        [System.Collections.ArrayList] $SkipPackages,
+        [switch] $Force
+    )
+
+    $Verbose = [bool]$PSBoundParameters["Verbose"]
+    
+    $PackageIds = $Dependencies | ForEach-Object { Get-Value -Values @($_.Id, $_.PackageId) }
     
     $Deps = ConvertTo-HashtableList $Dependencies
 
     $AllResolved = $Deps | Get-GocUpdates
 
-    if ($PackageIds.Contains('bc-application'))
-    {
-        $PackageIds += @('bc-system-application', 'bc-base-application')
-    }
-
     $Resolved = @($AllResolved | Where-Object { $PackageIds.Contains($_.Id)})
 
-    $TempDir = Join-Path $OutputDir 'Temp'
-    $GatherDir = Join-Path $TempDir '.gather'
+    $TempDir = [System.IO.Path]::Combine($env:TEMP, "AlTools", [System.IO.Path]::GetRandomFileName())
     [System.IO.Directory]::CreateDirectory($TempDir) | Out-Null
-    [System.IO.Directory]::CreateDirectory($GatherDir) | Out-Null
+    [System.IO.Directory]::CreateDirectory($OutputDir) | Out-Null
 
-    foreach ($Package in $Resolved)
+    $PropagateDependencies = @()
+
+    try
     {
-        $Files = $Package | Get-GocFile | Where-Object { $_.FilePath.ToLower().EndsWith('.app')}
-
-        if (!$Files)
+        foreach ($Package in $Resolved)
         {
-            continue
-        }
-
-        Write-Verbose "Downloading app for $($Package.Id) v$($Package.version)..."
-        $Files | Get-GocFile -Download -OutputDir $TempDir
-
-        foreach ($File in $Files)
-        {
-            $FileName = [System.IO.Path]::GetFileName($File.FilePath)
-            if (Test-Path (Join-Path $GatherDir $FileName))
+            if ($SkipPackages.Contains($Package.Id))
             {
-                throw "Two apps have the same name!"
+                continue
             }
-            Move-Item -Path ([System.IO.Path]::Combine($TempDir, $Package.Id, $File.FilePath)) -Destination (Join-Path $GatherDir $FileName) | Out-Null
+            $AppPath = Get-AppFromPackage -Package $Package -OutputDir $TempDir -Verbose:$Verbose
+            if (!$AppPath)
+            {
+                continue
+            }
+
+            $SkipPackages.Add($Package.Id) | Out-Null
+            $FileName = [IO.Path]::GetFileName($AppPath)
+            try
+            {
+                $AppJson = Get-AppJsonFromApp -Path $AppPath
+                $FileName = "$($AppJson.Publisher)_$($AppJson.Name)_$($AppJson.Version).app"
+                if ($AppJson.propagateDependencies)
+                {
+                    $Manifest = Get-JsonFileFromPackage -Id $Package.Id -VersionQuery $Package.Version -FilePath 'Manifest.json'
+                    foreach ($Dependency in $Manifest.Dependencies)
+                    {
+                        $PropagateDependencies += $Dependency
+                    }
+                }
+            }
+            catch
+            {
+                # We end up here if the app is a runtime app, because we can't extract the app.json from it.
+                if ($FileName -notmatch '\d+\.\d+\.\d+\.\d+')
+                {
+                    # We want to include the version number.
+                    $Version = (ConvertTo-GocSemanticVersion $Package.Version).ToString($true, $true)
+                    $FileName = [IO.Path]::GetFileNameWithoutExtension($FileName)
+                    $FileName = "$($FileName)_$($Version).app"
+                }
+                
+            }
+            Move-Item $AppPath -Destination (Join-Path $OutputDir $FileName) -Force:$Force
         }
     }
-    Move-Item -Path (Join-Path $GatherDir '*') -Destination $OutputDir | Out-Null
-
-    Remove-Item $TempDir -Force -Recurse
+    finally
+    {
+        try
+        {
+            Remove-Item $TempDir -Force -Recurse    
+        }
+        catch
+        {
+            # Ignore
+        }
+    }
+    if ($PropagateDependencies)
+    {
+        Get-AlDependenciesInternal -Dependencies $PropagateDependencies -OutputDir $OutputDir -Force:$Force -Verbose:$Verbose -SkipPackages $SkipPackages
+    }
 }
 
 function Get-AlAddinDependencies
@@ -98,7 +147,7 @@ function Get-AlAddinDependencies
             }
         }
 
-        Write-Verbose "Downloading addin files for $($Package.Id) v$($Package.version)..."
+        Write-Verbose "  -> $($Package.Id) v$($Package.version)..."
         $Package | Get-GocFile -Download -OutputDir $TempDir
 
         $Dir = [System.IO.Path]::Combine($GatherDir, $Package.Id)
@@ -161,7 +210,7 @@ function Get-AlDevDependencies
             continue
         }
 
-        Write-Verbose "Downloading dev dependency for $($Package.Id) v$($Package.version)..."
+        Write-Verbose "  -> $($Package.Id) v$($Package.version)..."
         $Package | Get-GocFile -Download -OutputDir $TempDir
 
         $PackageDir = [System.IO.Path]::Combine($TempDir, $Package.Id)
@@ -333,6 +382,8 @@ function Get-AlProjectDependencies
         [string[]] $SkipPackageId = @()
     )
 
+    $Verbose = [bool]$PSBoundParameters["Verbose"]
+
     $ProjectFilePath = Get-GocProjectFilePath -ProjectDir $ProjectDir
 
     $DependenciesGroup = Get-ProjectFilePackages -Path $ProjectFilePath -Id 'dependencies' -Target $Target -BranchName $BranchName -Variables $Variables
@@ -386,14 +437,19 @@ function Get-AlProjectDependencies
 
     $ModifiedDependencies | Format-Table -AutoSize | Out-String | Write-Verbose
 
+    if (!$ModifiedDependencies)
+    {
+        return
+    }
+
     Write-Verbose 'Downloading dependencies for app...'
-    Get-AlDependencies -Dependencies $ModifiedDependencies -OutputDir $PackageCacheDir
+    Get-AlDependencies -Dependencies $ModifiedDependencies -OutputDir $PackageCacheDir -Verbose:$Verbose
     
     Write-Verbose 'Downloading assemblies for app...'
-    Get-AlAddinDependencies -Dependencies $ModifiedDependencies -OutputDir $AssemblyProbingDir -IncludeServer
+    Get-AlAddinDependencies -Dependencies $ModifiedDependencies -OutputDir $AssemblyProbingDir -IncludeServer -Verbose:$Verbose
 
-    Write-Verbose 'Downloading dev depenencies for app...'
-    Get-AlDevDependencies -Dependencies $ModifiedDependencies -ProjectDir $ProjectDir
+    Write-Verbose 'Downloading dev dependencies for app...'
+    Get-AlDevDependencies -Dependencies $ModifiedDependencies -ProjectDir $ProjectDir -Verbose:$Verbose
 }
 
 function Invoke-AlProjectCompile
@@ -411,7 +467,12 @@ function Invoke-AlProjectCompile
         $CompilerPath = Get-AlCompiler
     }
 
-    $AddinDir = @((Join-Path $ProjectDir '.netpackages'), "C:\WINDOWS\Microsoft.NET\assembly")
+    $AddinDir = @("C:\WINDOWS\Microsoft.NET\assembly")
+    $NetPackagesDir = (Join-Path $ProjectDir '.netpackages')
+    if (Test-Path $NetPackagesDir)
+    {
+        $AddinDir += $NetPackagesDir
+    }
     Write-Verbose 'Compiling app...'
 
     $Arguments = @{
@@ -424,6 +485,89 @@ function Invoke-AlProjectCompile
     return Invoke-AlCompiler @Arguments
 }
 
+function Invoke-ProjectBuild
+{
+    param(
+        [Parameter(Mandatory)]
+        [string] $AppId,
+        [Parameter(Mandatory)]
+        [hashtable] $Projects,
+        [string] $CompilerPath,
+        [switch] $Force
+    )
+    $verbose = [bool]$PSBoundParameters["Verbose"]
+    Write-Verbose "Building: `"$($Projects[$AppId].ProjectDir)`" `"$AppId`"."
+
+    $Project = $Projects[$AppId]
+
+    $DependencyPackageId = @()
+    $DependencyApps = @()
+
+    # Make sure that dependencies are compiled first.
+    foreach ($Dependency in $Projects[$AppId].AppJson.dependencies)
+    {
+        if (!$Projects.ContainsKey($Dependency.id))
+        {
+            continue
+        }
+        if (!$Projects[$Dependency.id].AppPath)
+        {
+            Write-Verbose "Need to compile dependency `"$($Dependency.id)`" first."
+            Invoke-ProjectBuild -AppId $Dependency.id -Projects $Projects -CompilerPath $CompilerPath -Verbose:$Verbose -Force:$Force
+            Write-Verbose "Continuing with `"$AppId`"."
+        }
+
+        if (!$Projects[$Dependency.id].AppPath)
+        {
+            throw "Something went wrong, no app found for $($Dependency.id)."
+        }
+
+        $DependencyApps += $Projects[$Dependency.id].AppPath
+        $DependencyPackageId += $Projects[$Dependency.id].Package.Id
+    }
+
+    $Arguments = @{
+        BranchName = $Project.BranchName 
+        Target = $Project.Target
+        Variables = $Project.Variables 
+    }
+
+    $AllCompileModifiers = Get-ProjectFileCompileModifiers -Path (Get-GocProjectFilePath -ProjectDir $Projects[$AppId].ProjectDir) @Arguments
+
+    if (!$AllCompileModifiers)
+    {
+        $AllCompileModifiers = ,@(@())
+    }
+
+    # Arguments for Get-AlProjectDependencies.
+    $Arguments += @{
+        ProjectDir = $Project.ProjectDir
+    }
+    
+    foreach ($CompileModifiers in $AllCompileModifiers)
+    {
+        Get-AlProjectDependencies @Arguments -CompileModifiers $CompileModifiers -SkipPackageId $DependencyPackageId -Verbose:$verbose
+
+        if ($DependencyApps)
+        {
+            $DestDir = (Join-Path $Projects[$AppId].ProjectDir '.alpackages')
+            [IO.Directory]::CreateDirectory($DestDir) | Out-Null
+            Copy-Item -Path $DependencyApps -Destination $DestDir
+        }
+
+        $Projects[$AppId].AppPath = Invoke-AlProjectCompile -ProjectDir $Projects[$AppId].ProjectDir -Verbose:$verbose
+    }
+
+    $Arguments += @{
+        AppPath = $Project.AppPath
+        OutputDir = $Project.OutputDir
+        Force = $Force
+    }
+
+    $Projects[$AppId].Package = New-AlProjectPackage @Arguments -Verbose:$verbose 
+    $Projects[$AppId].Package
+}
+
 function Invoke-AlProjectBuild
 {
     <#
@@ -432,17 +576,6 @@ function Invoke-AlProjectBuild
         
         .PARAMETER ProjectDir
             Specify the project directory (or repository directory).
-
-        .PARAMETER PreReleaseLabel
-            Specify a pre-release label, which is added to the version.
-            I.e. 1.0-specified-pre-release-label
-        
-        .PARAMETER OverwriteAppVersion
-            Overwrites the version defined in app.json.
-        
-        .PARAMETER OverwritePackageVersion
-            Overwrite the version for the package. 
-            By default, it picks the version from app.json
         
         .PARAMETER BranchName
             Specify the Git branch name for you repository (if appropriate).
@@ -453,66 +586,72 @@ function Invoke-AlProjectBuild
         
         .PARAMETER Variables
             Specify a hashtable of variables to make available for project file.
-            The values specified here, will overwrite any variables specified in the project file.
+            The values specified here, will overwrite any variables specified
+            in the project file.
 
         .PARAMETER OutputDir
             Specifies the output directory for the package and artifacts.
         
-        .PARAMETER CompileModifiers
-            Specifies additional version query for dependencies to compile against.
-            For example, the AL package depends on BC >=1.0 <2.0. By default,
-            this app will be compiled against 1.0, but you might want to compile against
-            the lates 1.X version. You can add a modifier:
-            @(
-                @{ Id = 'bc-server'; Version = '^'}
-            )
-
-            The resulting version query would be "^ >=1.0 <2.0" instead of just  "">=1.0 <2.0".
-
-            This does not affect the dependencies for the package.
+        .PARAMETER CompilerPath
+            Specifies a path to the AL compiler (alc.exe). If not specified, 
+            it will install the bc-al-compiler package and use to compile.
         
         .PARAMETER Force
             If specified, it will overwrite any existing files.
     #>
+    [CmdletBinding()]
     param(
-        [Parameter(Mandatory)]
-        $ProjectDir,
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Alias('Dir')]
+        [Alias('Path')]
+        [string[]] $ProjectDir,
+        [Parameter(ValueFromPipelineByPropertyName)]
         $BranchName,
+        [Parameter(ValueFromPipelineByPropertyName)]
         $Target,
+        [Parameter(ValueFromPipelineByPropertyName)]
         [hashtable] $Variables,
-        $OutputDir = $ProjectDir,
-        [Array] $CompileModifiers,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [string] $OutputDir,
         $CompilerPath,
         [switch] $Force
     )
-
-    if (!$OutputDir)
+    begin
     {
-        $OutputDir = $ProjectDir
+        $Projects = @{}
     }
-
-    $Arguments = @{
-        ProjectDir = $ProjectDir
-        Target = $Target
-        BranchName = $BranchName
-        Variables = $Variables
+    process
+    {
+        foreach ($Dir in $ProjectDir)
+        {
+            $AppJson = Get-AlAppJson -ProjectDir $dir
+            $Projects[$AppJson.id] = @{
+                ProjectDir = $Dir
+                OutputDir = $Dir
+                AppJson = $AppJson
+                Variables = $Variables
+                BranchName = $BranchName
+                Target = $Target
+                AppPath = $null
+                Package  = $null
+            }
+            if ($OutputDir)
+            {
+                $Projects[$AppJson.id].OutputDir = $OutputDir
+            }
+        }
     }
-
-    Get-AlProjectDependencies @Arguments -CompileModifiers $CompileModifiers
-
-    $AppPath = Invoke-AlProjectCompile -ProjectDir $ProjectDir -CompilerPath $CompilerPath -OutputDir $OutputDir
-    $AppPath
-
-    Write-Verbose 'Creating app package...'
-
-    $Arguments += @{
-        AppPath = $AppPath
-        OutputDir = $OutputDir
-        Force = $Force
+    end
+    {
+        $verbose = [bool]$PSBoundParameters["Verbose"]
+        foreach ($AppId in $Projects.Keys)
+        {
+            if (!$Projects.AppPath)
+            {
+                Invoke-ProjectBuild -AppId $AppId -Projects $Projects -CompilerPath $CompilerPath -Force:$Force -Verbose:$Verbose
+            }
+        }
     }
-
-    $Package = New-AlProjectPackage @Arguments
-    $Package
 }
 
 function New-AlProjectPackage

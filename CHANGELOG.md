@@ -1,6 +1,13 @@
 # Change Log
 All notable changes to the "LS Retail Update Service Workspace" extension will be documented in this file.
 
+## [1.3.0]
+### Changes
+- *Download dependencies (.alpackages + .netpackage)* changed accordingly:
+    - Will not download other apps included in the VS Code workspace.
+    - If a dependency has *propagateDependencies* set to true, its dependencies will also download.
+    - Apps are renamed to the form *PUBLISHER_NAME_VERSION* when placed into the *.alpackages* directory.
+
 ## [1.2.2]
 ### Changes
 - Added the new *ls-central-system-app* to the *app-id-to-package-id* map.
@@ -11,7 +18,7 @@ All notable changes to the "LS Retail Update Service Workspace" extension will b
 ## [1.2.1]
 ### Fixed
 - Error running AL operations, such as *LS Update Service: Unpublish*.
-- Error notifications sometimes displayed twice.
+- Error notifications are sometimes displayed twice.
 - Cryptic error notifications [Object].
 
 ## [1.2.0]

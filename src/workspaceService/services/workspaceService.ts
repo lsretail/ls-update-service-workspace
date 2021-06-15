@@ -208,13 +208,13 @@ export class WorkspaceService
         type: Type<TService>, 
         options: {
             serviceFilter?: (service: TService) => Promise<boolean>,
-            workspaceFilter?: (workspace: IWorkspaceEntry) => Promise<boolean>
+            workspaceFilter?: (workspace: IWorkspaceEntry) => boolean
             active?: boolean
         }
     ): Promise<TService[]>
     {
         if (!options.workspaceFilter)
-            options.workspaceFilter = (workspace: IWorkspaceEntry) => Promise.resolve(true);
+            options.workspaceFilter = (workspace: IWorkspaceEntry) => true;
 
         if (!options.serviceFilter)
             options.serviceFilter = (service) => Promise.resolve(true);

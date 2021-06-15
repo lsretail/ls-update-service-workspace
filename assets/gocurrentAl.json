@@ -2,20 +2,11 @@
     "id": "your-app-package-id",
     "name": "${alAppName}",
     "description": "${alAppDescription}",
-    "version": "${alAppVersion:Parts(3)}",
+    "version": "${alAppVersion:Parts(4)}",
     "files": [
         "${alAppProjectDir}\\${alAppPublisher}_${alAppName}_${alAppVersion}.app"
     ],
-    "dependencies": [
-        {
-            "id": "bc-system-symbols",
-            "version": {
-                "alAppId": "platform",
-                "alAppIdType": "fromMinorToNextMajor",
-                "alAppParts": 3
-            }
-        }
-    ],
+    "dependencies": [],
     "variables": {
         "lsCentralVersion": {
             "alAppId": "platform",

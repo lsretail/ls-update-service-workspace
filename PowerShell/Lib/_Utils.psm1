@@ -39,6 +39,12 @@ function Get-AlAppJsonPath
     return $AppJsonPath
 }
 
+function Get-AlAppJson
+{
+    param($ProjectDir)
+    return Get-Content -Path (Get-AlAppJsonPath $ProjectDir) | ConvertFrom-Json
+}
+
 function Get-VersionFromAppDependency
 {
     <#
@@ -166,4 +172,85 @@ function ConvertTo-Title
 {
     param($Value)
     return $Value.Substring(0, 1).ToUpper() + $Value.Substring(1, $Value.Length - 1)
+}
+
+function Get-AppFromPackage
+{
+    param(
+        [Parameter(Mandatory)]
+        $Package,
+        [Parameter(Mandatory)]
+        $OutputDir
+    )
+
+    $File = ($Package | Get-GocFile | Where-Object { $_.FilePath.ToLower().EndsWith('.app')} | Select-Object -First 1)
+
+    if (!$File)
+    {
+        return $null
+    }
+
+    Write-Verbose "  -> $($Package.Id) v$($Package.version)..."
+    $File | Get-GocFile -Download -OutputDir $OutputDir
+
+    return Join-Path $OutputDir "$($File.Id)\$($File.FilePath)"
+}
+
+function Get-JsonFileFromPackage
+{
+    param(
+        [Parameter(Mandatory)]
+        [string] $Id,
+        [Parameter(Mandatory)]
+        [string] $VersionQuery,
+        $FilePath
+    )
+    $Package = Get-GocPackage -Id $Id -VersionQuery $VersionQuery
+    if (!$Package)
+    {
+        throw "Package $Id ($VersionQuery) does not exists."
+    }
+
+    $TempDir = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName())
+    [IO.Directory]::CreateDirectory($TempDir) | Out-Null
+    try 
+    {
+        Get-GocFile -Id $Id `
+            -Version $Package.Version `
+            -FilePath $FilePath `
+            -Download `
+            -OutputDir $TempDir
+        $ManifestPath = [IO.Path]::Combine($TempDir, $Id, $FilePath)
+        $Hash = @{}
+        (Get-Content $ManifestPath -Raw | ConvertFrom-Json).PSObject.Properties | Foreach-Object { $Hash[$_.Name] = $_.Value }
+        $Hash
+    }
+    finally
+    {
+        try
+        {
+            Remove-Item $TempDir -Recurse -Force
+        }
+        catch
+        {
+            # Ignore
+        }
+    }
+}
+
+function Get-Value
+{
+    param(
+        [array] $Values,
+        $Default
+    )
+
+    foreach ($Value in $Values)
+    {
+        if ($Value)
+        {
+            return $Value
+        }
+    }
+    return $Default
 }

@@ -116,12 +116,29 @@ function Get-Dependencies
         $Target,
         [string] $PackageCacheDir,
         [string] $AssemblyProbingDir,
+        [string] $SkipPackages,
         $OutputDir = $null
     )
 
+    $SkipPackageId = @()
+    if ($SkipPackages)
+    {
+        $SkipPackageId = ConvertFrom-Json $SkipPackages
+    }
+
     $Modifiers = Get-ProjectFileCompileModifiers -Path $ProjectFilePath -Target $Target -BranchName $BranchName -Idx 0
 
-    Get-AlProjectDependencies -ProjectDir $ProjectDir -BranchName $BranchName -Target $Target -Verbose -CompileModifiers $Modifiers -PackageCacheDir $PackageCacheDir -AssemblyProbingDir $AssemblyProbingDir
+    $Arguments = @{
+        ProjectDir = $ProjectDir
+        BranchName = $BranchName
+        Target = $Target
+        CompileModifiers = $Modifiers
+        PackageCacheDir = $PackageCacheDir
+        AssemblyProbingDir = $AssemblyProbingDir
+        SkipPackageId = $SkipPackageId
+    }
+
+    Get-AlProjectDependencies @Arguments -Verbose
 }
 
 function New-TempDir

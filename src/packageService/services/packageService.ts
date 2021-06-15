@@ -59,6 +59,7 @@ export class PackageService implements IWorkspaceService
         projectDir: string, 
         target: string,
         branchName: string,
+        skipPackages: string[],
         outputChannel: (message: string) => void
     ): Promise<void>
     {
@@ -83,7 +84,8 @@ export class PackageService implements IWorkspaceService
                 target, 
                 branchName,
                 packageCachePath,
-                assemblyProbingPath
+                assemblyProbingPath,
+                skipPackages
             );
             outputChannel(output);
     
@@ -143,7 +145,8 @@ export class PackageService implements IWorkspaceService
     public async downloadAlDependencies(
         projectDir: string, 
         target: string, 
-        branchName: string, 
+        branchName: string,
+        skipPackages: string[]
     ): Promise<{output: string, dllsLocked: boolean}>
     {
         if (!this._alExtensionService.isInstalled)
@@ -175,7 +178,8 @@ export class PackageService implements IWorkspaceService
             target, 
             branchName,
             alConfig.packageCachePath,
-            assemblyProbingDir
+            assemblyProbingDir,
+            skipPackages
         );
 
         if (dllsLocked && this._alExtensionService.isActive)

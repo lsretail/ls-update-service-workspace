@@ -30,4 +30,27 @@ export class WorkspaceHelpers
 
         return result;
     }
+
+    public static async getPackageIdFromWorkspaces(
+        wsWorkspaceFilesService: WorkspaceServiceProvider<WorkspaceFilesService>
+    ): Promise<string[]>
+    {
+        let services = await wsWorkspaceFilesService.getServices({
+            serviceFilter: s => Promise.resolve(s.appJson.exists() && s.projectFile.exists()),
+            workspaceFilter: w => !w.virtual
+        })
+
+        let result: string[] = [];
+
+        for (let service of services)
+        {
+            let packageId = (await service.projectFile.getData())?.id;
+            if (packageId)
+            {
+                result.push(packageId);
+            }
+        }
+
+        return result;
+    }
 }

@@ -151,7 +151,8 @@ export class PackagePsService
         target: string, 
         branchName: string,
         packageCacheDir: string,
-        assemblyProbingDir: string
+        assemblyProbingDir: string,
+        skipPackages: string[]
     ): Promise<string>
     {
         let param = {
@@ -160,7 +161,8 @@ export class PackagePsService
             target: `'${target}'`,
             branchName: `'${branchName}'`,
             packageCacheDir: `'${packageCacheDir}'`,
-            assemblyProbingDir: `'${assemblyProbingDir}'`
+            assemblyProbingDir: `'${assemblyProbingDir}'`,
+            skipPackages: `'${JSON.stringify(skipPackages)}'`
         }
 
         let powerShell = this._powerShell.getNewPowerShell();

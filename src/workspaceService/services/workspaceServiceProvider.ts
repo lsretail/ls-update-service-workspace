@@ -67,7 +67,7 @@ export class WorkspaceServiceProvider<TService extends IWorkspaceService>
     getServices(
         options: {
             serviceFilter?: (service: TService) => Promise<boolean>,
-            workspaceFilter?: (workspace: IWorkspaceEntry) => Promise<boolean>
+            workspaceFilter?: (workspace: IWorkspaceEntry) => boolean
             active?: boolean
         }
     ): Promise<TService[]>

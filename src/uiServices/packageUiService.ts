@@ -16,6 +16,7 @@ import { WorkspaceServiceProvider } from "../workspaceService/services/workspace
 import { WorkspaceFilesService } from "../services/workspaceFilesService";
 import { InstallHelpers } from "../helpers/installHelpers";
 import { Logger } from "../interfaces/logger";
+import { WorkspaceHelpers } from "../helpers/workspaceHelpers";
 
 export class PackageUiService extends UiService
 {
@@ -85,10 +86,12 @@ export class PackageUiService extends UiService
                 location: ProgressLocation.Notification,
                 title: "Downloading dependencies (.alpackages + .netpackages) ..."
             }, async (progress, token) => {
+                let packageIdsInWorkspaces = await WorkspaceHelpers.getPackageIdFromWorkspaces(this._wsWorkspaceFilesServices);
                 return await packageService.downloadAlDependencies(
                     workspaceFolder.uri.fsPath, 
                     target, 
                     GitHelpers.getBranchName(workspaceFolder.uri.fsPath),
+                    packageIdsInWorkspaces
                 );
             });
             this._outputChannel.appendLine(output.output);
@@ -137,7 +140,8 @@ export class PackageUiService extends UiService
                 await packageService.invokeAlCompileAndPackage(
                     workspaceFolder.uri.fsPath, 
                     target, 
-                    GitHelpers.getBranchName(workspaceFolder.uri.fsPath), 
+                    GitHelpers.getBranchName(workspaceFolder.uri.fsPath),
+                    [],
                     message => outputChannel.appendLine(message)
                 );
                 outputChannel.appendLine("Finished!");

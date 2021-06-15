@@ -25,7 +25,12 @@ export class NewProjectService
         "5d86850b-0d76-4eca-bd7b-951ad998e997": "bc-base-application-tests-test-libraries",
         "5ecfc871-5d82-43f1-9c54-59685e82318d": "ls-central-app",
         "2a0547fa-f60f-401d-b1fe-c7c4be8fb230": "ls-central-system-app",
-        "7ecfc871-5d82-43f1-9c54-59685e82318d": "ls-hotels-app"
+        "7ecfc871-5d82-43f1-9c54-59685e82318d": "ls-hotels-app",
+        "44675339-2aaa-4712-b110-6ed8c84fb44c":  "ls-central-app-es",
+        "bd0603d2-5742-4b21-b02a-a3e6e0f61468":  "ls-central-app-ae",
+        "3daf228d-1cba-4ef1-824d-f7f26a765306":  "ls-central-app-it",
+        "da034b08-af4a-47c7-998b-48bd0c8bc521":  "ls-central-app-na",
+        "f18dd732-e484-47a3-a11a-d9c6bd37b4bf":  "ls-central-app-au"
     };
 
     private _workspaceFolder: WorkspaceFolder;
@@ -191,7 +196,7 @@ export class NewProjectService
             newDep.id = this._bcApplicationPackageId;
             let version = new VersionFromAlApp();
             version.alAppId = 'application';
-            version.alAppIdType = 'fromMinorToNextMajor';
+            version.alAppIdType = 'fromMinor';
             version.alAppParts = 3
             newDep.version = version;
             projectFile.dependencies.push(newDep);
@@ -204,7 +209,7 @@ export class NewProjectService
             newDep.id = this._bcSystemSymbolsPackageId;
             let version = new VersionFromAlApp();
             version.alAppId = 'platform';
-            version.alAppIdType = 'fromMinorToNextMajor';
+            version.alAppIdType = 'fromMinor';
             version.alAppParts = 3
             newDep.version = version;
             projectFile.dependencies.push(newDep);
@@ -235,7 +240,7 @@ export class NewProjectService
             }
             
             version.alAppId = newApp;
-            version.alAppIdType = 'fromMinorToNextMajor';
+            version.alAppIdType = 'fromMinor';
             
             newDep.version = version;
             count++;
