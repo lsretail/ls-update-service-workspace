@@ -61,55 +61,70 @@ export class PackageUiService extends UiService
     private async alDownloadDependencies() 
     {
         let workspaces = await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)});
-        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(workspaces);
+        let workspaceFolders = await UiHelpers.showWorkspaceFolderPicks(workspaces);
         
-        if (!workspaceFolder)
+        if (!workspaceFolders)
             return;
+        let targetArray: string[]=[];
+        let i: number = 0;
+        let j:number = 0;
+        let target: string;
 
-        try
-        {    
+        for(let workspaceFolder of workspaceFolders){
             let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
+            let targets= await packageService.getTargets(undefined, true);
+            targetArray = targetArray.concat(targets);
+        }
+        let targetArrayNoDuplicates = targetArray.filter(function(elem, index, self) {
+            return index === self.indexOf(elem);
+        })
+        target = await UiHelpers.showTargetPicks(targetArrayNoDuplicates);
+        if(!target){
+            return;
+        }
+        
+        for(let workspaceFolder of workspaceFolders){
+            try
+            {    
+                let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
+                
+                this._outputChannel.clear();
+                this._outputChannel.hide();
+                this._outputChannel.show();
 
-            let targets = await packageService.getTargets(undefined, true);
-            let target = await UiHelpers.showTargetPicks(targets);
-
-            if (!target)
-                return;
-         
-            this._outputChannel.clear();
-            this._outputChannel.hide();
-            this._outputChannel.show();
-
-            this._outputChannel.appendLine("Starting dependency download ...")
-            
-            let output = await window.withProgress({
-                location: ProgressLocation.Notification,
-                title: "Downloading dependencies (.alpackages + .netpackages) ..."
-            }, async (progress, token) => {
-                let packageIdsInWorkspaces = await WorkspaceHelpers.getPackageIdFromWorkspaces(this._wsWorkspaceFilesServices);
-                return await packageService.downloadAlDependencies(
-                    workspaceFolder.uri.fsPath, 
-                    target, 
-                    GitHelpers.getBranchName(workspaceFolder.uri.fsPath),
-                    packageIdsInWorkspaces
-                );
-            });
-            this._outputChannel.appendLine(output.output);
-            this._outputChannel.appendLine("Finished!");
-            window.showInformationMessage(Resources.dependenciesDownloadedReload, Constants.buttonReloadWindow).then(result => 
+                this._outputChannel.appendLine("Starting dependency download ...")
+                
+                let output = await window.withProgress({
+                    location: ProgressLocation.Notification,
+                    title: "Downloading dependencies (.alpackages + .netpackages) ..."
+                }, async (progress, token) => {
+                    let packageIdsInWorkspaces = await WorkspaceHelpers.getPackageIdFromWorkspaces(this._wsWorkspaceFilesServices);
+                    return await packageService.downloadAlDependencies(
+                        workspaceFolder.uri.fsPath, 
+                        target,
+                        GitHelpers.getBranchName(workspaceFolder.uri.fsPath),
+                        packageIdsInWorkspaces
+                    );
+                });
+                j++;
+                this._outputChannel.appendLine(output.output);
+                this._outputChannel.appendLine("Finished!");
+                
+            }
+            catch (e)
+            {
+                this._outputChannel.appendLine('Error occurd while downloading dependencies:');
+                this._outputChannel.appendLine(Controller.getErrorMessage(e));
+                throw e;
+            }
+        }
+        window.showInformationMessage(Resources.dependenciesDownloadedReload, Constants.buttonReloadWindow).then(result => 
             {
                 if (result === Constants.buttonReloadWindow)
                 {
                     commands.executeCommand("workbench.action.reloadWindow");
                 }
             });
-        }
-        catch (e)
-        {
-            this._outputChannel.appendLine('Error occurd while downloading dependencies:');
-            this._outputChannel.appendLine(Controller.getErrorMessage(e));
-            throw e;
-        }
     }
 
     private async alCompileAndPackage()

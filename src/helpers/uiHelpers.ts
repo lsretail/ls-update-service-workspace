@@ -35,6 +35,40 @@ export class UiHelpers
 
         return DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", pick.label)
     }
+    public static async showWorkspaceFolderPicks(workspaceFolders: readonly WorkspaceFolder[] = null, placeHolder = "Select workspace folder") : Promise<WorkspaceFolder[]>
+    {
+        let picks: QuickPickItem[] = [];
+        let workspacesToReturn: WorkspaceFolder[]=[]
+        if (!workspaceFolders)
+            workspaceFolders = workspace.workspaceFolders;
+        for (let workspaceFolder of workspaceFolders)
+        {
+            picks.push({"label": workspaceFolder.name, "description": workspaceFolder.uri.fsPath});
+        }
+
+        if (picks.length === 0)
+        {
+            return;
+        }
+        else if (picks.length === 1)
+        {
+            workspacesToReturn[0] = DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", picks[0].label);
+            return workspacesToReturn;
+        }
+        picks.push({"label": "All", "description": "Install dependencies on all packages above"})
+        let options: QuickPickOptions = {"placeHolder": placeHolder};
+    
+        let pick = await window.showQuickPick(picks, options);
+        if (!pick)
+            return;
+        if(pick.label ==="All")
+            for(let i = 0; i < picks.length - 1; i++){
+                workspacesToReturn[i]=DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", workspaceFolders[i].name)
+        }else{
+            workspacesToReturn[0]=DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", pick.label)
+        }
+        return workspacesToReturn;
+    }
 
     public static async showTargetPicks(targets: string[]): Promise<string>
     {
