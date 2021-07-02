@@ -5,6 +5,7 @@ import { DataHelpers } from "../dataHelpers";
 import { DeployPsService } from "../deployService/services/deployPsService";
 import { GoCurrentPsService } from "../goCurrentService/services/goCurrentPsService";
 import { Logger } from "../interfaces/logger";
+import { ProjectFile, Server } from "../models/projectFile";
 
 export class UiHelpers
 {
@@ -56,6 +57,33 @@ export class UiHelpers
         if (!selected)
             return;
         return selected.label;
+    }
+    public static async showServersPick(servers: Server[],placeHolder = "Select server"): Promise<Server>{
+        let picks: QuickPickItem[] = [];
+        if (!servers)
+            return;
+        for (let server of servers)
+        {
+            picks.push({"label": server.host, "description": String(server.port)});
+        }
+
+        if (picks.length === 0)
+        {
+            return;
+        }
+        else if (picks.length === 1)
+        {
+            let serverPick = DataHelpers.getEntryByProperty<Server>(servers, "host", picks[0].label);
+            return serverPick;
+        }
+        let options: QuickPickOptions = {"placeHolder": placeHolder};
+    
+        let pick = await window.showQuickPick(picks, options);
+        if (!pick)
+            return;
+
+        return DataHelpers.getEntryByProperty<Server>(servers, "host", pick.label)
+
     }
 
     /*async showInstancePicks(instances: string[], exludeInstances: string[] = [], placeholder: string = "Select an instance") : Promise<string[]>

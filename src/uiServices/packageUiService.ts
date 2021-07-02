@@ -8,7 +8,6 @@ import { UiService } from "../extensionController";
 import { GoCurrentPsService } from "../goCurrentService/services/goCurrentPsService";
 import GitHelpers from "../helpers/gitHelpers";
 import { UiHelpers } from "../helpers/uiHelpers";
-import { Package, Server } from "../models/projectFile";
 import { PackagePsService } from "../packageService/services/packagePsService";
 import { PackageService } from "../packageService/services/packageService";
 import Resources from "../resources";
@@ -96,6 +95,13 @@ export class PackageUiService extends UiService
             });
             this._outputChannel.appendLine(output.output);
             this._outputChannel.appendLine("Finished!");
+            window.showInformationMessage(Resources.importServers, Constants.import).then(async result => 
+                {
+                    if (result === Constants.import)
+                    {
+                        this.showImportToServer(workspaceFolder.uri.path,this._outputChannel,workspaceFolder);
+                    }
+                });
             window.showInformationMessage(Resources.dependenciesDownloadedReload, Constants.buttonReloadWindow).then(result => 
             {
                 if (result === Constants.buttonReloadWindow)
@@ -309,5 +315,17 @@ export class PackageUiService extends UiService
 
         return false;
 
+    }
+
+    private async showImportToServer(path:string, outputChannel:OutputChannel,workspaceFolder: WorkspaceFolder){
+        let servers = (await this._wsWorkspaceFilesServices.getService(workspaceFolder).projectFile.getData()).servers;
+        //if (!servers)
+            //TODO
+        let serverPick = await UiHelpers.showServersPick(servers);
+
+        if (!serverPick)
+            return;
+        
+        
     }
 }

@@ -26,4 +26,5 @@ export default class Resources
     static areYourSureAboutRemove = 'Are you sure you want to remove "%s"?'
 
     static dependenciesDownloadedReload = 'Dependencies downloaded, you may need to reload VS Code to successfully compile the extension.'
+    static importServers = 'Import to server'
 }
