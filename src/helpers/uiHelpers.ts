@@ -55,17 +55,14 @@ export class UiHelpers
             workspacesToReturn[0] = DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", picks[0].label);
             return workspacesToReturn;
         }
-        picks.push({"label": "All", "description": "Install dependencies on all packages above"})
         let options: QuickPickOptions = {"placeHolder": placeHolder};
-    
+        options.canPickMany=true;
         let pick = await window.showQuickPick(picks, options);
         if (!pick)
             return;
-        if(pick.label ==="All")
-            for(let i = 0; i < picks.length - 1; i++){
-                workspacesToReturn[i]=DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", workspaceFolders[i].name)
-        }else{
-            workspacesToReturn[0]=DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", pick.label)
+        for(let i = 0; i < picks.length; i++)
+        {
+            workspacesToReturn[i]=DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", workspaceFolders[i].name)
         }
         return workspacesToReturn;
     }

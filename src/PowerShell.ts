@@ -48,7 +48,7 @@ export class PowerShell
         
         for (var path of this._modulePaths)
         {
-            this._shell.addCommand(`Import-Module ${path} -DisableNameChecking`);
+            this._shell.addCommand(`Import-Module "${path}" -DisableNameChecking`);
         }
     }
 
@@ -97,7 +97,7 @@ export class PowerShell
     public addModuleFromPath(modulePath: string)
     {
         this._modulePaths.push(modulePath);
-        this.pushCommand(`Import-Module ${modulePath} -DisableNameChecking`);
+        this.pushCommand(`Import-Module "${modulePath}" -DisableNameChecking`);
     }
 
     private splitArguments(args: any[]): any[]
