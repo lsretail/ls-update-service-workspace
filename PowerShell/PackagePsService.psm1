@@ -174,3 +174,15 @@ function Invoke-Compile
 
     Write-Host "App created at `"$AppPath`"."
 }
+function Import-Package
+{
+    param(
+        [string] $Path,
+        [string] $Server,
+        [string] $Port
+    )
+
+    $ServerPicked = Import-GocsPackage -Path $Path -Server $Server -Port $Port -Force
+
+    return ConvertTo-Json $ServerPicked.Path
+}

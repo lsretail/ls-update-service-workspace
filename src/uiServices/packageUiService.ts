@@ -95,13 +95,6 @@ export class PackageUiService extends UiService
             });
             this._outputChannel.appendLine(output.output);
             this._outputChannel.appendLine("Finished!");
-            window.showInformationMessage(Resources.importServers, Constants.import).then(async result => 
-                {
-                    if (result === Constants.import)
-                    {
-                        this.showImportToServer(workspaceFolder.uri.path,this._outputChannel,workspaceFolder);
-                    }
-                });
             window.showInformationMessage(Resources.dependenciesDownloadedReload, Constants.buttonReloadWindow).then(result => 
             {
                 if (result === Constants.buttonReloadWindow)
@@ -139,19 +132,26 @@ export class PackageUiService extends UiService
             outputChannel.show();
             outputChannel.appendLine('Starting to compile and creating a package ...');
 
-            await window.withProgress({
+            let packagePath = await window.withProgress({
                 location: ProgressLocation.Notification,
                 title: "Compiling and creating package ..."
             }, async (progress, token) => {
-                await packageService.invokeAlCompileAndPackage(
+                return await packageService.invokeAlCompileAndPackage(
                     workspaceFolder.uri.fsPath, 
                     target, 
                     GitHelpers.getBranchName(workspaceFolder.uri.fsPath),
                     [],
                     message => outputChannel.appendLine(message)
                 );
-                outputChannel.appendLine("Finished!");
             });
+            outputChannel.appendLine("Finished!");
+            window.showInformationMessage(Resources.importServers, Constants.import).then(async result => 
+                {
+                    if (result === Constants.import)
+                    {
+                        this.showImportToServer(packagePath,this._outputChannel,workspaceFolder);
+                    }
+                });
         }
         catch (e)
         {
@@ -203,6 +203,13 @@ export class PackageUiService extends UiService
 
             outputChannel.appendLine(`Package created: ${packagePath}.`);
             outputChannel.appendLine("Finished!");
+            window.showInformationMessage(Resources.importServers, Constants.import).then(async result => 
+                {
+                    if (result === Constants.import)
+                    {
+                        this.showImportToServer(packagePath,this._outputChannel,workspaceFolder);
+                    }
+                });
         }
         catch (e)
         {
@@ -246,6 +253,13 @@ export class PackageUiService extends UiService
 
             outputChannel.appendLine(`Package created: ${packagePath}.`)
             outputChannel.appendLine("Finished!");
+            window.showInformationMessage(Resources.importServers, Constants.import).then(async result => 
+                {
+                    if (result === Constants.import)
+                    {
+                        this.showImportToServer(packagePath,this._outputChannel,workspaceFolder);
+                    }
+                });
         }
         catch (e)
         {
@@ -318,14 +332,36 @@ export class PackageUiService extends UiService
     }
 
     private async showImportToServer(path:string, outputChannel:OutputChannel,workspaceFolder: WorkspaceFolder){
-        let servers = (await this._wsWorkspaceFilesServices.getService(workspaceFolder).projectFile.getData()).servers;
-        //if (!servers)
-            //TODO
-        let serverPick = await UiHelpers.showServersPick(servers);
 
-        if (!serverPick)
-            return;
-        
+        let servers = (await this._wsWorkspaceFilesServices.getService(workspaceFolder).projectFile.getData()).servers;
+        let serverPickHost: string;
+        let serverPickPort = 16552;
+        if (!servers)
+        {
+            serverPickHost = "localhost";
+        }
+        else
+        {
+            let serverPick = await UiHelpers.showServersPick(servers);
+            if (!serverPickHost)
+                return;
+            serverPickHost = serverPick.host;
+            if(serverPick.managementPort)
+                serverPickPort = serverPick.managementPort;
+        }
+        let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
+        let serverPath = await window.withProgress({
+            location: ProgressLocation.Notification,
+            title: "Importing server ..."
+        }, async (progress, token) => {
+            return await packageService.importPackage(
+                path,
+                serverPickHost,
+                serverPickPort
+            );
+        });
+        outputChannel.appendLine(`Package created: ${serverPath}.`);
+        outputChannel.appendLine("Finished!");
         
     }
 }
