@@ -71,7 +71,7 @@ export class PackageUiService extends UiService
         for(let workspaceFolder of workspaceFolders)
         {
             let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
-            let targets= await packageService.getTargets(undefined, true);
+            let targets = await packageService.getTargets(undefined, true);
             targetArray = targetArray.concat(targets);
         }
         let targetArrayNoDuplicates = targetArray.filter(function(elem, index, self) 
@@ -79,7 +79,7 @@ export class PackageUiService extends UiService
             return index === self.indexOf(elem);
         })
         target = await UiHelpers.showTargetPicks(targetArrayNoDuplicates);
-        if(!target)
+        if (!target)
         {
             return;
         }
@@ -98,17 +98,19 @@ export class PackageUiService extends UiService
             }, async (progress, token) => {
                 for(let workspaceFolder of workspaceFolders)
                 {
+                    this._outputChannel.appendLine("Downloading for " + workspaceFolder.name); 
                     let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
                     let packageIdsInWorkspaces = await WorkspaceHelpers.getPackageIdFromWorkspaces(this._wsWorkspaceFilesServices);
-                    return await packageService.downloadAlDependencies(
+                    let outputResult = await packageService.downloadAlDependencies(
                         workspaceFolder.uri.fsPath, 
                         target,
                         GitHelpers.getBranchName(workspaceFolder.uri.fsPath),
                         packageIdsInWorkspaces
                     );
+                    this._outputChannel.appendLine(outputResult.output);
                 }
             });
-            this._outputChannel.appendLine(output.output);   
+               
         }
     
         catch (e)
@@ -121,7 +123,7 @@ export class PackageUiService extends UiService
         this._outputChannel.appendLine("Finished!");
         window.showInformationMessage(Resources.dependenciesDownloadedReload, Constants.buttonReloadWindow).then(result => 
             {
-            if (result === Constants.buttonReloadWindow)
+                if (result === Constants.buttonReloadWindow)
             {
                 commands.executeCommand("workbench.action.reloadWindow");
             }

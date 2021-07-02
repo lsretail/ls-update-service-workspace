@@ -38,7 +38,7 @@ export class UiHelpers
     public static async showWorkspaceFolderPicks(workspaceFolders: readonly WorkspaceFolder[] = null, placeHolder = "Select workspace folder") : Promise<WorkspaceFolder[]>
     {
         let picks: QuickPickItem[] = [];
-        let workspacesToReturn: WorkspaceFolder[]=[]
+        let workspacesToReturn: WorkspaceFolder[] = []
         if (!workspaceFolders)
             workspaceFolders = workspace.workspaceFolders;
         for (let workspaceFolder of workspaceFolders)
@@ -56,13 +56,13 @@ export class UiHelpers
             return workspacesToReturn;
         }
         let options: QuickPickOptions = {"placeHolder": placeHolder};
-        options.canPickMany=true;
+        options.canPickMany = true;
         let pick = await window.showQuickPick(picks, options);
         if (!pick)
             return;
-        for(let i = 0; i < picks.length; i++)
+        for (let workspaceFolder of workspaceFolders)
         {
-            workspacesToReturn[i]=DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", workspaceFolders[i].name)
+                    workspacesToReturn.push(DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", workspaceFolder.name))
         }
         return workspacesToReturn;
     }
