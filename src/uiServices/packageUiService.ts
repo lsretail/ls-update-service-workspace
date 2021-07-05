@@ -331,14 +331,14 @@ export class PackageUiService extends UiService
 
     }
 
-    private async showImportToServer(path:string, outputChannel:OutputChannel,workspaceFolder: WorkspaceFolder){
-
+    private async showImportToServer(path:string, outputChannel:OutputChannel,workspaceFolder: WorkspaceFolder)
+    {
         let servers = (await this._wsWorkspaceFilesServices.getService(workspaceFolder).projectFile.getData()).servers;
         let serverPickHost: string;
-        let serverPickPort = 16552;
+        let serverPickPort = Constants.defaultPort;
         if (!servers)
         {
-            serverPickHost = "localhost";
+            serverPickHost = Constants.defaultHost;
         }
         else
         {
@@ -360,7 +360,7 @@ export class PackageUiService extends UiService
                 serverPickPort
             );
         });
-        outputChannel.appendLine(`Package created: ${serverPath}.`);
+        //outputChannel.appendLine(`Package imported: ${serverPath}.`);
         outputChannel.appendLine("Finished!");
         
     }
