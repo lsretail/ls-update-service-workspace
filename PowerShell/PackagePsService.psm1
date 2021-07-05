@@ -182,7 +182,5 @@ function Import-Package
         [string] $Port
     )
 
-    $ServerPicked = Import-GocsPackage -Path $Path -Server $Server -Port $Port -Force
-
-    return ConvertTo-Json $ServerPicked.Path
+    Import-GocsPackage -Path $Path -Server $Server -Port $Port -Force
 }

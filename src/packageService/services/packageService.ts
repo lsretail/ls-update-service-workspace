@@ -54,7 +54,7 @@ export class PackageService implements IWorkspaceService
     {
         return this._packagesPsService.newAlPackage(projectDir, await this.getAppFileName(true), this._projectFile.uri.fsPath, target, branchName);
     }
-    async importPackage(path: string, server: string, port: number): Promise<string>
+    async importPackage(path: string, server: string, port: number): Promise<void>
     {
         return this._packagesPsService.importPackage(path,server, port);
     }

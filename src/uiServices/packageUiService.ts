@@ -343,14 +343,17 @@ export class PackageUiService extends UiService
         else
         {
             let serverPick = await UiHelpers.showServersPick(servers);
-            if (!serverPickHost)
+            if (!serverPick)
                 return;
             serverPickHost = serverPick.host;
             if(serverPick.managementPort)
                 serverPickPort = serverPick.managementPort;
         }
+        outputChannel.clear();
+        outputChannel.show();
+        outputChannel.appendLine('Importing package to server ...');
         let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
-        let serverPath = await window.withProgress({
+        await window.withProgress({
             location: ProgressLocation.Notification,
             title: "Importing server ..."
         }, async (progress, token) => {
@@ -360,7 +363,7 @@ export class PackageUiService extends UiService
                 serverPickPort
             );
         });
-        //outputChannel.appendLine(`Package imported: ${serverPath}.`);
+        outputChannel.appendLine(`Package imported to server: ${serverPickHost}.`);
         outputChannel.appendLine("Finished!");
         
     }
