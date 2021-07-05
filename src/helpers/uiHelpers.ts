@@ -1,4 +1,4 @@
-import { InputBoxOptions, QuickPickItem, QuickPickOptions, window, workspace, WorkspaceFolder } from "vscode";
+import { InputBoxOptions, QuickPick, QuickPickItem, QuickPickOptions, window, workspace, WorkspaceFolder } from "vscode";
 import { resolveCliPathFromVSCodeExecutablePath } from "vscode-test";
 import Controller from "../controller";
 import { DataHelpers } from "../dataHelpers";
@@ -55,15 +55,15 @@ export class UiHelpers
             workspacesToReturn[0] = DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", picks[0].label);
             return workspacesToReturn;
         }
-        let options: QuickPickOptions = {"placeHolder": placeHolder};
-        options.canPickMany = true;
-        let pick = await window.showQuickPick(picks, options);
-        if (!pick)
+        let pickResult = await window.showQuickPick<QuickPickItem>(picks, {"placeHolder": placeHolder, "canPickMany": true});
+        if (!pickResult)
             return;
-        for (let workspaceFolder of workspaceFolders)
-        {
-                    workspacesToReturn.push(DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", workspaceFolder.name))
-        }
+        
+            for (let pick of pickResult)
+            {
+                workspacesToReturn.push(DataHelpers.getEntryByProperty<WorkspaceFolder>(workspaceFolders, "name", pick.label));
+            }
+        
         return workspacesToReturn;
     }
 
