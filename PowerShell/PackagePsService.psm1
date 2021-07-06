@@ -179,18 +179,9 @@ function Import-Package
     param(
         [string] $Path,
         [string] $Server,
-        [string] $Port
+        [string] $Port,
+        [boolean] $Force
     )
 
-    Import-GocsPackage -Path $Path -Server $Server -Port $Port
-}
-function Import-Package-Force
-{
-    param(
-        [string] $Path,
-        [string] $Server,
-        [string] $Port
-    )
-
-    Import-GocsPackage -Path $Path -Server $Server -Port $Port -Force
+    Import-GocsPackage -Path $Path -Server $Server -Port $Port -Force:$Force
 }

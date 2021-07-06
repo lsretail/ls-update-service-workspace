@@ -362,7 +362,8 @@ export class PackageUiService extends UiService
                 await packageService.importPackage(
                     path,
                     serverPickHost,
-                    serverPickPort
+                    serverPickPort,
+                    false
                 );
                 outputChannel.appendLine(`Package imported to server: ${serverPickHost}.`);
                 outputChannel.appendLine("Finished!");
@@ -376,10 +377,11 @@ export class PackageUiService extends UiService
                     {
                         if (result === Constants.errorForce)
                         {
-                            await packageService.importPackageForce(
+                            await packageService.importPackage(
                                 path,
                                 serverPickHost,
-                                serverPickPort
+                                serverPickPort,
+                                true
                             );
                             outputChannel.appendLine(`Package imported to server: ${serverPickHost}.`);
                             outputChannel.appendLine("Finished!");

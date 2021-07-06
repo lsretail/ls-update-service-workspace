@@ -178,36 +178,19 @@ export class PackagePsService
         }
     }
 
-    public async importPackage(path: string, server: string, port: number): Promise<void>
+    public async importPackage(path: string, server: string, port: number, force: boolean): Promise<void>
     {
         let param = {
             path: `'${path}'`,
             server: `'${server}'`,
-            port: `'${port}'`
+            port: `'${port}'`,
+            force: force
         }
 
         let powerShell = this._powerShell.getNewPowerShell();
         try
         {
             await powerShell.executeCommandSafe("Import-Package", true, param);   
-        }
-        finally
-        {
-            powerShell.dispose();
-        }
-    }
-    public async importPackageForce(path: string, server: string, port: number): Promise<void>
-    {
-        let param = {
-            path: `'${path}'`,
-            server: `'${server}'`,
-            port: `'${port}'`
-        }
-
-        let powerShell = this._powerShell.getNewPowerShell();
-        try
-        {
-            await powerShell.executeCommandSafe("Import-Package-Force", true, param);
         }
         finally
         {
