@@ -220,7 +220,10 @@ export class DeployUiService extends UiService
                 let message : string;
                 if (update.error)
                 {
-                    message = `There is an error on "${update.instanceName} ${update.packageGroupName} ${update.error}"`;
+                    message = `Error occured for "${update.instanceName}"`;
+                    if (update.instanceName)
+                        message += ` (${update.instanceName})`;
+                    message += ` ${update.error}`;
                     window.showErrorMessage(message);
                 }
                 else

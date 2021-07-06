@@ -361,7 +361,7 @@ export class DeployService implements IWorkspaceService
             let packages : PackageInfo[];
             try
             {
-                packages= await this.checkForUpdate(deployment);
+                packages = await this.checkForUpdate(deployment);
                 if (packages.length === 0)
                     continue;
 
