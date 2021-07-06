@@ -357,17 +357,34 @@ export class DeployService implements IWorkspaceService
                 await this.removeDeploymentFromData(deployment.guid);
                 continue
             }
-            let packages = await this.checkForUpdate(deployment);
-            if (packages.length === 0)
-                continue;
 
-            updates.push({
-                "packageGroupId": deployment.id,
-                "packageGroupName": deployment.name,
-                "instanceName": deployment.instanceName,
-                "guid": deployment.guid,
-                "packages": packages.map(p => { return {"id": p.Id, "version": p.Version}})
-            });
+            let packages : PackageInfo[];
+            try
+            {
+                packages = await this.checkForUpdate(deployment);
+                if (packages.length === 0)
+                    continue;
+
+                updates.push({
+                    "packageGroupId": deployment.id,
+                    "packageGroupName": deployment.name,
+                    "instanceName": deployment.instanceName,
+                    "guid": deployment.guid,
+                    "packages": packages.map(p => { return {"id": p.Id, "version": p.Version}})
+                });
+
+            }
+            catch (error)
+            {
+                updates.push({
+                    "packageGroupId": deployment.id,
+                    "packageGroupName": deployment.name,
+                    "instanceName": deployment.instanceName,
+                    "error": error
+                });
+            }
+
+            
         }
 
         return updates;
