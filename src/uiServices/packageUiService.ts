@@ -357,14 +357,45 @@ export class PackageUiService extends UiService
             location: ProgressLocation.Notification,
             title: "Importing server ..."
         }, async (progress, token) => {
-            return await packageService.importPackage(
-                path,
-                serverPickHost,
-                serverPickPort
-            );
+            try
+            {
+                await packageService.importPackage(
+                    path,
+                    serverPickHost,
+                    serverPickPort
+                );
+                outputChannel.appendLine(`Package imported to server: ${serverPickHost}.`);
+                outputChannel.appendLine("Finished!");
+            }
+            catch (error)
+            {
+                //TODO in the future should filter through errorType
+                if (error.message.includes(Constants.packageAlreadyExists))
+                {
+                    window.showInformationMessage(error+ " " + Resources.errorMessageForce, Constants.errorForce).then(async result => 
+                    {
+                        if (result === Constants.errorForce)
+                        {
+                            await packageService.importPackageForce(
+                                path,
+                                serverPickHost,
+                                serverPickPort
+                            );
+                            outputChannel.appendLine(`Package imported to server: ${serverPickHost}.`);
+                            outputChannel.appendLine("Finished!");
+                        }
+                    });
+                }
+                else
+                {
+                    window.showErrorMessage(error.message);
+                    outputChannel.appendLine(`Package was not imported to server: ${serverPickHost}.`);
+                }
+
+            }
+            
         });
-        outputChannel.appendLine(`Package imported to server: ${serverPickHost}.`);
-        outputChannel.appendLine("Finished!");
+        
         
     }
 }

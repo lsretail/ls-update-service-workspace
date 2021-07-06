@@ -56,7 +56,11 @@ export class PackageService implements IWorkspaceService
     }
     async importPackage(path: string, server: string, port: number): Promise<void>
     {
-        return this._packagesPsService.importPackage(path,server, port);
+        return await this._packagesPsService.importPackage(path,server, port);
+    }
+    async importPackageForce(path: string, server: string, port: number): Promise<void>
+    {
+        return await this._packagesPsService.importPackageForce(path,server, port);
     }
 
     async invokeAlCompileAndPackage(

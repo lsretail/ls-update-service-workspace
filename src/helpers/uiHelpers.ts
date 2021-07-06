@@ -58,7 +58,7 @@ export class UiHelpers
             return;
         return selected.label;
     }
-    public static async showServersPick(servers: Server[],placeHolder = "Select server"): Promise<Server>
+    public static async showServersPick(servers: Server[], placeHolder = "Select server"): Promise<Server>
     {
         let picks: QuickPickItem[] = [];
         if (!servers)

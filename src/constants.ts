@@ -41,5 +41,9 @@ export class Constants
     static packageToolsUrl = "https://help.gocurrent.lsretail.com/docs/ls-central/package-tools/overview.html";
 
     static defaultPort = 16552;
-    static defaultHost = "localhost"
+    static defaultHost = "localhost";
+
+    static errorForce = "Overwrite Package";
+    static packageAlreadyExists = "Package already exists:";
+
 }
