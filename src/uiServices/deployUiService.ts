@@ -217,27 +217,36 @@ export class DeployUiService extends UiService
             
             for (let update of updates)
             {
-                anyUpdates = true;
-                let message = `Updates available for "${update.packageGroupName}"`;
-
-                if (update.instanceName)
-                    message += ` (${update.instanceName})`;
-
-                window.showInformationMessage(message, ...buttons,).then(result => 
+                let message : string;
+                if (update.error)
                 {
-                    if (result === Constants.buttonUpdate)
+                    message = `There is an error on "${update.instanceName} ${update.packageGroupName} ${update.error}"`;
+                    window.showErrorMessage(message);
+                }
+                else
+                {
+                    anyUpdates = true;
+                    message = `Updates available for "${update.packageGroupName}"`;
+
+                    if (update.instanceName)
+                        message += ` (${update.instanceName})`;
+
+                    window.showInformationMessage(message, ...buttons,).then(result => 
                     {
-                        this.installUpdate(deployService, update);
-                    }
-                    else
-                    {
-                        if (!deployService.UpdatesAvailable.find(i => i.packageGroupId === update.packageGroupId && i.instanceName === update.instanceName))
+                        if (result === Constants.buttonUpdate)
                         {
-                            deployService.UpdatesAvailable.push(update);
-                            commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, true);
+                            this.installUpdate(deployService, update);
                         }
-                    }
-                });
+                        else
+                        {
+                            if (!deployService.UpdatesAvailable.find(i => i.packageGroupId === update.packageGroupId && i.instanceName === update.instanceName))
+                            {
+                                deployService.UpdatesAvailable.push(update);
+                                commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, true);
+                            }
+                        }
+                    });
+                }
             }
         }
 
