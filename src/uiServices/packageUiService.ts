@@ -135,35 +135,38 @@ export class PackageUiService extends UiService
         var outputChannel = this._outputChannel;
         try
         {
-            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
-            if (!workspaceFolder)
+            let workspaceFolders = await UiHelpers.showWorkspaceFolderPicks(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
+            if (!workspaceFolders)
                 return;
 
-            if (!await this.ensureGoCurrentServer(workspaceFolder))
-                return;
-    
-            let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
+            for (let workspaceFolder of workspaceFolders)
+            {
+                if (!await this.ensureGoCurrentServer(workspaceFolder))
+                    return;
+            
+                let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
 
-            let targets = await packageService.getTargets();
-            let target = await UiHelpers.showTargetPicks(targets);
-        
-            outputChannel.clear();
-            outputChannel.show();
-            outputChannel.appendLine('Starting to compile and creating a package ...');
+                let targets = await packageService.getTargets();
+                let target = await UiHelpers.showTargetPicks(targets);
+            
+                outputChannel.clear();
+                outputChannel.show();
+                outputChannel.appendLine('Starting to compile and creating a package ...');
 
-            await window.withProgress({
-                location: ProgressLocation.Notification,
-                title: "Compiling and creating package ..."
-            }, async (progress, token) => {
-                await packageService.invokeAlCompileAndPackage(
-                    workspaceFolder.uri.fsPath, 
-                    target, 
-                    GitHelpers.getBranchName(workspaceFolder.uri.fsPath),
-                    [],
-                    message => outputChannel.appendLine(message)
-                );
-                outputChannel.appendLine("Finished!");
-            });
+                await window.withProgress({
+                    location: ProgressLocation.Notification,
+                    title: "Compiling and creating package ..."
+                }, async (progress, token) => {
+                    await packageService.invokeAlCompileAndPackage(
+                        workspaceFolder.uri.fsPath, 
+                        target, 
+                        GitHelpers.getBranchName(workspaceFolder.uri.fsPath),
+                        [],
+                        message => outputChannel.appendLine(message)
+                    );
+                    outputChannel.appendLine("Finished!");
+                });
+            }
         }
         catch (e)
         {
