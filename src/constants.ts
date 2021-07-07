@@ -30,6 +30,7 @@ export class Constants
     static buttonUpdate = "Update";
     static buttonLater = "Later";
     static buttonReloadWindow = "Reload Window"
+    static import = "Import"
     static buttonContinue = "Continue"
     static buttonCancel = "Cancel"
     static buttonYes = "Yes"
@@ -38,4 +39,11 @@ export class Constants
     static gocHelpUrl = "https://help.gocurrent.lsretail.com/";
     static gocServerUrl = "https://help.gocurrent.lsretail.com/docs/server/install.html";
     static packageToolsUrl = "https://help.gocurrent.lsretail.com/docs/ls-central/package-tools/overview.html";
+
+    static defaultPort = 16552;
+    static defaultHost = "localhost";
+
+    static errorForce = "Overwrite Package";
+    static packageAlreadyExists = "Package already exists:";
+
 }

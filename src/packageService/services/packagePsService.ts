@@ -1,6 +1,8 @@
 import { PowerShell } from "../../PowerShell";
 import { GoCurrentVersion } from "../../interfaces/goCurrentVersion";
 import { ProjectFile } from "../../models/projectFile";
+import Resources from "../../resources";
+import { Constants } from "../../constants";
 
 export class PackagePsService
 {
@@ -169,6 +171,26 @@ export class PackagePsService
         try
         {
             return await powerShell.executeCommandSafe("Get-Dependencies", false, param);
+        }
+        finally
+        {
+            powerShell.dispose();
+        }
+    }
+
+    public async importPackage(path: string, server: string, port: number, force: boolean): Promise<void>
+    {
+        let param = {
+            path: `'${path}'`,
+            server: `'${server}'`,
+            port: `'${port}'`,
+            force: force
+        }
+
+        let powerShell = this._powerShell.getNewPowerShell();
+        try
+        {
+            await powerShell.executeCommandSafe("Import-Package", true, param);   
         }
         finally
         {
