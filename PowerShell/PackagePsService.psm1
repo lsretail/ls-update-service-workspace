@@ -174,3 +174,13 @@ function Invoke-Compile
 
     Write-Host "App created at `"$AppPath`"."
 }
+function Invoke-AlProjectBuild
+{
+    param(
+        [string[]] $ProjectDirs,
+        [string] $ResultFilePath
+    )
+    Write-Host 'Compiling and creating all the packages'
+    $Result = (Invoke-AlProjectBuild -ProjectDir $ProjectDirs).Path
+    ConvertTo-Json $Result | Set-Content -Path $ResultFilePath
+}

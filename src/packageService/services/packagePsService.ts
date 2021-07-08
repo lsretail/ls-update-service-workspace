@@ -111,6 +111,22 @@ export class PackagePsService
             powerShell.dispose();
         }
     }
+    public async invokeAlProjectBuild(projectDirs: string[]): Promise<string>
+    {
+        let param = {
+            projectDirs: projectDirs
+        };
+        
+        let powerShell = this._powerShell.getNewPowerShell();
+        try
+        {
+            return await powerShell.executeCommandSafe("Invoke-AlProjectBuild", true, param);
+        }
+        finally
+        {
+            powerShell.dispose();
+        }
+    }
 
     public async invokeCompile(projectDir: string, compilerPath: string, dependenciesDir: string): Promise<string>
     {

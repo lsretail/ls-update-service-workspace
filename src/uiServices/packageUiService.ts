@@ -138,35 +138,28 @@ export class PackageUiService extends UiService
             let workspaceFolders = await UiHelpers.showWorkspaceFolderPicks(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
             if (!workspaceFolders)
                 return;
-
-            for (let workspaceFolder of workspaceFolders)
+            let projectDirs : string[] = [];
+            for (let workspaceFolder of workspaceFolders)   
             {
                 if (!await this.ensureGoCurrentServer(workspaceFolder))
                     return;
-            
-                let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
+                projectDirs.push(workspaceFolder.uri.fsPath);
+            }   
+            outputChannel.clear();
+            outputChannel.show();
+            outputChannel.appendLine('Starting to compile and creating a package ...');
 
-                let targets = await packageService.getTargets();
-                let target = await UiHelpers.showTargetPicks(targets);
+            await window.withProgress({
+                location: ProgressLocation.Notification,
+                title: "Compiling and creating package ..."
+            }, async (progress, token) => {
+                let output = await this._packagePsService.invokeAlProjectBuild(
+                    projectDirs
+                );
+                outputChannel.appendLine(output);
+                outputChannel.appendLine("Finished!");
+            });
             
-                outputChannel.clear();
-                outputChannel.show();
-                outputChannel.appendLine('Starting to compile and creating a package ...');
-
-                await window.withProgress({
-                    location: ProgressLocation.Notification,
-                    title: "Compiling and creating package ..."
-                }, async (progress, token) => {
-                    await packageService.invokeAlCompileAndPackage(
-                        workspaceFolder.uri.fsPath, 
-                        target, 
-                        GitHelpers.getBranchName(workspaceFolder.uri.fsPath),
-                        [],
-                        message => outputChannel.appendLine(message)
-                    );
-                    outputChannel.appendLine("Finished!");
-                });
-            }
         }
         catch (e)
         {
