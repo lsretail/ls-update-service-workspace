@@ -1,6 +1,8 @@
 import { PowerShell } from "../../PowerShell";
 import { GoCurrentVersion } from "../../interfaces/goCurrentVersion";
 import { ProjectFile } from "../../models/projectFile";
+import { fsHelpers } from "../../fsHelpers";
+import { OutputChannel } from "vscode";
 
 export class PackagePsService
 {
@@ -111,16 +113,23 @@ export class PackagePsService
             powerShell.dispose();
         }
     }
-    public async invokeAlProjectBuild(projectDirs: string[]): Promise<string>
+    public async invokeAlProjectBuild(projectDirs: string[], outputChannel: OutputChannel): Promise<string>
     {
+        let tempAux = await this.newTempDir()
+
+        let tempFile = tempAux + '\\file.txt'
+
         let param = {
-            projectDirs: projectDirs
+            projectDirs: projectDirs,
+            resultFilePath: tempFile
         };
         
-        let powerShell = this._powerShell.getNewPowerShell();
+        let powerShell = this._powerShell.getNewPowerShell(outputChannel);
         try
         {
-            return await powerShell.executeCommandSafe("Invoke-AlProjectBuild", true, param);
+            await powerShell.executeCommandSafe("Invoke-ProjectBuild", false, param);
+            
+            return await fsHelpers.readJson(tempFile);
         }
         finally
         {

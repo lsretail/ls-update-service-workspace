@@ -144,17 +144,18 @@ export class PackageUiService extends UiService
                 if (!await this.ensureGoCurrentServer(workspaceFolder))
                     return;
                 projectDirs.push(workspaceFolder.uri.fsPath);
-            }   
+            } 
             outputChannel.clear();
             outputChannel.show();
-            outputChannel.appendLine('Starting to compile and creating a package ...');
+            outputChannel.appendLine('Starting to compile and creating a packages ...');
 
             await window.withProgress({
                 location: ProgressLocation.Notification,
                 title: "Compiling and creating package ..."
             }, async (progress, token) => {
                 let output = await this._packagePsService.invokeAlProjectBuild(
-                    projectDirs
+                    projectDirs,
+                    outputChannel
                 );
                 outputChannel.appendLine(output);
                 outputChannel.appendLine("Finished!");

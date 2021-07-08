@@ -2,6 +2,7 @@
 //import Shell, { PSCommand } from 'node-powershell'
 import * as Shell from 'node-powershell'
 import { PSCommand } from 'node-powershell'
+import { OutputChannel } from 'vscode';
 import { Logger } from './interfaces/logger';
 
 export class PowerShell
@@ -16,11 +17,13 @@ export class PowerShell
     private _runNextCommand: string;
     private _commandsQueue: string[] = [];
     private _relaunchCount = 0;
+    private _outputChannel: OutputChannel;
 
-    constructor(logger: Logger, debug: boolean)
+    constructor(logger: Logger, debug: boolean, outputChannel?: OutputChannel)
     {
         this._logger = logger;
         this._debug = debug;
+        this._outputChannel = outputChannel;
     }
 
     private _initializeIfNecessary()
@@ -66,9 +69,9 @@ export class PowerShell
         this._shell = null;
     }
 
-    public getNewPowerShell() : PowerShell
+    public getNewPowerShell(outputChannel?: OutputChannel) : PowerShell
     {
-        let powerShell = new PowerShell(this._logger, this.isDebug);
+        let powerShell = new PowerShell(this._logger, this.isDebug, outputChannel);
         for (var path of this._modulePaths)
         {
             powerShell.addModuleFromPath(path);
@@ -194,6 +197,7 @@ export class PowerShell
                 this._inExecution++;
                 this._promiseOrder.then(fun, fun);
             });
+            this.outputChannel();
             return this._promiseOrder;
         }
         else
@@ -209,8 +213,16 @@ export class PowerShell
                 this._inExecution--;
                 throw argument;
             });
+            this.outputChannel();
             return this._promiseOrder;
         }
+    }
+    private outputChannel()
+    {
+        this._shell.on('output', data => {
+            if (this._outputChannel)
+                this._outputChannel.append(data);
+        })
     }
 
     private processError(error: any)
