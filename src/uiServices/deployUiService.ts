@@ -41,6 +41,7 @@ export class DeployUiService extends UiService
     async activate(): Promise<void>
     {
         this.registerCommand("ls-update-service.deploy", this.install);
+        this.registerCommand("ls-update-service.manage", this.manage);
         this.registerCommand("ls-update-service.checkForUpdates", this.checkForUpdates);
         this.registerCommand("ls-update-service.update", this.update);
         this.registerCommand("ls-update-service.remove", this.remove);
@@ -113,6 +114,32 @@ export class DeployUiService extends UiService
             return;
 
         await this.showDeployWithService(this._wsDeployServices.getService(workspaceFolder), workspaceFolder);
+    }
+
+    private async manage()
+    {
+        let activeWorkspaces = await this._wsDeployServices.getWorkspaces({
+            serviceFilter: async service => await service.hasPackageGroups(),
+            active: true
+        })
+
+        let workspaces = await this._wsDeployServices.getWorkspaces({active: true});
+
+        let allOptions = activeWorkspaces.concat(workspaces);
+
+        if (allOptions.length === 0)
+        {
+            window.showInformationMessage("Nothing to install.");
+            return;
+        }
+
+        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(allOptions);
+        if (!workspaceFolder)
+            return;
+
+        await this.showDeployWithService(this._wsDeployServices.getService(workspaceFolder), workspaceFolder);
+
+        
     }
 
     private async showDeployWithService(deployService: DeployService, workspaceFolder: WorkspaceFolder)

@@ -18,6 +18,7 @@ export class Constants
     static goCurrentDeployActive = "ls-update-service.deploy.active";
     static goCurrentAlActive = "ls-update-service.al.active";
     static goCurrentDeployUpdatesAvailable = "ls-update-service.deploy.updatesAvailable";
+    static goCurrentManageInstalls = "ls-update-service.deploy.manage";
 
     static configurationSectionId = 'ls-update-service-workspace';
     static configurationDebug = 'debug'
