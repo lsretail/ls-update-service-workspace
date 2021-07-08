@@ -118,28 +118,44 @@ export class DeployUiService extends UiService
 
     private async manage()
     {
-        let activeWorkspaces = await this._wsDeployServices.getWorkspaces({
-            serviceFilter: async service => await service.hasPackageGroups(),
-            active: true
-        })
+        let workspaces = await this._wsDeployServices.getWorkspaces({
+            active: true,
+            serviceFilter: service => service.hasPackagesInstalled()}
+        );
 
-        let workspaces = await this._wsDeployServices.getWorkspaces({active: true});
-
-        let allOptions = activeWorkspaces.concat(workspaces);
-
-        if (allOptions.length === 0)
+        if (!workspaces || workspaces.length === 0)
         {
-            window.showInformationMessage("Nothing to install.");
+            window.showInformationMessage("Nothing to remove.")
             return;
         }
 
-        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(allOptions);
-        if (!workspaceFolder)
+        let deployment = await this.getAllDeployments(workspaces, "Select a package group to remove");
+        
+        if (!deployment)
             return;
 
-        await this.showDeployWithService(this._wsDeployServices.getService(workspaceFolder), workspaceFolder);
+        let choices = [Constants.buttonYes, Constants.buttonNo]
 
+        let name = deployment.name;
+        if (!name)
+            name = deployment.instanceName;
+        else if (deployment.instanceName)
+            name += ` (${deployment.instanceName})`;
         
+        let picked = await window.showQuickPick(choices, {
+            placeHolder: util.format(Resources.areYourSureAboutRemove, name)
+        });
+
+        if (picked === Constants.buttonNo)
+            return;
+
+        let removedName = await window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Removing package(s) ..."
+        }, async (progress, token) => {
+            //return await deployService.removeDeployment(deployment.guid);
+        });
+        window.showInformationMessage(`Package(s) "${removedName}" removed.`);
     }
 
     private async showDeployWithService(deployService: DeployService, workspaceFolder: WorkspaceFolder)
@@ -372,7 +388,7 @@ export class DeployUiService extends UiService
 
         let deployService = this._wsDeployServices.getService(workspaceFolder);
 
-        let deployment = await this.showDeploymentsPicks(deployService, "Select a package group to remove");
+        let deployment = await this.getDeployment(deployService, "Select a package group to remove");
 
         if (!deployment)
             return;
@@ -401,12 +417,11 @@ export class DeployUiService extends UiService
         window.showInformationMessage(`Package(s) "${removedName}" removed.`);
     }
 
-    private async showDeploymentsPicks(deployService: DeployService, placeholder: string = "Selected a group") : Promise<Deployment>
+    private async showDeploymentsPicksList(deploymentList: Deployment[], placeholder: string = "Selected a group") : Promise<Deployment>
     {
-        let deployments = await deployService.getDeployments();
         let picks: QuickPickItemPayload<Deployment>[] = [];
 
-        for (let entry of deployments)
+        for (let entry of deploymentList)
         {
             let instance = "";
             if (entry.instanceName && entry.instanceName !== entry.name)
@@ -425,6 +440,24 @@ export class DeployUiService extends UiService
         if (!selected)
             return;
         return selected.payload;
+    }
+
+    private async getAllDeployments(workspaceFolders: WorkspaceFolder[], placeholder: string = "Selected a group")  : Promise<Deployment>
+    {
+        let deployments: Deployment[] = [];
+        if (!workspaceFolders)
+            return;
+        for (let workspaceFolder of workspaceFolders){
+            let deployService = this._wsDeployServices.getService(workspaceFolder);
+            let deploymentAux = await deployService.getDeployments();
+            deployments = deployments.concat(deploymentAux);
+        }
+        return this.showDeploymentsPicksList(deployments,placeholder);;
+    }
+    private async getDeployment(deployService: DeployService, placeholder: string = "Selected a group") : Promise<Deployment>
+    {
+        let deployments = await deployService.getDeployments();
+        return this.showDeploymentsPicksList(deployments,placeholder);
     }
 
     private async addInstanceToWorkspace()
