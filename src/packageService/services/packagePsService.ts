@@ -3,6 +3,7 @@ import { GoCurrentVersion } from "../../interfaces/goCurrentVersion";
 import { ProjectFile } from "../../models/projectFile";
 import { fsHelpers } from "../../fsHelpers";
 import { OutputChannel } from "vscode";
+import { Constants } from "../../constants";
 
 export class PackagePsService
 {
@@ -117,7 +118,7 @@ export class PackagePsService
     {
         let tempAux = await this.newTempDir()
 
-        let tempFile = tempAux + '\\file.txt'
+        let tempFile = tempAux + Constants.dummyFile;
 
         let param = {
             projectDirs: projectDirs,

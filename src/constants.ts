@@ -38,4 +38,6 @@ export class Constants
     static gocHelpUrl = "https://help.gocurrent.lsretail.com/";
     static gocServerUrl = "https://help.gocurrent.lsretail.com/docs/server/install.html";
     static packageToolsUrl = "https://help.gocurrent.lsretail.com/docs/ls-central/package-tools/overview.html";
+
+    static dummyFile = '\\file.txt';
 }
