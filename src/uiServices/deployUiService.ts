@@ -18,6 +18,7 @@ import { PackageInfo } from "../interfaces/packageInfo";
 import { BaseUiService } from "./BaseUiService";
 import { WorkspaceHelpers } from "../helpers/workspaceHelpers";
 import { Logger } from "../interfaces/logger";
+import { DeploymentPayload } from "../models/deploymentPayload";
 
 export class DeployUiService extends UiService
 {
@@ -129,31 +130,45 @@ export class DeployUiService extends UiService
             return;
         }
 
-        let deployment = await this.getAllDeployments(workspaces, "Select a package group to remove");
+        let deploymentPayload = await this.getAllDeployments(workspaces, "Select a package group to manage");
         
-        if (!deployment)
+        if (!deploymentPayload)
             return;
 
-        let choices = [Constants.buttonYes, Constants.buttonNo]
+        let choices = [Constants.buttonCheckUpdates, Constants.buttonRemove]
 
-        let name = deployment.name;
+        let name = deploymentPayload.deployment.name;
         if (!name)
-            name = deployment.instanceName;
-        else if (deployment.instanceName)
-            name += ` (${deployment.instanceName})`;
+            name = deploymentPayload.deployment.instanceName;
+        else if (deploymentPayload.deployment.instanceName)
+            name += ` (${deploymentPayload.deployment.instanceName})`;
         
         let picked = await window.showQuickPick(choices, {
+            placeHolder: util.format(Resources.managePackages)
+        });
+        if (!picked)
+        {
+            return;
+        }
+
+        if (picked === Constants.buttonCheckUpdates)
+        {
+            return await this.checkForUpdates(deploymentPayload.deployment, deploymentPayload.deployService);
+        }
+        let choicesRemove = [Constants.buttonYes, Constants.buttonNo]
+        
+        let pickedRemoved = await window.showQuickPick(choicesRemove, {
             placeHolder: util.format(Resources.areYourSureAboutRemove, name)
         });
 
-        if (picked === Constants.buttonNo)
+        if (pickedRemoved === Constants.buttonNo)
             return;
 
         let removedName = await window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: "Removing package(s) ..."
         }, async (progress, token) => {
-            //return await deployService.removeDeployment(deployment.guid);
+            return await deploymentPayload.deployService.removeDeployment(deploymentPayload.deployment.guid);
         });
         window.showInformationMessage(`Package(s) "${removedName}" removed.`);
     }
@@ -229,7 +244,7 @@ export class DeployUiService extends UiService
             window.showInformationMessage(`Package group "${deploymentResult.deployment.name}" installed: ` + deploymentResult.lastUpdated.map(p => `${p.id} v${p.version}`).join(', '));
     }
 
-    private async checkForUpdates()
+    private async checkForUpdates(deployment?: Deployment, deployService?: DeployService)
     {
         let anyUpdates = await window.withProgress({
             location: vscode.ProgressLocation.Notification,
@@ -238,8 +253,9 @@ export class DeployUiService extends UiService
 
             let update = await BaseUiService.checkForGocWorkspaceUpdates(this._goCurrentPsService, this.context);
             update = update || await BaseUiService.checkForUpdates(["go-current-server", "go-current-client", "ls-package-tools"], this._goCurrentPsService);
-
-            return (await this.checkForUpdatesSilent()) || update;
+            if (!deployment || !deployService)
+                return (await this.checkForUpdatesSilent()) || update;
+            return (await this.checkForUpdatesSilentDeployment(deployment, deployService)) || update;
         });
 
         if (!anyUpdates)
@@ -251,7 +267,6 @@ export class DeployUiService extends UiService
     private async checkForUpdatesSilent(): Promise<boolean>
     {
         let buttons: string[] = [Constants.buttonUpdate, Constants.buttonLater];
-        //commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
         let anyUpdates = false;
         for (let deployService of (await this._wsDeployServices.getServices({active: true})))
         {
@@ -260,42 +275,65 @@ export class DeployUiService extends UiService
             
             for (let update of updates)
             {
-                let message : string;
-                if (update.error)
-                {
-                    message = `Error occured for "${update.instanceName}"`;
-                    if (update.instanceName)
-                        message += ` (${update.instanceName})`;
-                    message += ` ${update.error}`;
-                    window.showErrorMessage(message);
-                }
-                else
-                {
-                    anyUpdates = true;
-                    message = `Updates available for "${update.packageGroupName}"`;
-
-                    if (update.instanceName)
-                        message += ` (${update.instanceName})`;
-
-                    window.showInformationMessage(message, ...buttons,).then(result => 
-                    {
-                        if (result === Constants.buttonUpdate)
-                        {
-                            this.installUpdate(deployService, update);
-                        }
-                        else
-                        {
-                            if (!deployService.UpdatesAvailable.find(i => i.packageGroupId === update.packageGroupId && i.instanceName === update.instanceName))
-                            {
-                                deployService.UpdatesAvailable.push(update);
-                                commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, true);
-                            }
-                        }
-                    });
-                }
+                anyUpdates = await this.checkUpdatesSilentFinal(update, deployService, anyUpdates);
             }
         }
 
+        return anyUpdates;
+    }
+
+    private async checkForUpdatesSilentDeployment(deployment: Deployment, deployService: DeployService): Promise<boolean>
+    {
+        let buttons: string[] = [Constants.buttonUpdate, Constants.buttonLater];
+        //commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
+        let anyUpdates = false;
+        
+        deployService.UpdatesAvailable = new Array<UpdateAvailable>();
+        let update = await deployService.checkForUpdatesDeployment(deployment);
+        
+        if (update)
+        {
+            anyUpdates = await this.checkUpdatesSilentFinal(update, deployService, anyUpdates);
+        }
+        return anyUpdates;
+    }
+
+    private async checkUpdatesSilentFinal(update: UpdateAvailable, deployService: DeployService, anyUpdates: boolean): Promise<boolean>
+    {
+        let buttons: string[] = [Constants.buttonUpdate, Constants.buttonLater];
+        let message : string;
+        if (update.error)
+        {
+            message = `Error occured for "${update.instanceName}"`;
+            if (update.instanceName)
+                message += ` (${update.instanceName})`;
+            message += ` ${update.error}`;
+            window.showErrorMessage(message);
+        }
+        else
+        {
+            anyUpdates = true;
+            message = `Updates available for "${update.packageGroupName}"`;
+
+            if (update.instanceName)
+                message += ` (${update.instanceName})`;
+
+            window.showInformationMessage(message, ...buttons,).then(result => 
+            {
+                if (result === Constants.buttonUpdate)
+                {
+                    this.installUpdate(deployService, update);
+                }
+                else
+                {
+                    if (!deployService.UpdatesAvailable.find(i => i.packageGroupId === update.packageGroupId && i.instanceName === update.instanceName))
+                    {
+                        deployService.UpdatesAvailable.push(update);
+                        commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, true);
+                    }
+                }
+            });
+        }
         return anyUpdates;
     }
 
@@ -388,18 +426,18 @@ export class DeployUiService extends UiService
 
         let deployService = this._wsDeployServices.getService(workspaceFolder);
 
-        let deployment = await this.getDeployment(deployService, "Select a package group to remove");
+        let deploymentPayload = await this.getDeployment(deployService, workspaceFolder, "Select a package group to remove");
 
-        if (!deployment)
+        if (!deploymentPayload)
             return;
 
         let choices = [Constants.buttonYes, Constants.buttonNo]
 
-        let name = deployment.name;
+        let name = deploymentPayload.deployment.name;
         if (!name)
-            name = deployment.instanceName;
-        else if (deployment.instanceName)
-            name += ` (${deployment.instanceName})`;
+            name = deploymentPayload.deployment.instanceName;
+        else if (deploymentPayload.deployment.instanceName)
+            name += ` (${deploymentPayload.deployment.instanceName})`;
         
         let picked = await window.showQuickPick(choices, {
             placeHolder: util.format(Resources.areYourSureAboutRemove, name)
@@ -412,25 +450,25 @@ export class DeployUiService extends UiService
             location: vscode.ProgressLocation.Notification,
             title: "Removing package(s) ..."
         }, async (progress, token) => {
-            return await deployService.removeDeployment(deployment.guid);
+            return await deployService.removeDeployment(deploymentPayload.deployment.guid);
         });
         window.showInformationMessage(`Package(s) "${removedName}" removed.`);
     }
 
-    private async showDeploymentsPicksList(deploymentList: Deployment[], placeholder: string = "Selected a group") : Promise<Deployment>
+    private async showDeploymentsPicksList(deploymentList: DeploymentPayload[], placeholder: string = "Selected a group") : Promise<DeploymentPayload>
     {
-        let picks: QuickPickItemPayload<Deployment>[] = [];
+        let picks: QuickPickItemPayload<DeploymentPayload>[] = [];
 
         for (let entry of deploymentList)
         {
             let instance = "";
-            if (entry.instanceName && entry.instanceName !== entry.name)
-                instance = " (" + entry.instanceName + ")"
+            if (entry.deployment.instanceName && entry.deployment.instanceName !== entry.deployment.name)
+                instance = " (" + entry.deployment.instanceName + ")"
                 
             picks.push({
-                "label": entry.name,
+                "label": entry.deployment.name,
                 "description": instance,
-                "detail": entry.packages.map(p => `${p.id} v${p.version}`).join('\n'),
+                "detail": entry.deployment.packages.map(p => `${p.id} v${p.version}`).join('\n'),
                 "payload": entry
             });
         }
@@ -442,22 +480,40 @@ export class DeployUiService extends UiService
         return selected.payload;
     }
 
-    private async getAllDeployments(workspaceFolders: WorkspaceFolder[], placeholder: string = "Selected a group")  : Promise<Deployment>
+    private async getAllDeployments(workspaceFolders: WorkspaceFolder[], placeholder: string = "Selected a group")  : Promise<DeploymentPayload>
     {
-        let deployments: Deployment[] = [];
+        let deploymentsPayload: DeploymentPayload[] = [];
         if (!workspaceFolders)
             return;
-        for (let workspaceFolder of workspaceFolders){
+        for (let workspaceFolder of workspaceFolders)
+        {
             let deployService = this._wsDeployServices.getService(workspaceFolder);
             let deploymentAux = await deployService.getDeployments();
-            deployments = deployments.concat(deploymentAux);
+            let deploymentPayloadAux: DeploymentPayload[] = this.addDeploymentToDeploymentPayload(deploymentAux, deployService, workspaceFolder);
+            deploymentsPayload = deploymentsPayload.concat(deploymentPayloadAux);
         }
-        return this.showDeploymentsPicksList(deployments,placeholder);;
+        return this.showDeploymentsPicksList(deploymentsPayload,placeholder);;
     }
-    private async getDeployment(deployService: DeployService, placeholder: string = "Selected a group") : Promise<Deployment>
+
+    private async getDeployment(deployService: DeployService,workspaceFolder: WorkspaceFolder, placeholder: string = "Selected a group") : Promise<DeploymentPayload>
     {
         let deployments = await deployService.getDeployments();
-        return this.showDeploymentsPicksList(deployments,placeholder);
+        let deploymentsPayload = this.addDeploymentToDeploymentPayload(deployments, deployService, workspaceFolder)
+        return this.showDeploymentsPicksList(deploymentsPayload,placeholder);
+    }
+
+    private addDeploymentToDeploymentPayload(deployments: Deployment[], deployService: DeployService, workspaceFolder: WorkspaceFolder) : DeploymentPayload[]
+    {
+        let deploymentsPayloadList: DeploymentPayload[] = []
+        for (let deployment of deployments)
+        {
+            let deployPayload = new DeploymentPayload();
+            deployPayload.deployment = deployment;
+            deployPayload.deployService = deployService;
+            deployPayload.workspaceFolder = workspaceFolder;
+            deploymentsPayloadList.push(deployPayload);
+        }
+        return deploymentsPayloadList;
     }
 
     private async addInstanceToWorkspace()

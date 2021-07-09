@@ -36,6 +36,8 @@ export class Constants
     static buttonCancel = "Cancel"
     static buttonYes = "Yes"
     static buttonNo = "No"
+    static buttonRemove = "Remove";
+    static buttonCheckUpdates = "Check for updates";
 
     static gocHelpUrl = "https://help.gocurrent.lsretail.com/";
     static gocServerUrl = "https://help.gocurrent.lsretail.com/docs/server/install.html";
