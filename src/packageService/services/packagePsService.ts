@@ -4,6 +4,7 @@ import { ProjectFile } from "../../models/projectFile";
 import { fsHelpers } from "../../fsHelpers";
 import { OutputChannel } from "vscode";
 import { Constants } from "../../constants";
+import path = require("path");
 
 export class PackagePsService
 {
@@ -118,7 +119,7 @@ export class PackagePsService
     {
         let tempAux = await this.newTempDir()
 
-        let tempFile = tempAux + Constants.dummyFile;
+        let tempFile = path.join(tempAux, Constants.dummyFile);
 
         let param = {
             projectDirs: projectDirs,
@@ -134,7 +135,15 @@ export class PackagePsService
         }
         finally
         {
-            powerShell.dispose();
+            try
+            {
+                powerShell.dispose();
+                fsHelpers.rmDir(tempAux, true);
+            }
+            catch (e)
+            {
+                // ignore
+            } 
         }
     }
 

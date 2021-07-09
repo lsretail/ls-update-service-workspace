@@ -136,18 +136,18 @@ export class PackageUiService extends UiService
         try
         {
             let workspaceFolders = await UiHelpers.showWorkspaceFolderPicks(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
-            if (!workspaceFolders)
+            if (!workspaceFolders || workspaceFolders.length === 0)
                 return;
             let projectDirs : string[] = [];
+            if (!await this.ensureGoCurrentServer(workspaceFolders[0]))
+                    return;
             for (let workspaceFolder of workspaceFolders)   
             {
-                if (!await this.ensureGoCurrentServer(workspaceFolder))
-                    return;
                 projectDirs.push(workspaceFolder.uri.fsPath);
             } 
             outputChannel.clear();
             outputChannel.show();
-            outputChannel.appendLine('Starting to compile and creating a packages ...');
+            outputChannel.appendLine('Starting to compile and creating packages ...');
 
             await window.withProgress({
                 location: ProgressLocation.Notification,
