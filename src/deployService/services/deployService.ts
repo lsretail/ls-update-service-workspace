@@ -344,8 +344,9 @@ export class DeployService implements IWorkspaceService
         let updates = new Array<UpdateAvailable>();
         for (let deployment of deployments)
         {
-            
-            updates.push(await this.checkForUpdatesDeployment(deployment));
+            let update = await this.checkForUpdatesDeployment(deployment);
+            if(update)
+                updates.push(update);
             
         }
 
