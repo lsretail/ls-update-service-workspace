@@ -44,6 +44,11 @@
                 "category": "LS Update Service"
             },
             {
+                "command": "ls-update-service.manage",
+                "title": "Manage Installs",
+                "category": "LS Update Service"
+            },
+            {
                 "command": "ls-update-service.remove",
                 "title": "Remove Packages",
                 "category": "LS Update Service"

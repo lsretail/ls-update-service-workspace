@@ -18,6 +18,7 @@ export class Constants
     static goCurrentDeployActive = "ls-update-service.deploy.active";
     static goCurrentAlActive = "ls-update-service.al.active";
     static goCurrentDeployUpdatesAvailable = "ls-update-service.deploy.updatesAvailable";
+    static goCurrentManageInstalls = "ls-update-service.deploy.manage";
 
     static configurationSectionId = 'ls-update-service-workspace';
     static configurationDebug = 'debug'
@@ -35,6 +36,8 @@ export class Constants
     static buttonCancel = "Cancel"
     static buttonYes = "Yes"
     static buttonNo = "No"
+    static buttonRemove = "Remove";
+    static buttonCheckUpdates = "Check for updates";
 
     static gocHelpUrl = "https://help.gocurrent.lsretail.com/";
     static gocServerUrl = "https://help.gocurrent.lsretail.com/docs/server/install.html";

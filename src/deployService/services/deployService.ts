@@ -344,10 +344,22 @@ export class DeployService implements IWorkspaceService
         let updates = new Array<UpdateAvailable>();
         for (let deployment of deployments)
         {
-            if (!deployment.instanceName && deployment.packages.length === 0)
+            let update = await this.checkForUpdatesDeployment(deployment);
+            if(update)
+                updates.push(update);
+            
+        }
+
+        return updates;
+    }
+
+    public async checkForUpdatesDeployment(deployment: Deployment): Promise<UpdateAvailable>
+    {
+        let update: UpdateAvailable = new UpdateAvailable();
+        if (!deployment.instanceName && deployment.packages.length === 0)
             {
                 await this.removeDeploymentFromData(deployment.guid);
-                continue
+                return;
             }
 
             let isInstalled = await this._goCurrentPsService.isInstalled(deployment.packages.map((e) => e.id), deployment.instanceName);
@@ -355,7 +367,7 @@ export class DeployService implements IWorkspaceService
             if (!isInstalled)
             {
                 await this.removeDeploymentFromData(deployment.guid);
-                continue
+                return;
             }
 
             let packages : PackageInfo[];
@@ -363,31 +375,21 @@ export class DeployService implements IWorkspaceService
             {
                 packages = await this.checkForUpdate(deployment);
                 if (packages.length === 0)
-                    continue;
-
-                updates.push({
-                    "packageGroupId": deployment.id,
-                    "packageGroupName": deployment.name,
-                    "instanceName": deployment.instanceName,
-                    "guid": deployment.guid,
-                    "packages": packages.map(p => { return {"id": p.Id, "version": p.Version}})
-                });
-
+                    return;
+                update.packageGroupId = deployment.id;
+                update.packageGroupName = deployment.name;
+                update.instanceName = deployment.instanceName;
+                update.guid = deployment.guid;
+                update.packages = packages.map(p => { return {"id": p.Id, "version": p.Version}});
             }
             catch (error)
             {
-                updates.push({
-                    "packageGroupId": deployment.id,
-                    "packageGroupName": deployment.name,
-                    "instanceName": deployment.instanceName,
-                    "error": error
-                });
+                update.packageGroupId = deployment.id;
+                update.packageGroupName = deployment.name;
+                update.instanceName = deployment.instanceName;
+                update.error = error;
             }
-
-            
-        }
-
-        return updates;
+            return update;
     }
 
     public async getDeployedInstances(): Promise<string[]>

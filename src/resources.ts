@@ -24,6 +24,7 @@ export default class Resources
     static launchJsonUpdatedWith = "Your launch.json was updated with instance %s";
 
     static areYourSureAboutRemove = 'Are you sure you want to remove "%s"?'
+    static managePackages = 'What do you want to do?'
 
     static dependenciesDownloadedReload = 'Dependencies downloaded, you may need to reload VS Code to successfully compile the extension.'
     static importServers = 'Do you want to import the package to a server?'
