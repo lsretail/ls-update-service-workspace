@@ -207,18 +207,18 @@ export class DeployService implements IWorkspaceService
             this.fireInstanceRemoved(deployment.instanceName);
     }
 
-    public async installPackage( 
+    public async updatePackage( 
         deployment: Deployment,
-    ) : Promise<DeploymentResult>
+    ) : Promise<Deployment>
     {
         let workspaceData = await this._workspaceData.getData();
 
-        let result: DeploymentResult = new DeploymentResult();
-        result.lastUpdated = [];
-        result.deployment = deployment;
-        workspaceData.deployments.push(result.deployment);
+        let deploymentFile = DataHelpers.getEntryByProperty(workspaceData.deployments, "guid", deployment.guid);
+        if (!deploymentFile)
+            return;
+        deploymentFile.id = deployment.id;
         await this._workspaceData.save();
-        return result;
+        return deploymentFile;
         }
 
     public async deployPackageGroup(

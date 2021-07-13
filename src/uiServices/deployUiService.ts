@@ -152,7 +152,8 @@ export class DeployUiService extends UiService
         else if (picked === Constants.buttonRemove)
             return await this.removedPicked(deploymentPayload);
         
-        return await this.updatePicked(deploymentPayload);  
+        await this.updatePicked(deploymentPayload);
+        return await this.checkForUpdates(deploymentPayload.deployment, deploymentPayload.deployService);
     }
 
     private async removedPicked(deploymentPayload: DeploymentPayload)
@@ -192,15 +193,10 @@ export class DeployUiService extends UiService
             return;
         }
 
-        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(activeWorkspaces);
-        if (!workspaceFolder)
-            return;
-
-       let variable = await this.showUpdateWithService(this._wsDeployServices.getService(workspaceFolder), deploymentPayload);
-       return variable;
+       return await this.showUpdateWithService(this._wsDeployServices.getService(deploymentPayload.workspaceFolder), deploymentPayload);
     }
 
-    private async showUpdateWithService(deployService: DeployService, deploymentPayload: DeploymentPayload): Promise<DeploymentResult>
+    private async showUpdateWithService(deployService: DeployService, deploymentPayload: DeploymentPayload): Promise<void>
     {
         let packageGroups = await deployService.getPackageGroupsResolved();
 
@@ -226,8 +222,13 @@ export class DeployUiService extends UiService
             return;
         
         deploymentPayload.deployment.id = selectedSet.payload.id;
-        await deployService.removeDeployment(deploymentPayload.deployment.guid);
-        return await deployService.installPackage(deploymentPayload.deployment);
+        let result = await deployService.updatePackage(deploymentPayload.deployment);
+        if (!result)
+        {
+            window.showErrorMessage("There was an error finding the chosen deployment.");
+            return;
+        }
+        window.showInformationMessage("The deployment was assigned to the group.")
 
     }
 
