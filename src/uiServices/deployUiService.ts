@@ -127,7 +127,7 @@ export class DeployUiService extends UiService
 
         if (!workspaces || workspaces.length === 0)
         {
-            window.showInformationMessage("There is no workspaces.")
+            window.showInformationMessage("No installs to manage.")
             return;
         }
 
@@ -136,7 +136,7 @@ export class DeployUiService extends UiService
         if (!deploymentPayload)
             return;
 
-        let choices = [Constants.buttonCheckUpdates, Constants.buttonRemove, Constants.buttonAssignedGroup]
+        let choices = [Constants.buttonAssignedGroup, Constants.buttonCheckUpdates, Constants.buttonRemove]
         
         let picked = await window.showQuickPick(choices, {
             placeHolder: util.format(Resources.managePackages)
@@ -152,8 +152,13 @@ export class DeployUiService extends UiService
         else if (picked === Constants.buttonRemove)
             return await this.removedPicked(deploymentPayload);
         
-        await this.updatePicked(deploymentPayload);
-        return await this.checkForUpdates(deploymentPayload.deployment, deploymentPayload.deployService);
+        if (await this.updatePicked(deploymentPayload))
+        {
+            if (await this.checkForUpdatesSilent(deploymentPayload.deployment, deploymentPayload.deployService))
+            {
+                window.showInformationMessage("There are updates available.")
+            }
+        }
     }
 
     private async removedPicked(deploymentPayload: DeploymentPayload)
@@ -182,21 +187,18 @@ export class DeployUiService extends UiService
         window.showInformationMessage(`Package(s) "${removedName}" removed.`);
     }
 
-    private async updatePicked(deploymentPayload: DeploymentPayload){
-        let activeWorkspaces = await this._wsDeployServices.getWorkspaces({
-            serviceFilter: async service => await service.hasPackageGroups(),
-            active: true
-        })
-        if (activeWorkspaces.length === 0)
+    private async updatePicked(deploymentPayload: DeploymentPayload): Promise<boolean>
+    {
+        if (this._wsDeployServices.getService(deploymentPayload.workspaceFolder).hasPackageGroups())
         {
-            window.showInformationMessage("Nothing to install.");
-            return;
+            window.showInformationMessage("There is no package groups on this workspace.");
+            return false;
         }
 
        return await this.showUpdateWithService(this._wsDeployServices.getService(deploymentPayload.workspaceFolder), deploymentPayload);
     }
 
-    private async showUpdateWithService(deployService: DeployService, deploymentPayload: DeploymentPayload): Promise<void>
+    private async showUpdateWithService(deployService: DeployService, deploymentPayload: DeploymentPayload): Promise<boolean>
     {
         let packageGroups = await deployService.getPackageGroupsResolved();
 
@@ -219,17 +221,17 @@ export class DeployUiService extends UiService
         options.placeHolder = "Select a packages to update"
         let selectedSet = await window.showQuickPick(picks, options);
         if (!selectedSet)
-            return;
+            return false;
         
         deploymentPayload.deployment.id = selectedSet.payload.id;
         let result = await deployService.updatePackage(deploymentPayload.deployment);
         if (!result)
         {
             window.showErrorMessage("There was an error finding the chosen deployment.");
-            return;
+            return false;
         }
-        window.showInformationMessage("The deployment was assigned to the group.")
-
+        window.showInformationMessage("The deployment was assign to the group.")
+        return true;
     }
 
     private async showDeployWithService(deployService: DeployService, workspaceFolder: WorkspaceFolder)
@@ -323,7 +325,7 @@ export class DeployUiService extends UiService
         }
     }
 
-    private async checkForUpdatesSilent(): Promise<boolean>
+    private async checkForUpdatesSilent(deployment?: Deployment, deployService?: DeployService): Promise<boolean>
     {
         let buttons: string[] = [Constants.buttonUpdate, Constants.buttonLater];
         let anyUpdates = false;

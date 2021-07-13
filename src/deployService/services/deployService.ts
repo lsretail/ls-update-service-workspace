@@ -219,7 +219,7 @@ export class DeployService implements IWorkspaceService
         deploymentFile.id = deployment.id;
         await this._workspaceData.save();
         return deploymentFile;
-        }
+    }
 
     public async deployPackageGroup(
         packageGroup: PackageGroup, 
