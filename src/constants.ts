@@ -30,6 +30,7 @@ export class Constants
     static buttonUpdate = "Update";
     static buttonLater = "Later";
     static buttonReloadWindow = "Reload Window"
+    static import = "Import"
     static buttonContinue = "Continue"
     static buttonCancel = "Cancel"
     static buttonYes = "Yes"
@@ -40,4 +41,10 @@ export class Constants
     static packageToolsUrl = "https://help.gocurrent.lsretail.com/docs/ls-central/package-tools/overview.html";
 
     static dummyFile = '\\file.txt';
+    static defaultPort = 16552;
+    static defaultHost = "localhost";
+
+    static errorForce = "Overwrite Package";
+    static packageAlreadyExists = "Package already exists:";
+
 }

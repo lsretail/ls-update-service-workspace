@@ -26,4 +26,7 @@ export default class Resources
     static areYourSureAboutRemove = 'Are you sure you want to remove "%s"?'
 
     static dependenciesDownloadedReload = 'Dependencies downloaded, you may need to reload VS Code to successfully compile the extension.'
+    static importServers = 'Do you want to import the package to a server?'
+
+    static errorMessageForce = 'Do you want to overwrite the existing package? You also can manually increment the package version.'
 }

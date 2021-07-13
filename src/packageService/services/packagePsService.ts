@@ -210,4 +210,24 @@ export class PackagePsService
             powerShell.dispose();
         }
     }
+
+    public async importPackage(path: string, server: string, port: number, force: boolean): Promise<void>
+    {
+        let param = {
+            path: `'${path}'`,
+            server: `'${server}'`,
+            port: `'${port}'`,
+            force: force
+        }
+
+        let powerShell = this._powerShell.getNewPowerShell();
+        try
+        {
+            await powerShell.executeCommandSafe("Import-Package", true, param);   
+        }
+        finally
+        {
+            powerShell.dispose();
+        }
+    }
 }

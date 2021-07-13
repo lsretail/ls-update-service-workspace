@@ -8,7 +8,6 @@ import { UiService } from "../extensionController";
 import { GoCurrentPsService } from "../goCurrentService/services/goCurrentPsService";
 import GitHelpers from "../helpers/gitHelpers";
 import { UiHelpers } from "../helpers/uiHelpers";
-import { Package, Server } from "../models/projectFile";
 import { PackagePsService } from "../packageService/services/packagePsService";
 import { PackageService } from "../packageService/services/packageService";
 import Resources from "../resources";
@@ -148,8 +147,7 @@ export class PackageUiService extends UiService
             outputChannel.clear();
             outputChannel.show();
             outputChannel.appendLine('Starting to compile and creating packages ...');
-
-            await window.withProgress({
+            let packagePath = await window.withProgress({
                 location: ProgressLocation.Notification,
                 title: "Compiling and creating package ..."
             }, async (progress, token) => {
@@ -212,6 +210,13 @@ export class PackageUiService extends UiService
 
             outputChannel.appendLine(`Package created: ${packagePath}.`);
             outputChannel.appendLine("Finished!");
+            window.showInformationMessage(Resources.importServers, Constants.import).then(async result => 
+                {
+                    if (result === Constants.import)
+                    {
+                        this.showImportToServer(packagePath,this._outputChannel,workspaceFolder);
+                    }
+                });
         }
         catch (e)
         {
@@ -255,6 +260,13 @@ export class PackageUiService extends UiService
 
             outputChannel.appendLine(`Package created: ${packagePath}.`)
             outputChannel.appendLine("Finished!");
+            window.showInformationMessage(Resources.importServers, Constants.import).then(async result => 
+                {
+                    if (result === Constants.import)
+                    {
+                        this.showImportToServer(packagePath,this._outputChannel,workspaceFolder);
+                    }
+                });
         }
         catch (e)
         {
@@ -324,5 +336,75 @@ export class PackageUiService extends UiService
 
         return false;
 
+    }
+
+    private async showImportToServer(path:string, outputChannel:OutputChannel,workspaceFolder: WorkspaceFolder)
+    {
+        let servers = (await this._wsWorkspaceFilesServices.getService(workspaceFolder).projectFile.getData()).servers;
+        let serverPickHost: string;
+        let serverPickPort = Constants.defaultPort;
+        if (!servers)
+        {
+            serverPickHost = Constants.defaultHost;
+        }
+        else
+        {
+            let serverPick = await UiHelpers.showServersPick(servers);
+            if (!serverPick)
+                return;
+            serverPickHost = serverPick.host;
+            if(serverPick.managementPort)
+                serverPickPort = serverPick.managementPort;
+        }
+        outputChannel.clear();
+        outputChannel.show();
+        outputChannel.appendLine('Importing package to server ...');
+        let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
+        await window.withProgress({
+            location: ProgressLocation.Notification,
+            title: "Importing server ..."
+        }, async (progress, token) => {
+            try
+            {
+                await packageService.importPackage(
+                    path,
+                    serverPickHost,
+                    serverPickPort,
+                    false
+                );
+                outputChannel.appendLine(`Package imported to server: ${serverPickHost}.`);
+                outputChannel.appendLine("Finished!");
+            }
+            catch (error)
+            {
+                //TODO in the future should filter through errorType
+                if (error.message.includes(Constants.packageAlreadyExists))
+                {
+                    window.showInformationMessage(error+ " " + Resources.errorMessageForce, Constants.errorForce).then(async result => 
+                    {
+                        if (result === Constants.errorForce)
+                        {
+                            await packageService.importPackage(
+                                path,
+                                serverPickHost,
+                                serverPickPort,
+                                true
+                            );
+                            outputChannel.appendLine(`Package imported to server: ${serverPickHost}.`);
+                            outputChannel.appendLine("Finished!");
+                        }
+                    });
+                }
+                else
+                {
+                    window.showErrorMessage(error.message);
+                    outputChannel.appendLine(`Package was not imported to server: ${serverPickHost}.`);
+                }
+
+            }
+            
+        });
+        
+        
     }
 }

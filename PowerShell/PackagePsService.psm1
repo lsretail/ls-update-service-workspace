@@ -184,3 +184,14 @@ function Invoke-ProjectBuild
     $Result = (Invoke-AlProjectBuild -ProjectDir $ProjectDirs -Verbose -Force).Path
     ConvertTo-Json $Result | Set-Content -Path $ResultFilePath
 }
+function Import-Package
+{
+    param(
+        [string] $Path,
+        [string] $Server,
+        [string] $Port,
+        [boolean] $Force
+    )
+
+    Import-GocsPackage -Path $Path -Server $Server -Port $Port -Force:$Force
+}

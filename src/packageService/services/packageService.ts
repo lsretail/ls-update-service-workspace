@@ -54,6 +54,10 @@ export class PackageService implements IWorkspaceService
     {
         return this._packagesPsService.newAlPackage(projectDir, await this.getAppFileName(true), this._projectFile.uri.fsPath, target, branchName);
     }
+    async importPackage(path: string, server: string, port: number, force: boolean): Promise<void>
+    {
+        return await this._packagesPsService.importPackage(path,server, port, force);
+    }
 
     async invokeAlCompileAndPackage(
         projectDir: string, 
@@ -61,7 +65,7 @@ export class PackageService implements IWorkspaceService
         branchName: string,
         skipPackages: string[],
         outputChannel: (message: string) => void
-    ): Promise<void>
+    ):Promise<string>
     {
         if (!this._alExtensionService.isInstalled)
             throw "AL Language extension not installed."
@@ -110,6 +114,7 @@ export class PackageService implements IWorkspaceService
             outputChannel("Creating package ...");
             let packagePath = await this.newAlPackage(projectDir, target, branchName);
             outputChannel(`Package created at "${packagePath}"`);
+            return packagePath;
         }
         finally
         {

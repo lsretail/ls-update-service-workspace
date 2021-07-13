@@ -198,6 +198,10 @@
                     "type": "integer",
                     "default": 16550
                 },
+                "managementPort": {
+                    "type": "integer",
+                    "minLength": 16550
+                },
                 "useSsl": {
                     "type": "boolean"
                 },
