@@ -19,6 +19,7 @@ import { BaseUiService } from "./BaseUiService";
 import { WorkspaceHelpers } from "../helpers/workspaceHelpers";
 import { Logger } from "../interfaces/logger";
 import { DeploymentPayload } from "../models/deploymentPayload";
+import { DeploymentResult } from "../models/deploymentResult";
 
 export class DeployUiService extends UiService
 {
@@ -126,7 +127,7 @@ export class DeployUiService extends UiService
 
         if (!workspaces || workspaces.length === 0)
         {
-            window.showInformationMessage("Nothing to remove.")
+            window.showInformationMessage("No installs to manage.")
             return;
         }
 
@@ -135,13 +136,7 @@ export class DeployUiService extends UiService
         if (!deploymentPayload)
             return;
 
-        let choices = [Constants.buttonCheckUpdates, Constants.buttonRemove]
-
-        let name = deploymentPayload.deployment.name;
-        if (!name)
-            name = deploymentPayload.deployment.instanceName;
-        else if (deploymentPayload.deployment.instanceName)
-            name += ` (${deploymentPayload.deployment.instanceName})`;
+        let choices = [Constants.buttonAssignedGroup, Constants.buttonCheckUpdates, Constants.buttonRemove]
         
         let picked = await window.showQuickPick(choices, {
             placeHolder: util.format(Resources.managePackages)
@@ -152,9 +147,24 @@ export class DeployUiService extends UiService
         }
 
         if (picked === Constants.buttonCheckUpdates)
-        {
             return await this.checkForUpdates(deploymentPayload.deployment, deploymentPayload.deployService);
-        }
+        
+        else if (picked === Constants.buttonRemove)
+            return await this.removedPicked(deploymentPayload);
+        
+        if (await this.updatePicked(deploymentPayload))
+            await this.checkForUpdatesSilentDeployment(deploymentPayload.deployment, deploymentPayload.deployService)
+        
+    }
+
+    private async removedPicked(deploymentPayload: DeploymentPayload)
+    {
+        let name = deploymentPayload.deployment.name;
+        if (!name)
+            name = deploymentPayload.deployment.instanceName;
+        else if (deploymentPayload.deployment.instanceName)
+            name += ` (${deploymentPayload.deployment.instanceName})`;
+
         let choicesRemove = [Constants.buttonYes, Constants.buttonNo]
         
         let pickedRemoved = await window.showQuickPick(choicesRemove, {
@@ -171,6 +181,53 @@ export class DeployUiService extends UiService
             return await deploymentPayload.deployService.removeDeployment(deploymentPayload.deployment.guid);
         });
         window.showInformationMessage(`Package(s) "${removedName}" removed.`);
+    }
+
+    private async updatePicked(deploymentPayload: DeploymentPayload): Promise<boolean>
+    {
+        if (!this._wsDeployServices.getService(deploymentPayload.workspaceFolder).hasPackageGroups())
+        {
+            window.showInformationMessage("There is no package groups on this workspace.");
+            return false;
+        }
+
+       return await this.showUpdateWithService(this._wsDeployServices.getService(deploymentPayload.workspaceFolder), deploymentPayload);
+    }
+
+    private async showUpdateWithService(deployService: DeployService, deploymentPayload: DeploymentPayload): Promise<boolean>
+    {
+        let packageGroups = await deployService.getPackageGroupsResolved();
+
+        let picks: QuickPickItemPayload<PackageGroup>[] = [];
+
+        for (let entry of packageGroups)
+        {
+            if (await deployService.canInstall(entry.id))
+            {
+                picks.push({
+                    "label": entry.name, 
+                    "description": entry.description, 
+                    "detail": entry.packages.filter(p => !p.onlyRestrictVersion).map(p => `${p.id}`).join(', '),
+                    "payload": entry
+                });
+            }
+        }
+
+        var options: vscode.QuickPickOptions = {};
+        options.placeHolder = "Select a packages to update"
+        let selectedSet = await window.showQuickPick(picks, options);
+        if (!selectedSet)
+            return false;
+        
+        deploymentPayload.deployment.id = selectedSet.payload.id;
+        let result = await deployService.updatePackage(deploymentPayload.deployment);
+        if (!result)
+        {
+            window.showErrorMessage("There was an error finding the chosen deployment.");
+            return false;
+        }
+        window.showInformationMessage("The deployment was assigned to the group.")
+        return true;
     }
 
     private async showDeployWithService(deployService: DeployService, workspaceFolder: WorkspaceFolder)

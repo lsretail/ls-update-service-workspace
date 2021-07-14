@@ -38,6 +38,7 @@ export class Constants
     static buttonNo = "No"
     static buttonRemove = "Remove";
     static buttonCheckUpdates = "Check for updates";
+    static buttonAssignedGroup = "Assign to group"
 
     static gocHelpUrl = "https://help.gocurrent.lsretail.com/";
     static gocServerUrl = "https://help.gocurrent.lsretail.com/docs/server/install.html";
