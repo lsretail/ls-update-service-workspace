@@ -153,12 +153,8 @@ export class DeployUiService extends UiService
             return await this.removedPicked(deploymentPayload);
         
         if (await this.updatePicked(deploymentPayload))
-        {
-            if (await this.checkForUpdatesSilent(deploymentPayload.deployment, deploymentPayload.deployService))
-            {
-                window.showInformationMessage("There are updates available.")
-            }
-        }
+            await this.checkForUpdatesSilentDeployment(deploymentPayload.deployment, deploymentPayload.deployService)
+        
     }
 
     private async removedPicked(deploymentPayload: DeploymentPayload)
@@ -189,7 +185,7 @@ export class DeployUiService extends UiService
 
     private async updatePicked(deploymentPayload: DeploymentPayload): Promise<boolean>
     {
-        if (this._wsDeployServices.getService(deploymentPayload.workspaceFolder).hasPackageGroups())
+        if (!this._wsDeployServices.getService(deploymentPayload.workspaceFolder).hasPackageGroups())
         {
             window.showInformationMessage("There is no package groups on this workspace.");
             return false;
@@ -230,7 +226,7 @@ export class DeployUiService extends UiService
             window.showErrorMessage("There was an error finding the chosen deployment.");
             return false;
         }
-        window.showInformationMessage("The deployment was assign to the group.")
+        window.showInformationMessage("The deployment was assigned to the group.")
         return true;
     }
 
@@ -325,7 +321,7 @@ export class DeployUiService extends UiService
         }
     }
 
-    private async checkForUpdatesSilent(deployment?: Deployment, deployService?: DeployService): Promise<boolean>
+    private async checkForUpdatesSilent(): Promise<boolean>
     {
         let buttons: string[] = [Constants.buttonUpdate, Constants.buttonLater];
         let anyUpdates = false;
