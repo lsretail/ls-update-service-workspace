@@ -218,8 +218,17 @@ export class DeployUiService extends UiService
         let selectedSet = await window.showQuickPick(picks, options);
         if (!selectedSet)
             return false;
-        
+
+        let targets = await deployService.getTargets(selectedSet.payload.id, true);
+
+        let selectedTarget = await UiHelpers.showTargetPicks(targets)
+
+        if (!selectedTarget)
+            return;
+
         deploymentPayload.deployment.id = selectedSet.payload.id;
+        deploymentPayload.deployment.target = selectedTarget;
+
         let result = await deployService.updatePackage(deploymentPayload.deployment);
         if (!result)
         {

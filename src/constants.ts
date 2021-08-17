@@ -50,4 +50,5 @@ export class Constants
     static errorForce = "Overwrite Package";
     static packageAlreadyExists = "Package already exists:";
 
+    static targetDefault = "default";
 }

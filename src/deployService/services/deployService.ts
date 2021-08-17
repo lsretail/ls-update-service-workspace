@@ -217,6 +217,7 @@ export class DeployService implements IWorkspaceService
         if (!deploymentFile)
             return;
         deploymentFile.id = deployment.id;
+        deploymentFile.target = deployment.target;
         await this._workspaceData.save();
         return deploymentFile;
     }

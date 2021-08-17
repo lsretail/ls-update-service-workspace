@@ -1,5 +1,6 @@
 import { InputBoxOptions, QuickPick, QuickPickItem, QuickPickOptions, window, workspace, WorkspaceFolder } from "vscode";
 import { resolveCliPathFromVSCodeExecutablePath } from "vscode-test";
+import { Constants } from "../constants";
 import Controller from "../controller";
 import { DataHelpers } from "../dataHelpers";
 import { DeployPsService } from "../deployService/services/deployPsService";
@@ -71,7 +72,7 @@ export class UiHelpers
     public static async showTargetPicks(targets: string[]): Promise<string>
     {
         if (!targets || targets.length === 0)
-            return "default";
+            return Constants.targetDefault;
 
         if (targets.length === 1)
             return targets[0];
