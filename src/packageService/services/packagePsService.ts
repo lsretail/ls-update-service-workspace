@@ -1,8 +1,10 @@
 import { PowerShell } from "../../PowerShell";
 import { GoCurrentVersion } from "../../interfaces/goCurrentVersion";
 import { ProjectFile } from "../../models/projectFile";
-import Resources from "../../resources";
+import { fsHelpers } from "../../fsHelpers";
+import { OutputChannel } from "vscode";
 import { Constants } from "../../constants";
+import path = require("path");
 
 export class PackagePsService
 {
@@ -111,6 +113,37 @@ export class PackagePsService
         finally
         {
             powerShell.dispose();
+        }
+    }
+    public async invokeAlProjectBuild(projectDirs: string[], outputChannel: OutputChannel): Promise<string>
+    {
+        let tempAux = await this.newTempDir()
+
+        let tempFile = path.join(tempAux, Constants.dummyFile);
+
+        let param = {
+            projectDirs: projectDirs,
+            resultFilePath: tempFile
+        };
+        
+        let powerShell = this._powerShell.getNewPowerShell(outputChannel);
+        try
+        {
+            await powerShell.executeCommandSafe("Invoke-ProjectBuild", false, param);
+            
+            return await fsHelpers.readJson(tempFile);
+        }
+        finally
+        {
+            try
+            {
+                powerShell.dispose();
+                fsHelpers.rmDir(tempAux, true);
+            }
+            catch (e)
+            {
+                // ignore
+            } 
         }
     }
 

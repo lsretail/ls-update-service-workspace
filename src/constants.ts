@@ -44,6 +44,7 @@ export class Constants
     static gocServerUrl = "https://help.gocurrent.lsretail.com/docs/server/install.html";
     static packageToolsUrl = "https://help.gocurrent.lsretail.com/docs/ls-central/package-tools/overview.html";
 
+    static dummyFile = '\\file.txt';
     static defaultPort = 16552;
     static defaultHost = "localhost";
 

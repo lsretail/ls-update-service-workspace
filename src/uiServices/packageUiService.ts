@@ -134,42 +134,31 @@ export class PackageUiService extends UiService
         var outputChannel = this._outputChannel;
         try
         {
-            let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
-            if (!workspaceFolder)
+            let workspaceFolders = await UiHelpers.showWorkspaceFolderPicks(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
+            if (!workspaceFolders || workspaceFolders.length === 0)
                 return;
-
-            if (!await this.ensureGoCurrentServer(workspaceFolder))
-                return;
-    
-            let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
-
-            let targets = await packageService.getTargets();
-            let target = await UiHelpers.showTargetPicks(targets);
-        
+            let projectDirs : string[] = [];
+            if (!await this.ensureGoCurrentServer(workspaceFolders[0]))
+                    return;
+            for (let workspaceFolder of workspaceFolders)   
+            {
+                projectDirs.push(workspaceFolder.uri.fsPath);
+            } 
             outputChannel.clear();
             outputChannel.show();
-            outputChannel.appendLine('Starting to compile and creating a package ...');
-
+            outputChannel.appendLine('Starting to compile and creating packages ...');
             let packagePath = await window.withProgress({
                 location: ProgressLocation.Notification,
                 title: "Compiling and creating package ..."
             }, async (progress, token) => {
-                return await packageService.invokeAlCompileAndPackage(
-                    workspaceFolder.uri.fsPath, 
-                    target, 
-                    GitHelpers.getBranchName(workspaceFolder.uri.fsPath),
-                    [],
-                    message => outputChannel.appendLine(message)
+                let output = await this._packagePsService.invokeAlProjectBuild(
+                    projectDirs,
+                    outputChannel
                 );
+                outputChannel.appendLine(output);
+                outputChannel.appendLine("Finished!");
             });
-            outputChannel.appendLine("Finished!");
-            window.showInformationMessage(Resources.importServers, Constants.import).then(async result => 
-                {
-                    if (result === Constants.import)
-                    {
-                        this.showImportToServer(packagePath,this._outputChannel,workspaceFolder);
-                    }
-                });
+            
         }
         catch (e)
         {
