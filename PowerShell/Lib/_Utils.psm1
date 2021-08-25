@@ -180,10 +180,11 @@ function Get-AppFromPackage
         [Parameter(Mandatory)]
         $Package,
         [Parameter(Mandatory)]
-        $OutputDir
+        $OutputDir,
+        $Server
     )
 
-    $File = ($Package | Get-GocFile | Where-Object { $_.FilePath.ToLower().EndsWith('.app')} | Select-Object -First 1)
+    $File = ($Package | Get-GocFile -Server $Server | Where-Object { $_.FilePath.ToLower().EndsWith('.app')} | Select-Object -First 1)
 
     if (!$File)
     {

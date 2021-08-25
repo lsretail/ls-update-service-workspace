@@ -1,3 +1,4 @@
+import { constants } from "buffer";
 import { InputBoxOptions, QuickPick, QuickPickItem, QuickPickOptions, window, workspace, WorkspaceFolder } from "vscode";
 import { resolveCliPathFromVSCodeExecutablePath } from "vscode-test";
 import { Constants } from "../constants";
@@ -90,14 +91,21 @@ export class UiHelpers
             return;
         return selected.label;
     }
+
     public static async showServersPick(servers: Server[], placeHolder = "Select server"): Promise<Server>
     {
         let picks: QuickPickItem[] = [];
         if (!servers)
             return;
+
         for (let server of servers)
         {
-            picks.push({"label": server.host, "description": String(server.port)});
+            let entry: QuickPickItem = {"label": server.host}
+            if (server.managementPort)
+                entry.description = String(server.managementPort);
+            else
+                entry.description = String(Constants.defaultManagementPort)
+            picks.push(entry);
         }
 
         if (picks.length === 0)
@@ -116,34 +124,7 @@ export class UiHelpers
             return;
 
         return DataHelpers.getEntryByProperty<Server>(servers, "host", pick.label)
-
     }
-
-    /*async showInstancePicks(instances: string[], exludeInstances: string[] = [], placeholder: string = "Select an instance") : Promise<string[]>
-    {
-        let picks: QuickPickItemPayload<string[]>[] = [];
-
-        for (let entry of instances)
-        {
-            let instanceName = entry[0].InstanceName;
-
-            if (exludeInstances.includes(instanceName))
-                continue;
-
-            let description = entry.filter(p => p.Selected).map(p => `${p.Id}`).join(', ');
-            picks.push({
-                "label": instanceName,
-                "description": description,
-                "payload": entry
-            });
-        }
-        var options: QuickPickOptions = {};
-        options.placeHolder = placeholder
-        let selected = await window.showQuickPick(picks, options);
-        if (!selected)
-            return;
-        return selected.payload;
-    }*/
 
     public static async getOrShowInstanceNamePick(suggestedName: string, goCurrentPsService: GoCurrentPsService) : Promise<string>
     {
@@ -200,5 +181,13 @@ export class UiHelpers
                 window.showErrorMessage(`Unexpected error occured: ${error}.`);
             }
         }
+    }
+
+    public static schedule(ms: number, action: () => void): Promise<void>
+    {
+        return new Promise( resolve => setTimeout(() => {
+            action();
+            resolve()
+        }, ms) );
     }
 }

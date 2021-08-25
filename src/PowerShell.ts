@@ -48,6 +48,16 @@ export class PowerShell
                     this._shell = null;
             }
         );
+
+        this._shell.on('output', data => {
+            if (this._outputChannel)
+                this._outputChannel.append(data);
+        })
+
+        this._shell.on('err', data => {
+            if (this._outputChannel && data.message)
+                this._outputChannel.append(this.removeErrorJson(data.message));
+        })
         
         for (var path of this._modulePaths)
         {
@@ -197,7 +207,6 @@ export class PowerShell
                 this._inExecution++;
                 this._promiseOrder.then(fun, fun);
             });
-            this.outputChannel();
             return this._promiseOrder;
         }
         else
@@ -213,16 +222,8 @@ export class PowerShell
                 this._inExecution--;
                 throw argument;
             });
-            this.outputChannel();
             return this._promiseOrder;
         }
-    }
-    private outputChannel()
-    {
-        this._shell.on('output', data => {
-            if (this._outputChannel)
-                this._outputChannel.append(data);
-        })
     }
 
     private processError(error: any)
@@ -249,6 +250,12 @@ export class PowerShell
         }
         powerShellError.rawError = error;
         throw powerShellError;
+    }
+
+    private removeErrorJson(message: string)
+    {
+        let errorStart = '!!!'
+        return message.split(errorStart)[0]
     }
 
     private log(message: any)

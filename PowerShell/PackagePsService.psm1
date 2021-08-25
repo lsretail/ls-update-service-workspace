@@ -138,7 +138,7 @@ function Get-Dependencies
         SkipPackageId = $SkipPackageId
     }
 
-    Get-AlProjectDependencies @Arguments -Verbose
+    Get-AlProjectDependencies @Arguments -Verbose -Force
 }
 
 function New-TempDir
@@ -174,16 +174,21 @@ function Invoke-Compile
 
     Write-Host "App created at `"$AppPath`"."
 }
+
 function Invoke-ProjectBuild
 {
     param(
         [string[]] $ProjectDirs,
-        [string] $ResultFilePath
+        [string] $ResultFilePath,
+        [string] $CompilerPath,
+        [string] $BranchName,
+        [string] $Target
     )
     Write-Host "Compiling and creating all the packages."
-    $Result = (Invoke-AlProjectBuild -ProjectDir $ProjectDirs -Verbose -Force).Path
-    ConvertTo-Json $Result | Set-Content -Path $ResultFilePath
+    $Result = (Invoke-AlProjectBuild -ProjectDir $ProjectDirs -CompilerPath $CompilerPath -BranchName $BranchName -Target $Target -Verbose -Force -UseDependencyTempDir).Path
+    ConvertTo-Json @($Result) | Set-Content -Path $ResultFilePath
 }
+
 function Import-Package
 {
     param(

@@ -61,7 +61,7 @@ export class Server
 {
     guid: string;
     host: string;
-    port: number;
+    port?: number;
     managementPort?: number;
     useSsl: boolean;
     identity: string;

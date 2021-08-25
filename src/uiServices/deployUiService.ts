@@ -87,7 +87,7 @@ export class DeployUiService extends UiService
         else
         {
             if (e.workspaceChanges.added.length > 0)
-                this.checkForUpdatesSilent();
+                UiHelpers.schedule(5000, () => {this.checkForUpdatesSilent()});
         }
     }
 
@@ -235,7 +235,7 @@ export class DeployUiService extends UiService
             window.showErrorMessage("There was an error finding the chosen deployment.");
             return false;
         }
-        window.showInformationMessage("The deployment was assigned to the group.")
+        window.showInformationMessage("The install was assigned to the group.")
         return true;
     }
 
@@ -350,8 +350,6 @@ export class DeployUiService extends UiService
 
     private async checkForUpdatesSilentDeployment(deployment: Deployment, deployService: DeployService): Promise<boolean>
     {
-        let buttons: string[] = [Constants.buttonUpdate, Constants.buttonLater];
-        //commands.executeCommand("setContext", Constants.goCurrentDeployUpdatesAvailable, false);
         let anyUpdates = false;
         
         deployService.UpdatesAvailable = new Array<UpdateAvailable>();

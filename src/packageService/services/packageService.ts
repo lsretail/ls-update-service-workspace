@@ -56,7 +56,7 @@ export class PackageService implements IWorkspaceService
     }
     async importPackage(path: string, server: string, port: number, force: boolean): Promise<void>
     {
-        return await this._packagesPsService.importPackage(path,server, port, force);
+        return await this._packagesPsService.importPackage(path, server, port, force);
     }
 
     async invokeAlCompileAndPackage(
@@ -65,7 +65,7 @@ export class PackageService implements IWorkspaceService
         branchName: string,
         skipPackages: string[],
         outputChannel: (message: string) => void
-    ):Promise<string>
+    ) : Promise<string>
     {
         if (!this._alExtensionService.isInstalled)
             throw "AL Language extension not installed."

@@ -98,13 +98,14 @@ export async function activate(context: vscode.ExtensionContext)
         )
     });
 
+    let alExtensionService = new AlExtensionService();
     let packagePsService = new PackagePsService(powerShell, context.asAbsolutePath("PowerShell\\PackagePsService.psm1"));
 
     let wsPackageServices = workspaceService.register(PackageService, workspaceEntry => {
         let filesService = wsWorkspaceFilesServices.getService(workspaceEntry.workspaceFolder)
         return new PackageService(
             packagePsService,
-            new AlExtensionService(),
+            alExtensionService,
             filesService.projectFile,
             filesService.appJson
         );
@@ -146,6 +147,7 @@ export async function activate(context: vscode.ExtensionContext)
         packagePsService,
         goCurrentPsService,
         wsWorkspaceFilesServices,
+        alExtensionService,
         outputChannel
     )
     services.push(packageUiService);

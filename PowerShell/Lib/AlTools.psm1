@@ -12,10 +12,11 @@ function Get-AlDependencies
         $Dependencies,
         [Parameter(Mandatory)]
         $OutputDir,
+        $Server,
         [switch] $Force
     )
     $Verbose = [bool]$PSBoundParameters["Verbose"]
-    Get-AlDependenciesInternal -Dependencies $Dependencies -OutputDir $OutputDir -Force:$Force -SkipPackages ([System.Collections.ArrayList]::new()) -Verbose:$Verbose
+    Get-AlDependenciesInternal -Dependencies $Dependencies -OutputDir $OutputDir -Force:$Force -SkipPackages ([System.Collections.ArrayList]::new()) -Verbose:$Verbose -Server $Server
 }
 
 function Get-AlDependenciesInternal
@@ -26,6 +27,7 @@ function Get-AlDependenciesInternal
         [Parameter(Mandatory)]
         $OutputDir,
         [System.Collections.ArrayList] $SkipPackages,
+        $Server,
         [switch] $Force
     )
 
@@ -53,7 +55,7 @@ function Get-AlDependenciesInternal
             {
                 continue
             }
-            $AppPath = Get-AppFromPackage -Package $Package -OutputDir $TempDir -Verbose:$Verbose
+            $AppPath = Get-AppFromPackage -Package $Package -OutputDir $TempDir -Verbose:$Verbose -Server $Server
             if (!$AppPath)
             {
                 continue
@@ -84,9 +86,13 @@ function Get-AlDependenciesInternal
                     $FileName = [IO.Path]::GetFileNameWithoutExtension($FileName)
                     $FileName = "$($FileName)_$($Version).app"
                 }
-                
             }
-            Move-Item $AppPath -Destination (Join-Path $OutputDir $FileName) -Force:$Force
+            $DestinationPath = (Join-Path $OutputDir $FileName)
+            if ($Force -and (Test-Path $DestinationPath))
+            {
+                Remove-Item -Path $DestinationPath -Force
+            }
+            Move-Item $AppPath -Destination $DestinationPath -Force:$Force
         }
     }
     finally
@@ -102,7 +108,7 @@ function Get-AlDependenciesInternal
     }
     if ($PropagateDependencies)
     {
-        Get-AlDependenciesInternal -Dependencies $PropagateDependencies -OutputDir $OutputDir -Force:$Force -Verbose:$Verbose -SkipPackages $SkipPackages
+        Get-AlDependenciesInternal -Dependencies $PropagateDependencies -OutputDir $OutputDir -Force:$Force -Verbose:$Verbose -SkipPackages $SkipPackages -Server $Server
     }
 }
 
@@ -113,6 +119,7 @@ function Get-AlAddinDependencies
         $Dependencies,
         [Parameter(Mandatory = $true)]
         $OutputDir,
+        $Server,
         [switch] $IncludeServer,
         [switch] $Force
     )
@@ -120,10 +127,14 @@ function Get-AlAddinDependencies
     
     $Deps = ConvertTo-HashtableList $Dependencies
 
-    $Resolved = @($Deps | Get-GocUpdates | Where-Object { $PackageIds.Contains($_.Id) -or ($IncludeServer -and $_.Id -eq 'bc-server')})
+    $Resolved = @($Deps | Get-GocUpdates -Server $Server | Where-Object { $PackageIds.Contains($_.Id) -or ($IncludeServer -and $_.Id -eq 'bc-server')})
 
     $TempDir = Join-Path $OutputDir 'Temp'
-    $GatherDir = Join-Path $TempDir '.gather'
+
+    if (Test-Path $TempDir)
+    {
+        Remove-Item $TempDir -Recurse -Force
+    }
 
     foreach ($Package in $Resolved)
     {
@@ -148,9 +159,23 @@ function Get-AlAddinDependencies
         }
 
         Write-Verbose "  -> $($Package.Id) v$($Package.version)..."
-        $Package | Get-GocFile -Download -OutputDir $TempDir
+        $Package | Get-GocFile -Download -OutputDir $TempDir -Server $Server
 
-        $Dir = [System.IO.Path]::Combine($GatherDir, $Package.Id)
+        $Dir = [System.IO.Path]::Combine($OutputDir, $Package.Id)
+
+        if (Test-Path $Dir)
+        {
+            if ($Force)
+            {
+                Remove-Item $Dir -Recurse -Force
+            }
+            else
+            {
+                Write-Error "`"$Dir`" already exists."
+                return
+            }
+        }
+
         [System.IO.Directory]::CreateDirectory($Dir) | Out-Null
 
         if ($IsBcServer)
@@ -159,15 +184,11 @@ function Get-AlAddinDependencies
         }
         else
         {
-            Move-Item -Path ([System.IO.Path]::Combine($TempDir, $Package.Id, 'Addin', '*')) -Destination $Dir | Out-Null    
+            Move-Item -Path ([System.IO.Path]::Combine($TempDir, $Package.Id, 'Addin', '*')) -Destination $Dir | Out-Null
         }
         
         Get-ChildItem -Path $Dir -Filter '*.txt' -Recurse | Remove-Item
         Get-ChildItem -Path $Dir -Filter '*.xml' -Recurse | Remove-Item
-    }
-    if (Test-Path $GatherDir)
-    {
-        Move-Item -Path (Join-Path $GatherDir '*') -Destination $OutputDir | Out-Null
     }
 
     if (Test-Path $TempDir)
@@ -183,6 +204,7 @@ function Get-AlDevDependencies
         $Dependencies,
         [Parameter(Mandatory)]
         $ProjectDir,
+        $Server,
         $TempDir
     )
 
@@ -190,7 +212,7 @@ function Get-AlDevDependencies
     
     $Deps = ConvertTo-HashtableList $Dependencies
 
-    $Resolved = @($Deps | Get-GocUpdates | Where-Object { $PackageIds.Contains($_.Id)})
+    $Resolved = @($Deps | Get-GocUpdates -Server $Server | Where-Object { $PackageIds.Contains($_.Id)})
 
     if (!$TempDir)
     {
@@ -203,7 +225,7 @@ function Get-AlDevDependencies
 
     foreach ($Package in $Resolved)
     {
-        $Files = $Package | Get-GocFile | Where-Object { $_.FilePath -ieq $ScriptFileName }
+        $Files = $Package | Get-GocFile -Server $Server | Where-Object { $_.FilePath -ieq $ScriptFileName }
 
         if (!$Files)
         {
@@ -211,7 +233,7 @@ function Get-AlDevDependencies
         }
 
         Write-Verbose "  -> $($Package.Id) v$($Package.version)..."
-        $Package | Get-GocFile -Download -OutputDir $TempDir
+        $Package | Get-GocFile -Download -OutputDir $TempDir -Server $Server
 
         $PackageDir = [System.IO.Path]::Combine($TempDir, $Package.Id)
 
@@ -231,7 +253,7 @@ function Invoke-AlCompiler
         [Parameter(Mandatory = $true)]
         $OutputDir,
         $AlPackagesDir = $null,
-        [Array]$AssemblyDir = $null
+        [Array] $AssemblyDir = $null
     )
 
     $AppJsonPath = Join-Path $ProjectDir 'app.json'
@@ -251,6 +273,7 @@ function Invoke-AlCompiler
 
     if ($AssemblyDir)
     {
+        $AssemblyDir = @($AssemblyDir | Where-Object { Test-Path $_})
         $Joined = [string]::Join(',', $AssemblyDir)
         $Arguments += "/assemblyprobingpaths:`"$Joined`""
     }
@@ -278,16 +301,17 @@ function Invoke-AlCompiler
 function Get-AlCompiler
 {
     param(
-        $InstanceName = 'AlCompiler'
+        $InstanceName = 'AlCompiler',
+        $Server
     )
 
     $PackageId = 'bc-al-compiler'
 
-    $Updates = Get-GocUpdates -Id $PackageId -InstanceName $InstanceName
+    $Updates = Get-GocUpdates -Id $PackageId -InstanceName $InstanceName -Server $Server
 
     if ($Updates)
     {
-        Install-GocPackage -Id $PackageId -InstanceName $InstanceName -UpdateInstance | Out-Null
+        Install-GocPackage -Id $PackageId -InstanceName $InstanceName -UpdateInstance -Server $Server | Out-Null
     }
 
     $InstalledPackage = Get-GocInstalledPackage -InstanceName $InstanceName -Id $PackageId
@@ -379,7 +403,10 @@ function Get-AlProjectDependencies
         $PackageCacheDir,
         $AssemblyProbingDir,
         [Array] $CompileModifiers,
-        [string[]] $SkipPackageId = @()
+        [string[]] $SkipPackageId = @(),
+        $Server,
+        [switch] $ClearDirs,
+        [switch] $Force
     )
 
     $Verbose = [bool]$PSBoundParameters["Verbose"]
@@ -409,8 +436,11 @@ function Get-AlProjectDependencies
 
     $Dependencies = $DependenciesGroup.Packages
     
-    Remove-IfExists -Path $AssemblyProbingDir -Recurse -Force
-    Remove-IfExists -Path (Join-Path $PackageCacheDir '*') -Recurse -Force
+    if ($ClearDirs)
+    {
+        Remove-IfExists -Path $AssemblyProbingDir -Recurse -Force
+        Remove-IfExists -Path (Join-Path $PackageCacheDir '*') -Recurse -Force
+    }
 
     Write-Verbose "Dependencies for package:"
     $Dependencies | Format-Table -AutoSize | Out-String | Write-Verbose
@@ -443,13 +473,13 @@ function Get-AlProjectDependencies
     }
 
     Write-Verbose 'Downloading dependencies for app...'
-    Get-AlDependencies -Dependencies $ModifiedDependencies -OutputDir $PackageCacheDir -Verbose:$Verbose
+    Get-AlDependencies -Dependencies $ModifiedDependencies -OutputDir $PackageCacheDir -Verbose:$Verbose -Force:$Force -Server $Server
     
     Write-Verbose 'Downloading assemblies for app...'
-    Get-AlAddinDependencies -Dependencies $ModifiedDependencies -OutputDir $AssemblyProbingDir -IncludeServer -Verbose:$Verbose
+    Get-AlAddinDependencies -Dependencies $ModifiedDependencies -OutputDir $AssemblyProbingDir -IncludeServer -Verbose:$Verbose -Force:$Force -Server $Server
 
     Write-Verbose 'Downloading dev dependencies for app...'
-    Get-AlDevDependencies -Dependencies $ModifiedDependencies -ProjectDir $ProjectDir -Verbose:$Verbose
+    Get-AlDevDependencies -Dependencies $ModifiedDependencies -ProjectDir $ProjectDir -Verbose:$Verbose -Server $Server
 }
 
 function Invoke-AlProjectCompile
@@ -473,6 +503,7 @@ function Invoke-AlProjectCompile
     {
         $AddinDir += $NetPackagesDir
     }
+
     Write-Verbose 'Compiling app...'
 
     $Arguments = @{
@@ -493,10 +524,17 @@ function Invoke-ProjectBuild
         [Parameter(Mandatory)]
         [hashtable] $Projects,
         [string] $CompilerPath,
-        [switch] $Force
+        $Server,
+        [switch] $Force,
+        $TempDirBase
     )
     $verbose = [bool]$PSBoundParameters["Verbose"]
     Write-Verbose "Building: `"$($Projects[$AppId].ProjectDir)`" `"$AppId`"."
+
+    if ($Projects[$AppId].Package)
+    {
+        return
+    }
 
     $Project = $Projects[$AppId]
 
@@ -513,7 +551,7 @@ function Invoke-ProjectBuild
         if (!$Projects[$Dependency.id].AppPath)
         {
             Write-Verbose "Need to compile dependency `"$($Dependency.id)`" first."
-            Invoke-ProjectBuild -AppId $Dependency.id -Projects $Projects -CompilerPath $CompilerPath -Verbose:$Verbose -Force:$Force
+            Invoke-ProjectBuild -AppId $Dependency.id -Projects $Projects -CompilerPath $CompilerPath -Verbose:$Verbose -Force:$Force -TempDirBase $TempDirBase -Server $Server
             Write-Verbose "Continuing with `"$AppId`"."
         }
 
@@ -544,18 +582,73 @@ function Invoke-ProjectBuild
         ProjectDir = $Project.ProjectDir
     }
     
+    $AlPackagesDir = $null
+    $NetPackagesDir = $null
+    if ($TempDirBase)
+    {
+        $ProjectDirName = [System.IO.Path]::GetFileName($Project.ProjectDir)
+        $ProjectTempDir = Join-Path $TempDirBase $ProjectDirName
+        $AlPackagesDir = Join-Path $ProjectTempDir '.alpackages'
+        $NetPackagesDir = Join-Path $ProjectTempDir '.netpackages'
+    }
+
+    if (!$CompilerPath)
+    {
+        $CompilerPath = Get-AlCompiler -Server $Server
+    }
+
+    $AssemblyDir = @("C:\WINDOWS\Microsoft.NET\assembly")
+    if ($NetPackagesDir)
+    {
+        $AssemblyDir += $NetPackagesDir
+    }
+    else
+    {
+        $AssemblyDir += (Join-Path $Projects[$AppId].ProjectDir '.netpackages')
+    }
+
     foreach ($CompileModifiers in $AllCompileModifiers)
     {
-        Get-AlProjectDependencies @Arguments -CompileModifiers $CompileModifiers -SkipPackageId $DependencyPackageId -Verbose:$verbose
+        Get-AlProjectDependencies @Arguments `
+            -CompileModifiers $CompileModifiers `
+            -SkipPackageId $DependencyPackageId `
+            -PackageCacheDir $AlPackagesDir `
+            -AssemblyProbingDir $NetPackagesDir `
+            -Server $Server `
+            -Verbose:$verbose `
+            -ClearDirs `
+            -Force
 
         if ($DependencyApps)
         {
-            $DestDir = (Join-Path $Projects[$AppId].ProjectDir '.alpackages')
+            # Copy any dependencies that are included in this build.
+            if ($AlPackagesDir)
+            {
+                $DestDir = $AlPackagesDir
+            }
+            else
+            {
+                $DestDir = (Join-Path $Projects[$AppId].ProjectDir '.alpackages')    
+            }
             [IO.Directory]::CreateDirectory($DestDir) | Out-Null
             Copy-Item -Path $DependencyApps -Destination $DestDir
         }
 
-        $Projects[$AppId].AppPath = Invoke-AlProjectCompile -ProjectDir $Projects[$AppId].ProjectDir -Verbose:$verbose
+        $CompileArguments = @{
+            ProjectDir = $Projects[$AppId].ProjectDir
+            CompilerPath = $CompilerPath
+            OutputDir = $Projects[$AppId].ProjectDir
+            AssemblyDir = $AssemblyDir
+            AlPackagesDir = $AlPackagesDir
+            Verbose = $Verbose
+        }
+        
+        $Projects[$AppId].AppPath = Invoke-AlCompiler @CompileArguments
+    }
+
+    if ($ProjectTempDir -and (Test-Path $ProjectTempDir))
+    {
+        Remove-Item $ProjectTempDir -Force -Recurse
     }
 
     $Arguments += @{
@@ -614,7 +707,9 @@ function Invoke-AlProjectBuild
         [Parameter(ValueFromPipelineByPropertyName)]
         [string] $OutputDir,
         $CompilerPath,
-        [switch] $Force
+        $Server,
+        [switch] $Force,
+        [switch] $UseDependencyTempDir
     )
     begin
     {
@@ -643,13 +738,21 @@ function Invoke-AlProjectBuild
     }
     end
     {
+        if ($UseDependencyTempDir)
+        {
+            $TempDirBase = Join-Path $env:TEMP ([System.IO.Path]::GetRandomFileName())
+        }
         $verbose = [bool]$PSBoundParameters["Verbose"]
         foreach ($AppId in $Projects.Keys)
         {
             if (!$Projects.AppPath)
             {
-                Invoke-ProjectBuild -AppId $AppId -Projects $Projects -CompilerPath $CompilerPath -Force:$Force -Verbose:$Verbose
+                Invoke-ProjectBuild -AppId $AppId -Projects $Projects -CompilerPath $CompilerPath -Force:$Force -Verbose:$Verbose -TempDirBase $TempDirBase -Server $Server
             }
+        }
+        if ($UseDependencyTempDir -and (Test-Path $TempDirBase))
+        {
+            Remove-Item $TempDirBase -Force -Recurse
         }
     }
 }

@@ -115,7 +115,14 @@ export class PackagePsService
             powerShell.dispose();
         }
     }
-    public async invokeAlProjectBuild(projectDirs: string[], outputChannel: OutputChannel): Promise<string>
+
+    public async invokeAlProjectBuild(
+        projectDirs: string[], 
+        compilerPath: string, 
+        branchName: string,
+        target: string,
+        outputChannel: OutputChannel
+    ): Promise<string[]>
     {
         let tempAux = await this.newTempDir()
 
@@ -123,7 +130,10 @@ export class PackagePsService
 
         let param = {
             projectDirs: projectDirs,
-            resultFilePath: tempFile
+            resultFilePath: tempFile,
+            compilerPath: compilerPath,
+            branchName: branchName,
+            target: target
         };
         
         let powerShell = this._powerShell.getNewPowerShell(outputChannel);

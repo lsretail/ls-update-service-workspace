@@ -16,6 +16,9 @@ import { WorkspaceFilesService } from "../services/workspaceFilesService";
 import { InstallHelpers } from "../helpers/installHelpers";
 import { Logger } from "../interfaces/logger";
 import { WorkspaceHelpers } from "../helpers/workspaceHelpers";
+import { AlExtensionService } from "../packageService/services/alExtensionService";
+import { Server } from "../models/projectFile";
+import path = require("path");
 
 export class PackageUiService extends UiService
 {
@@ -26,6 +29,7 @@ export class PackageUiService extends UiService
     private _packagePsService: PackagePsService;
     private _goCurrentPsService: GoCurrentPsService;
     private _wsWorkspaceFilesServices: WorkspaceServiceProvider<WorkspaceFilesService>;
+    private _alExtensionService: AlExtensionService
     
     constructor(
         context: ExtensionContext, 
@@ -36,6 +40,7 @@ export class PackageUiService extends UiService
         packagePsService: PackagePsService,
         goCurrentPsService: GoCurrentPsService,
         wsWorkspaceFilesServices: WorkspaceServiceProvider<WorkspaceFilesService>,
+        alExtensionService: AlExtensionService,
         outputChannel: OutputChannel
     )
     {
@@ -47,6 +52,7 @@ export class PackageUiService extends UiService
         this._packagePsService = packagePsService;
         this._goCurrentPsService = goCurrentPsService;
         this._wsWorkspaceFilesServices = wsWorkspaceFilesServices
+        this._alExtensionService = alExtensionService;
     }
 
     async activate(): Promise<void>
@@ -62,22 +68,11 @@ export class PackageUiService extends UiService
         let workspaces = await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)});
         let workspaceFolders = await UiHelpers.showWorkspaceFolderPicks(workspaces);
         
-        if (!workspaceFolders)
+        if (!workspaceFolders || workspaceFolders.length === 0)
             return;
-        let targetArray: string[]=[];
-        let target: string;
 
-        for(let workspaceFolder of workspaceFolders)
-        {
-            let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
-            let targets = await packageService.getTargets(undefined, true);
-            targetArray = targetArray.concat(targets);
-        }
-        let targetArrayNoDuplicates = targetArray.filter(function(elem, index, self) 
-        {
-            return index === self.indexOf(elem);
-        })
-        target = await UiHelpers.showTargetPicks(targetArrayNoDuplicates);
+        let target = await this.getTargetForWorkspaces(workspaceFolders);
+        
         if (!target)
         {
             return;
@@ -90,7 +85,6 @@ export class PackageUiService extends UiService
 
         try
         {    
-            
             let output = await window.withProgress({
                 location: ProgressLocation.Notification,
                 title: "Downloading dependencies (.alpackages + .netpackages) ..."
@@ -109,9 +103,7 @@ export class PackageUiService extends UiService
                     this._outputChannel.appendLine(outputResult.output);
                 }
             });
-               
         }
-    
         catch (e)
         {
             this._outputChannel.appendLine('Error occurd while downloading dependencies:');
@@ -121,12 +113,32 @@ export class PackageUiService extends UiService
         
         this._outputChannel.appendLine("Finished!");
         window.showInformationMessage(Resources.dependenciesDownloadedReload, Constants.buttonReloadWindow).then(result => 
-            {
-                if (result === Constants.buttonReloadWindow)
+        {
+            if (result === Constants.buttonReloadWindow)
             {
                 commands.executeCommand("workbench.action.reloadWindow");
             }
-            });
+        });
+    }
+
+    private async getTargetForWorkspaces(workspaceFolders: WorkspaceFolder[]): Promise<string>
+    {
+        let targetArray: string[] = [];
+        let target: string;
+
+        for(let workspaceFolder of workspaceFolders)
+        {
+            let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
+            let targets = await packageService.getTargets(undefined, true);
+            targetArray = targetArray.concat(targets);
+        }
+
+        let targetArrayNoDuplicates = targetArray.filter(function(elem, index, self) 
+        {
+            return index === self.indexOf(elem);
+        })
+
+        return await UiHelpers.showTargetPicks(targetArrayNoDuplicates);
     }
 
     private async alCompileAndPackage()
@@ -135,30 +147,59 @@ export class PackageUiService extends UiService
         try
         {
             let workspaceFolders = await UiHelpers.showWorkspaceFolderPicks(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
+
             if (!workspaceFolders || workspaceFolders.length === 0)
                 return;
+
+            let target = await this.getTargetForWorkspaces(workspaceFolders);
+
             let projectDirs : string[] = [];
             if (!await this.ensureGoCurrentServer(workspaceFolders[0]))
-                    return;
+                return;
+
             for (let workspaceFolder of workspaceFolders)   
             {
                 projectDirs.push(workspaceFolder.uri.fsPath);
             } 
+
             outputChannel.clear();
             outputChannel.show();
             outputChannel.appendLine('Starting to compile and creating packages ...');
-            let packagePath = await window.withProgress({
+
+            for (let ble of projectDirs)
+            {
+                outputChannel.appendLine(ble);
+            }
+
+            let packagePaths = await window.withProgress({
                 location: ProgressLocation.Notification,
                 title: "Compiling and creating package ..."
             }, async (progress, token) => {
-                let output = await this._packagePsService.invokeAlProjectBuild(
+                let packagePaths = await this._packagePsService.invokeAlProjectBuild(
                     projectDirs,
+                    this._alExtensionService.compilerPath,
+                    GitHelpers.getBranchName(workspaceFolders[0].uri.fsPath),
+                    target,
                     outputChannel
                 );
-                outputChannel.appendLine(output);
+                for (let packagePath of packagePaths)
+                {
+                    outputChannel.appendLine(`Created ${packagePath}.`);
+                }
                 outputChannel.appendLine("Finished!");
+                return packagePaths
             });
-            
+
+            if (packagePaths.length > 0)
+            {
+                window.showInformationMessage(Resources.importServers, Constants.import).then(async result => 
+                {
+                    if (result === Constants.import)
+                    {
+                        this.showImportToServer(packagePaths, this._outputChannel, workspaceFolders);
+                    }
+                });
+            }
         }
         catch (e)
         {
@@ -211,12 +252,12 @@ export class PackageUiService extends UiService
             outputChannel.appendLine(`Package created: ${packagePath}.`);
             outputChannel.appendLine("Finished!");
             window.showInformationMessage(Resources.importServers, Constants.import).then(async result => 
+            {
+                if (result === Constants.import)
                 {
-                    if (result === Constants.import)
-                    {
-                        this.showImportToServer(packagePath,this._outputChannel,workspaceFolder);
-                    }
-                });
+                    this.showImportToServer([packagePath], this._outputChannel, [workspaceFolder]);
+                }
+            });
         }
         catch (e)
         {
@@ -261,12 +302,12 @@ export class PackageUiService extends UiService
             outputChannel.appendLine(`Package created: ${packagePath}.`)
             outputChannel.appendLine("Finished!");
             window.showInformationMessage(Resources.importServers, Constants.import).then(async result => 
+            {
+                if (result === Constants.import)
                 {
-                    if (result === Constants.import)
-                    {
-                        this.showImportToServer(packagePath,this._outputChannel,workspaceFolder);
-                    }
-                });
+                    this.showImportToServer([packagePath], this._outputChannel, [workspaceFolder]);
+                }
+            });
         }
         catch (e)
         {
@@ -338,73 +379,109 @@ export class PackageUiService extends UiService
 
     }
 
-    private async showImportToServer(path:string, outputChannel:OutputChannel,workspaceFolder: WorkspaceFolder)
+    private async getServersForWorkspaces(workspaceFolders: WorkspaceFolder[])
     {
-        let servers = (await this._wsWorkspaceFilesServices.getService(workspaceFolder).projectFile.getData()).servers;
-        let serverPickHost: string;
-        let serverPickPort = Constants.defaultPort;
-        if (!servers)
+        let servers: Server[] = []
+        for (let workspaceFolder of workspaceFolders)
         {
-            serverPickHost = Constants.defaultHost;
+            let workspaceServers = (await this._wsWorkspaceFilesServices.getService(workspaceFolder).projectFile.getData()).servers;
+
+            if (!workspaceServers)
+                continue;
+
+            for (let server of workspaceServers)
+            {
+                if (!servers.some(s => s.host === server.host && s.port === server.port && s.identity === server.identity && s.useSsl === server.useSsl))
+                {
+                    servers.push(server);
+                }
+            }
         }
-        else
+
+        return servers.sort((a, b) => {
+            if (a.host < b.host)
+                return -1
+            if (a.host > b.host)
+                return 1
+            return 0;
+        });
+    }
+
+    private async showImportToServer(paths: string[], outputChannel: OutputChannel, workspaceFolders: WorkspaceFolder[])
+    {
+        let servers = await this.getServersForWorkspaces(workspaceFolders)
+        let serverPickHost = Constants.defaultHost;
+        let serverPickPort = Constants.defaultManagementPort;
+        if (servers && servers.length > 0)
         {
             let serverPick = await UiHelpers.showServersPick(servers);
             if (!serverPick)
                 return;
+
             serverPickHost = serverPick.host;
             if(serverPick.managementPort)
                 serverPickPort = serverPick.managementPort;
         }
+
         outputChannel.clear();
         outputChannel.show();
-        outputChannel.appendLine('Importing package to server ...');
-        let packageService: PackageService = this._wsPackageService.getService(workspaceFolder);
+        outputChannel.appendLine('Importing package(s) to server ...');
+        
         await window.withProgress({
             location: ProgressLocation.Notification,
             title: "Importing server ..."
         }, async (progress, token) => {
-            try
+            let overwriteAll = false;
+            for (let filePath of paths)
             {
-                await packageService.importPackage(
-                    path,
-                    serverPickHost,
-                    serverPickPort,
-                    false
-                );
-                outputChannel.appendLine(`Package imported to server: ${serverPickHost}.`);
-                outputChannel.appendLine("Finished!");
-            }
-            catch (error)
-            {
-                //TODO in the future should filter through errorType
-                if (error.message.includes(Constants.packageAlreadyExists))
+                try
                 {
-                    window.showInformationMessage(error+ " " + Resources.errorMessageForce, Constants.errorForce).then(async result => 
+                    await this._packagePsService.importPackage(
+                        filePath,
+                        serverPickHost,
+                        serverPickPort,
+                        overwriteAll
+                    );
+                }
+                catch (error)
+                {
+                    //TODO in the future should filter through errorType
+                    if (error.message.includes(Constants.packageAlreadyExists))
                     {
-                        if (result === Constants.errorForce)
+                        let buttons = [Constants.buttonOverwrite]
+                        if (paths.length > 1)
+                            buttons.push(Constants.buttonOverwriteAll)
+
+                        let result = await window.showInformationMessage(error + " " + Resources.errorMessageForce, ...buttons);
+                        if (!result)
+                            return;
+                            
+                        if (result === Constants.buttonOverwriteAll)
+                            overwriteAll = true;
+
+                        if (result === Constants.buttonOverwrite || result === Constants.buttonOverwriteAll)
                         {
-                            await packageService.importPackage(
-                                path,
+                            await this._packagePsService.importPackage(
+                                filePath,
                                 serverPickHost,
                                 serverPickPort,
                                 true
                             );
-                            outputChannel.appendLine(`Package imported to server: ${serverPickHost}.`);
-                            outputChannel.appendLine("Finished!");
                         }
-                    });
+                    }
+                    else
+                    {
+                        window.showErrorMessage(error.message);
+                        outputChannel.appendLine(`Error: ${error.message}`)
+                        outputChannel.appendLine(`Package was not imported to server ${serverPickHost}.`);
+                        return
+                    }
                 }
-                else
-                {
-                    window.showErrorMessage(error.message);
-                    outputChannel.appendLine(`Package was not imported to server: ${serverPickHost}.`);
-                }
-
+                let fileName = path.basename(filePath);
+                outputChannel.appendLine(`Package "${fileName}" imported to server: ${serverPickHost}.`);
             }
             
+            outputChannel.appendLine("Finished!");
         });
-        
-        
     }
 }

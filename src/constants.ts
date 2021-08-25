@@ -39,16 +39,18 @@ export class Constants
     static buttonRemove = "Remove";
     static buttonCheckUpdates = "Check for updates";
     static buttonAssignedGroup = "Assign to group"
+    static buttonOverwrite = "Overwrite"
+    static buttonOverwriteAll = "Overwrite All"
 
     static gocHelpUrl = "https://help.gocurrent.lsretail.com/";
     static gocServerUrl = "https://help.gocurrent.lsretail.com/docs/server/install.html";
     static packageToolsUrl = "https://help.gocurrent.lsretail.com/docs/ls-central/package-tools/overview.html";
 
     static dummyFile = '\\file.txt';
-    static defaultPort = 16552;
+    static defaultManagementPort = 16552;
+    static defaultPort2 = 16550;
     static defaultHost = "localhost";
 
-    static errorForce = "Overwrite Package";
     static packageAlreadyExists = "Package already exists:";
 
     static targetDefault = "default";

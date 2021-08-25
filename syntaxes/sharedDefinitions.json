@@ -179,7 +179,7 @@
         },
         "server": {
             "type": "object",
-            "required": ["host", "port"],
+            "required": ["host"],
             "description": "Specify a Go Current server.",
             "properties": {
                 "guid": {
@@ -200,7 +200,7 @@
                 },
                 "managementPort": {
                     "type": "integer",
-                    "minLength": 16550
+                    "default": 16552
                 },
                 "useSsl": {
                     "type": "boolean"

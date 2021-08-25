@@ -31,12 +31,33 @@ The extension is made available under the MIT license.
 
 ## Release Notes
 
+### 1.4.0
+
+New in the release:
+- A new command called *Manage Installs* that offers the following management operations:
+    - Assign an install to a specific package group in *gocurrent.json*
+        - This allows the user to add or remove packages (apps) from the current installation, for example, to add the Business Central test suite packages.
+    - Check for updates for individual install.
+    - Remove installation.
+- *Download Dependencies* now has an option to download dependencies for all projects in the workspace.
+- *Compile and Create Package* now has an option to select one or more projects in the workspace, which compiles the projects in dependency order.
+- A notification, *Import to Server*, now pops up when a package is created, offering the user to import the newly created package to a server.
+
+Fixes:
+- When checking for updates for multiple installations and one had an error, it would stop checking for updates for the remaining installs.
+
+### 1.3.0
+- *Download dependencies (.alpackages + .netpackage)* changed accordingly:
+    - Will not download other apps included in the VS Code workspace.
+    - If a dependency has *propagateDependencies* set to true, its dependencies will also download.
+    - Apps are renamed to the form *PUBLISHER_NAME_VERSION* when placed into the *.alpackages* directory.
+
 
 ### 1.2.0
 Changes:
 * Support for the new parameter -UpdateInstanceMode Replace|Merge in Install-GocPackage (v0.19.0). New property added to package groups called *updateInstanceMode* and the default value is *Replace*.
 
-Bugfixes:
+Fixed:
 * Errors thrown by the extension if Go Current isn't installed on the machine, now informs the user with a notification.
 * Multiple notifications for each instance on startup.
 

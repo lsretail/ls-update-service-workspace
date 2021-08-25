@@ -2,7 +2,7 @@
     "name": "ls-update-service-workspace",
     "displayName": "LS Retail Update Service Workspace",
     "description": "LS Retail Update Service Workspace brings you the power of LS Update Service to your workspace in Visual Studio Code.",
-    "version": "1.3.0-developer",
+    "version": "1.4.0-developer",
     "publisher": "lsretail",
     "repository": {
         "type": "git",
@@ -15,7 +15,9 @@
     "keywords": [
         "Dynamics 365 Business Central",
         "AL",
-        "Go Current"
+        "Go Current",
+        "LS Retail",
+        "Update Service"
     ],
     "icon": "images/icon.png",
     "engines": {
@@ -46,11 +48,6 @@
             {
                 "command": "ls-update-service.manage",
                 "title": "Manage Installs",
-                "category": "LS Update Service"
-            },
-            {
-                "command": "ls-update-service.remove",
-                "title": "Remove Packages",
                 "category": "LS Update Service"
             },
             {
@@ -135,7 +132,7 @@
                     "when": "ls-update-service.deploy.active"
                 },
                 {
-                    "command": "ls-update-service.remove",
+                    "command": "ls-update-service.manage",
                     "when": "ls-update-service.deploy.active"
                 },
                 {
