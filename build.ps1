@@ -22,6 +22,9 @@ Write-Host "npm: $Npm"
 
 $ErrorActionPreference = 'stop'
 
+$env:Path += ";" + $env:USERPROFILE + ";" +'AppData\Roaming\npm'
+Write-Host "HEEEEEEEEEEEEEEEEEEEEEEEEEEEEERE"
+
 function Install-NpmIfNecessary
 {
     param(
