@@ -22,6 +22,22 @@ Write-Host "npm: $Npm"
 
 $ErrorActionPreference = 'stop'
 
+function Install-NpmIfNecessary
+{
+    param(
+        $ToolName
+    )
+    $Command = Get-Command -Name $ToolName -ErrorAction SilentlyContinue
+    if (!$Command)
+    {
+        Write-Host "Installing: $ToolName"
+        npm install $ToolName -g
+        return
+    }
+    Write-Host "$ToolName already installed."
+}
+Install-NpmIfNecessary -ToolName 'vsce'
+
 function ConvertTo-PackageBranchName
 {
     param(
