@@ -50,7 +50,15 @@ function ConvertTo-PackageBranchName
 }
 
 Remove-Item (Join-Path $PSScriptRoot '*.vsix')
-Remove-Item (Join-Path $PSScriptRoot '*.zip')
+
+If(!(test-path (Join-Path $PSScriptRoot '/PackageOutput')))
+{
+    Remove-Item (Join-Path $PSScriptRoot '*.zip')   
+}
+else
+{
+    Remove-Item (Join-Path $PSScriptRoot '/PackageOutput') -Recurse -Force -Confirm:$false
+}
 
 $PackageBackupPath = Join-Path $PSScriptRoot 'package.json.original'
 $PackagePath = (Join-Path $PSScriptRoot 'package.json')
@@ -117,6 +125,8 @@ if (Test-Path $PackageBackupPath)
     Move-Item $PackageBackupPath $PackagePath -Force
 }
 
+$OutputDir = Join-Path $PSScriptRoot 'PackageOutput'
+
 Import-Module GoCurrentServer
 $Package = @{
     'Id' = 'ls-update-service-workspace'
@@ -126,7 +136,7 @@ $Package = @{
         (Get-Item (Join-Path $PSScriptRoot "*.vsix")),
         (Join-Path $PSScriptRoot 'package\*')
     )
-    'OutputDir' = $PSScriptRoot
+    'OutputDir' = $OutputDir
     'Commands' = @{
         'Install' = 'Package.psm1:Install-Package'
         'Update' = 'Package.psm1:Install-Package'
