@@ -145,3 +145,5 @@ $Package = @{
 }
 
 New-GocsPackage @Package -Force
+$DeploymentFile = Join-Path $PSScriptRoot '.azure\deployment.ps1'
+Copy-Item $DeploymentFile -Destination $OutputDir
