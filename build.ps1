@@ -22,6 +22,25 @@ Write-Host "npm: $Npm"
 
 $ErrorActionPreference = 'stop'
 
+$env:Path += ';' + (Join-Path $env:USERPROFILE 'AppData\Roaming\npm')
+Write-Host $env:Path
+
+function Install-NpmIfNecessary
+{
+    param(
+        $ToolName
+    )
+    $Command = Get-Command -Name $ToolName -ErrorAction SilentlyContinue
+    if (!$Command)
+    {
+        Write-Host "Installing: $ToolName"
+        npm install $ToolName -g
+        return
+    }
+    Write-Host "$ToolName already installed."
+}
+Install-NpmIfNecessary -ToolName 'vsce'
+
 function ConvertTo-PackageBranchName
 {
     param(
@@ -31,7 +50,15 @@ function ConvertTo-PackageBranchName
 }
 
 Remove-Item (Join-Path $PSScriptRoot '*.vsix')
-Remove-Item (Join-Path $PSScriptRoot '*.zip')
+
+If(!(test-path (Join-Path $PSScriptRoot '/PackageOutput')))
+{
+    Remove-Item (Join-Path $PSScriptRoot '*.zip')   
+}
+else
+{
+    Remove-Item (Join-Path $PSScriptRoot '/PackageOutput') -Recurse -Force -Confirm:$false
+}
 
 $PackageBackupPath = Join-Path $PSScriptRoot 'package.json.original'
 $PackagePath = (Join-Path $PSScriptRoot 'package.json')
@@ -98,6 +125,8 @@ if (Test-Path $PackageBackupPath)
     Move-Item $PackageBackupPath $PackagePath -Force
 }
 
+$OutputDir = Join-Path $PSScriptRoot 'PackageOutput'
+
 Import-Module GoCurrentServer
 $Package = @{
     'Id' = 'ls-update-service-workspace'
@@ -107,7 +136,7 @@ $Package = @{
         (Get-Item (Join-Path $PSScriptRoot "*.vsix")),
         (Join-Path $PSScriptRoot 'package\*')
     )
-    'OutputDir' = $PSScriptRoot
+    'OutputDir' = $OutputDir
     'Commands' = @{
         'Install' = 'Package.psm1:Install-Package'
         'Update' = 'Package.psm1:Install-Package'
@@ -116,3 +145,5 @@ $Package = @{
 }
 
 New-GocsPackage @Package -Force
+$DeploymentFile = Join-Path $PSScriptRoot '.azure\deployment.ps1'
+Copy-Item $DeploymentFile -Destination $OutputDir
