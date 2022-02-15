@@ -1,7 +1,7 @@
 {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema",
     "definitions": {
-        "packageList": {
+        "package": {
             "type": "object",
             "required": ["id", "version"],
             "properties": {
@@ -13,19 +13,19 @@
                 "version": {
                     "oneOf":[
                         {
-                            "$ref": "#definitions/version"
+                            "$ref": "#/definitions/version"
                         },
                         {
-                            "$ref": "#definitions/versionTarget"
+                            "$ref": "#/definitions/versionTarget"
                         },
                         {
-                            "$ref": "#definitions/versionQueryResolver"
+                            "$ref": "#/definitions/versionQueryResolver"
                         },
                         {
-                            "$ref": "#definitions/alAppId"
+                            "$ref": "#/definitions/alAppId"
                         },
                         {
-                            "$ref": "#definitions/branchPriorityFilter"
+                            "$ref": "#/definitions/branchPriorityFilter"
                         }
                     ]
                 },
@@ -39,6 +39,28 @@
                 }
             }
         },
+        "packagePath": {
+            "type": "object",
+            "required": ["path"],
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Specifies a path to a package on the local machine.",
+                    "minLength": 3
+
+                }
+            }
+        },
+        "packageList": {
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/package"
+                },
+                {
+                    "$ref": "#/definitions/packagePath"
+                }
+            ]
+        },
         "version": {
             "default": "",
             "type": "string",
@@ -51,20 +73,20 @@
             "required": ["default"],
             "properties": {
                 "default": {
-                    "$ref": "#definitions/versionSelection"
+                    "$ref": "#/definitions/versionSelection"
                 },
                 "release": {
-                    "$ref": "#definitions/versionSelection"
+                    "$ref": "#/definitions/versionSelection"
                 },
                 "releaseCandidate":{
-                    "$ref": "#definitions/versionSelection"
+                    "$ref": "#/definitions/versionSelection"
                 },
                 "dev": {
-                    "$ref": "#definitions/versionSelection"
+                    "$ref": "#/definitions/versionSelection"
                 }
             },
             "additionalProperties": {
-                "$ref": "#definitions/versionSelection"
+                "$ref": "#/definitions/versionSelection"
             }
         },
         "versionSelection": {
@@ -79,13 +101,13 @@
                     "description": "Specify package version."
                 },
                 {
-                    "$ref": "#definitions/versionQueryResolver"
+                    "$ref": "#/definitions/versionQueryResolver"
                 },
                 {
-                    "$ref": "#definitions/alAppId"
+                    "$ref": "#/definitions/alAppId"
                 },
                 {
-                    "$ref": "#definitions/branchPriorityFilter"
+                    "$ref": "#/definitions/branchPriorityFilter"
                 }
             ]
         },
@@ -95,20 +117,20 @@
             "required": ["default"],
             "properties": {
                 "default": {
-                    "$ref": "#definitions/version"
+                    "$ref": "#/definitions/version"
                 },
                 "release": {
-                    "$ref": "#definitions/version"
+                    "$ref": "#/definitions/version"
                 },
                 "releaseCandidate":{
-                    "$ref": "#definitions/version"
+                    "$ref": "#/definitions/version"
                 },
                 "dev": {
-                    "$ref": "#definitions/version"
+                    "$ref": "#/definitions/version"
                 }
             },
             "additionalProperties": {
-                "$ref": "#definitions/version"
+                "$ref": "#/definitions/version"
             }
         },
         "packageListRef": {
@@ -215,7 +237,7 @@
             "type": "array",
             "description": "Specify Go Current servers to connect to.",
             "items": {
-                "$ref": "#definitions/server"
+                "$ref": "#/definitions/server"
             }
         }
     }

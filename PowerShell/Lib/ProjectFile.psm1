@@ -186,20 +186,20 @@ function Get-ProjectFileCompileModifiers
             Resolve-PackagesVersions -Packages $Packages @ResolveContainer
             if ($Packages.Count -gt 0 -and $null -ne $Idx)
             {
-                return ,$Packages.ToArray()
+                return , $Packages.ToArray()
             }
             elseif ($Packages.Count -gt 0)
             {
-                $Entries += ,$Packages.ToArray()
+                $Entries += , $Packages.ToArray()
             }
             elseif ($null -ne $Idx)
             {
-                return ,@()
+                return , @()
             }
         }
         if ($null -eq $Idx)
         {
-            return ,$Entries
+            return , $Entries
         }
     }
     elseif (($null -ne $Idx) -and $Idx -eq 0)
@@ -211,7 +211,7 @@ function Get-ProjectFileCompileModifiers
     }
     else
     {
-        return ,@()
+        return , @()
     }
 }
 
@@ -274,7 +274,7 @@ function Get-ProjectFileTargets
     {
         if (($Package.version -isnot [string]) -and $Package.version.default)
         {
-            $Package.version.PSObject.Properties | Foreach-Object { 
+            $Package.version.PSObject.Properties | ForEach-Object { 
                 if (!($Targets -icontains $_.Name))
                 {
                     $Targets += $_.Name
@@ -335,11 +335,11 @@ function Get-ResolveContainer
 
     return @{
         ProjectVariables = $ProjectVariables
-        ResolveCache = $ResolveCache
-        ProjectDir = $ProjectDir
-        ProjectFile = $ProjectFile
-        Target = $Target
-        BranchName = $BranchName 
+        ResolveCache     = $ResolveCache
+        ProjectDir       = $ProjectDir
+        ProjectFile      = $ProjectFile
+        Target           = $Target
+        BranchName       = $BranchName 
         BranchToLabelMap = $BranchToLabelMap
     }
 }
@@ -369,7 +369,7 @@ function GetBranchLabelMap
 
 function Get-PackageGroupFromObj
 {
-     param(
+    param(
         [Parameter(Mandatory)]
         $ProjectFile,
         [Parameter(Mandatory)]
@@ -446,8 +446,8 @@ function Resolve-Part
     }
 
     $Obj = @{
-        'id' = $Id
-        'name' = $Id
+        'id'       = $Id
+        'name'     = $Id
         'packages' = $Packages
     }
     $Set = New-Object psobject -Property $Obj
@@ -469,9 +469,15 @@ function Resolve-PackagesVersions
     )
 
     $ToRemove = @()
-    
+
     foreach ($Package in $Packages)
     {
+        if ($Package.Path)
+        {
+            $Package.Path = Resolve-VariablesInString -Value $Package.Path -ProjectVariables $ProjectVariables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap
+            $Package.Path = [IO.Path]::Combine($ProjectDir, $Package.Path)
+            continue
+        }
         $Package.Version = Resolve-Version -Version $Package.Version -ProjectVariables $ProjectVariables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap -PackageId $Package.id
 
         if ($null -eq $Package.Version)
@@ -651,10 +657,10 @@ function Resolve-VersionWithFunction
     if ($null -ne $VersionValue.AlAppId)
     {
         $Arguments = @{
-            AlAppId = $VersionValue.AlAppId
-            AlAppIdType = $VersionValue.AlAppIdType
+            AlAppId      = $VersionValue.AlAppId
+            AlAppIdType  = $VersionValue.AlAppIdType
             AlAppIdParts = $VersionValue.AlAppIdParts
-            ProjectDir = $ProjectDir
+            ProjectDir   = $ProjectDir
         }
         if (!$Arguments.AlAppIdType)
         {
@@ -665,12 +671,12 @@ function Resolve-VersionWithFunction
     elseif ($null -ne $VersionValue.Id)
     {
         $Arguments = @{
-            Id = $VersionValue.Id 
-            Version = (Resolve-VariablesInString -Value  $VersionValue.Version -ProjectVariables $ProjectVariables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap)
-            ResolverPath = $VersionValue.ResolverPath
+            Id               = $VersionValue.Id 
+            Version          = (Resolve-VariablesInString -Value $VersionValue.Version -ProjectVariables $ProjectVariables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap)
+            ResolverPath     = $VersionValue.ResolverPath
             ResolverFunction = $VersionValue.ResolverFunction 
-            ProjectDir = $ProjectDir
-            Target = $Target
+            ProjectDir       = $ProjectDir
+            Target           = $Target
         }
         return Resolve-Variable @Arguments
     }
@@ -710,7 +716,7 @@ function Resolve-Variable
 
     if (!$ResolverPath)
     {
-        $Version = Get-GocUpdates -Id $Id -Version $Version -InstanceName 'this-instance-should-not-exists-at-any-point' | Where-Object { $_.Id -eq $Id} | Select-Object -First 1
+        $Version = Get-GocUpdates -Id $Id -Version $Version -InstanceName 'this-instance-should-not-exists-at-any-point' | Where-Object { $_.Id -eq $Id } | Select-Object -First 1
         $Version.Version
     }
     else
@@ -763,7 +769,7 @@ function Resolve-VariableAlAppJson
     }
 
     $Arguments = @{
-        FromMajor = ($AlAppIdType -ieq 'fromMajor') -or ($AlAppIdType -ieq 'fromMajorToNextMajor')
+        FromMajor   = ($AlAppIdType -ieq 'fromMajor') -or ($AlAppIdType -ieq 'fromMajorToNextMajor')
         ToNextMajor = ($AlAppIdType -ieq 'fromMinorToNextMajor') -or ($AlAppIdType -ieq 'fromMajorToNextMajor')
     }
 
@@ -836,17 +842,17 @@ function Resolve-AdvancedFilePath
 
     $ResolveContainer = @{
         ProjectVariables = $ProjectVariables
-        ResolveCache = $ResolveCache
-        ProjectDir = $ProjectDir
-        Target = $Target
-        BranchName = $BranchName
+        ResolveCache     = $ResolveCache
+        ProjectDir       = $ProjectDir
+        Target           = $Target
+        BranchName       = $BranchName
         BranchToLabelMap = $BranchToLabelMap
     }
     
     if (('SourcePath' -iin $Value.PSobject.Properties.name) -and ('Destination' -iin $Value.PSobject.Properties.name))
     {
         $Hashtable = @{
-            SourcePath = @()
+            SourcePath  = @()
             Destination = $Value.Destination
         }
         foreach ($Item in $Value.SourcePath)

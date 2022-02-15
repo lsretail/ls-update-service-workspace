@@ -16,10 +16,10 @@ function Get-AlDependencies
         [switch] $Force
     )
     $Verbose = [bool]$PSBoundParameters["Verbose"]
-    Get-AlDependenciesInternal -Dependencies $Dependencies -OutputDir $OutputDir -Force:$Force -SkipPackages ([System.Collections.ArrayList]::new()) -Verbose:$Verbose -Server $Server
+    Get-DependenciesInternal -Dependencies $Dependencies -OutputDir $OutputDir -Force:$Force -SkipPackages ([System.Collections.ArrayList]::new()) -Verbose:$Verbose -Server $Server
 }
 
-function Get-AlDependenciesInternal
+function Get-DependenciesInternal
 {
     param(
         [Parameter(Mandatory)]
@@ -108,7 +108,7 @@ function Get-AlDependenciesInternal
     }
     if ($PropagateDependencies)
     {
-        Get-AlDependenciesInternal -Dependencies $PropagateDependencies -OutputDir $OutputDir -Force:$Force -Verbose:$Verbose -SkipPackages $SkipPackages -Server $Server
+        Get-DependenciesInternal -Dependencies $PropagateDependencies -OutputDir $OutputDir -Force:$Force -Verbose:$Verbose -SkipPackages $SkipPackages -Server $Server
     }
 }
 
@@ -129,7 +129,7 @@ function Get-AlAddinDependencies
 
     $Resolved = @($Deps | Get-GocUpdates -Server $Server | Where-Object { $PackageIds.Contains($_.Id) -or ($IncludeServer -and $_.Id -eq 'bc-server')})
 
-    $TempDir = Join-Path $OutputDir 'Temp'
+    $TempDir = [System.IO.Path]::Combine($env:TEMP, "AlTools", [System.IO.Path]::GetRandomFileName())
 
     if (Test-Path $TempDir)
     {
@@ -246,11 +246,11 @@ function Get-AlDevDependencies
 function Invoke-AlCompiler
 {
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         [string] $ProjectDir,
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         [string] $CompilerPath,
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         $OutputDir,
         $AlPackagesDir = $null,
         [Array] $AssemblyDir = $null
@@ -486,34 +486,62 @@ function Invoke-AlProjectCompile
 {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory)]
-        $ProjectDir,
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Alias('Dir')]
+        [Alias('Path')]
+        [string[]] $ProjectDir,
+        [Parameter(ValueFromPipelineByPropertyName)]
+        [string] $OutputDir,
         $CompilerPath,
-        $OutputDir = $ProjectDir
+        $Server,
+        [switch] $Force,
+        [switch] $UseDependencyTempDir
     )
 
-    if (!$CompilerPath)
+    begin
     {
-        $CompilerPath = Get-AlCompiler
+        $Projects = @{}
     }
-
-    $AddinDir = @("C:\WINDOWS\Microsoft.NET\assembly")
-    $NetPackagesDir = (Join-Path $ProjectDir '.netpackages')
-    if (Test-Path $NetPackagesDir)
+    process
     {
-        $AddinDir += $NetPackagesDir
+        foreach ($Dir in $ProjectDir)
+        {
+            $AppJson = Get-AlAppJson -ProjectDir $dir
+            $Projects[$AppJson.id] = @{
+                ProjectDir = $Dir
+                OutputDir = $Dir
+                AppJson = $AppJson
+                Variables = $Variables
+                BranchName = $BranchName
+                Target = $Target
+                AppPath = $null
+                Package  = $null
+            }
+            if ($OutputDir)
+            {
+                $Projects[$AppJson.id].OutputDir = $OutputDir
+            }
+        }
     }
-
-    Write-Verbose 'Compiling app...'
-
-    $Arguments = @{
-        ProjectDir = $ProjectDir
-        CompilerPath = $CompilerPath
-        OutputDir = $OutputDir
-        AssemblyDir = $AddinDir
+    end
+    {
+        if ($UseDependencyTempDir)
+        {
+            $TempDirBase = Join-Path $env:TEMP ([System.IO.Path]::GetRandomFileName())
+        }
+        $verbose = [bool]$PSBoundParameters["Verbose"]
+        foreach ($AppId in $Projects.Keys)
+        {
+            if (!$Projects.AppPath)
+            {
+                Invoke-ProjectBuild -AppId $AppId -Projects $Projects -CompilerPath $CompilerPath -Force:$Force -Verbose:$Verbose -TempDirBase $TempDirBase -Server $Server -OnlyCompile
+            }
+        }
+        if ($UseDependencyTempDir -and (Test-Path $TempDirBase))
+        {
+            Remove-Item $TempDirBase -Force -Recurse
+        }
     }
-
-    return Invoke-AlCompiler @Arguments
 }
 
 function Invoke-ProjectBuild
@@ -526,7 +554,8 @@ function Invoke-ProjectBuild
         [string] $CompilerPath,
         $Server,
         [switch] $Force,
-        $TempDirBase
+        $TempDirBase,
+        [switch] $OnlyCompile
     )
     $verbose = [bool]$PSBoundParameters["Verbose"]
     Write-Verbose "Building: `"$($Projects[$AppId].ProjectDir)`" `"$AppId`"."
@@ -551,7 +580,7 @@ function Invoke-ProjectBuild
         if (!$Projects[$Dependency.id].AppPath)
         {
             Write-Verbose "Need to compile dependency `"$($Dependency.id)`" first."
-            Invoke-ProjectBuild -AppId $Dependency.id -Projects $Projects -CompilerPath $CompilerPath -Verbose:$Verbose -Force:$Force -TempDirBase $TempDirBase -Server $Server
+            Invoke-ProjectBuild -AppId $Dependency.id -Projects $Projects -CompilerPath $CompilerPath -Verbose:$Verbose -Force:$Force -TempDirBase $TempDirBase -Server $Server -OnlyCompile $OnlyCompile
             Write-Verbose "Continuing with `"$AppId`"."
         }
 
@@ -642,6 +671,11 @@ function Invoke-ProjectBuild
             AlPackagesDir = $AlPackagesDir
             Verbose = $Verbose
         }
+
+        if ($OnlyCompile -and $Projects[$AppId].OutputDir)
+        {
+            $CompileArguments.OutputDir = $Projects[$AppId].OutputDir
+        }
         
         $Projects[$AppId].AppPath = Invoke-AlCompiler @CompileArguments
     }
@@ -651,14 +685,17 @@ function Invoke-ProjectBuild
         Remove-Item $ProjectTempDir -Force -Recurse
     }
 
-    $Arguments += @{
-        AppPath = $Project.AppPath
-        OutputDir = $Project.OutputDir
-        Force = $Force
+    if (!$OnlyCompile)
+    {
+        $Arguments += @{
+            AppPath = $Project.AppPath
+            OutputDir = $Project.OutputDir
+            Force = $Force
+        }
+    
+        $Projects[$AppId].Package = New-AlProjectPackage @Arguments -Verbose:$verbose 
+        $Projects[$AppId].Package
     }
-
-    $Projects[$AppId].Package = New-AlProjectPackage @Arguments -Verbose:$verbose 
-    $Projects[$AppId].Package
 }
 
 function Invoke-AlProjectBuild

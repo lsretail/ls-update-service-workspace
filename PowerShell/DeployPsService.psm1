@@ -174,7 +174,7 @@ function GetDeployment()
     Write-JsonError "Deployment `"$DeploymentGuid`" does not exists workspace data file." -Type 'User'
 }
 
-function Remove-Deployment()
+function Remove-Deployment
 {
     param(
         $WorkspaceDataPath,

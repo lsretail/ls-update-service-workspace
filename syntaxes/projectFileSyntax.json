@@ -1,7 +1,7 @@
 {
-    "title": "Go Current Project Syntax",
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "Schema for a Go Current Project File",
+    "title": "LS Update Service Project Syntax",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "Schema for a LS Update Service Project File",
     "type": "object",
     "required": ["id"],
     "properties": {
@@ -27,10 +27,10 @@
             "description": "Specify the Go Current package version.",
             "oneOf":[
                 {
-                    "$ref": "./sharedDefinitions.json#definitions/version"
+                    "$ref": "./sharedDefinitions.json#/definitions/version"
                 },
                 {
-                    "$ref": "./sharedDefinitions.json#definitions/versionTargetSimple"
+                    "$ref": "./sharedDefinitions.json#/definitions/versionTargetSimple"
                 }
             ]
         },
@@ -38,7 +38,7 @@
             "type": "array",
             "description": "Specify dependencies for the package.",
             "items": {
-                "$ref": "./sharedDefinitions.json#definitions/packageList"
+                "$ref": "./sharedDefinitions.json#/definitions/packageList"
             }
         },
         "parameters": {
@@ -144,16 +144,16 @@
             "additionalProperties": {
                 "oneOf":[
                     {
-                        "$ref": "./sharedDefinitions.json#definitions/version"
+                        "$ref": "./sharedDefinitions.json#/definitions/version"
                     },
                     {
-                        "$ref": "./sharedDefinitions.json#definitions/versionQueryResolver"
+                        "$ref": "./sharedDefinitions.json#/definitions/versionQueryResolver"
                     },
                     {
-                        "$ref": "./sharedDefinitions.json#definitions/alAppId"
+                        "$ref": "./sharedDefinitions.json#/definitions/alAppId"
                     },
                     {
-                        "$ref": "./sharedDefinitions.json#definitions/branchPriorityFilter"
+                        "$ref": "./sharedDefinitions.json#/definitions/branchPriorityFilter"
                     }
                 ]
             }
@@ -163,12 +163,12 @@
             "items": {
                 "anyOf":[
                     {
-                        "$ref": "./sharedDefinitions.json#definitions/packageList"
+                        "$ref": "./sharedDefinitions.json#/definitions/packageList"
                     },
                     {
                         "type": "array",
                         "items": {
-                            "$ref": "./sharedDefinitions.json#definitions/packageList"
+                            "$ref": "./sharedDefinitions.json#/definitions/packageList"
                         }
                     }
                 ]
@@ -250,10 +250,10 @@
                         "items": {
                             "anyOf":[
                                 {
-                                    "$ref": "./sharedDefinitions.json#definitions/packageList"
+                                    "$ref": "./sharedDefinitions.json#/definitions/packageList"
                                 },
                                 {
-                                    "$ref": "./sharedDefinitions.json#definitions/packageListRef"
+                                    "$ref": "./sharedDefinitions.json#/definitions/packageListRef"
                                 }
                             ]
                         }
@@ -262,13 +262,13 @@
                         "$ref": "./argumentSyntax.json"
                     },
                     "servers": {
-                        "$ref": "./sharedDefinitions.json#definitions/servers"
+                        "$ref": "./sharedDefinitions.json#/definitions/servers"
                     }
                 }
             }
         },
         "servers": {
-            "$ref": "./sharedDefinitions.json#definitions/servers"
+            "$ref": "./sharedDefinitions.json#/definitions/servers"
         }
     }
 }

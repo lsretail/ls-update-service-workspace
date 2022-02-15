@@ -1,6 +1,6 @@
 {
     "title": "Go Current Arguments File Syntax",
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "Schema for a Go Current Arguments File.",
     "type": "object",
     "patternProperties": {

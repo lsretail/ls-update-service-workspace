@@ -82,6 +82,8 @@ export class JsonData<TData>
                 return fsHelpers.readJson<TData>(this._uri.fsPath).then(data => 
                 {
                     return this._dataCache = data;
+                }, error => {
+                    throw `Error reading: ${this._uri.fsPath}, ${error}.`
                 });
             }
         }

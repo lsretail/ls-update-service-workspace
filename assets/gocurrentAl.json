@@ -9,7 +9,7 @@
     "dependencies": [],
     "variables": {
         "lsCentralVersion": {
-            "alAppId": "platform",
+            "alAppId": "5ecfc871-5d82-43f1-9c54-59685e82318d",
             "alAppIdType": "fromMinor",
             "alAppParts": 3
         }

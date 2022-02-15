@@ -1,6 +1,6 @@
 {
     "title": "Go Current Deployment Data File Syntax",
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "Schema for a Go Current Deployment Data File",
     "type": "object",
     "properties": {
@@ -26,7 +26,7 @@
                         "type": "array",
                         "description": "Packages in deployment group",
                         "items": {
-                            "$ref": "./sharedDefinitions.json#definitions/packageList"
+                            "$ref": "./sharedDefinitions.json#/definitions/packageList"
                         }
                     }
                 }
