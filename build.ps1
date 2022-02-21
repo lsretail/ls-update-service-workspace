@@ -9,11 +9,11 @@
 #>
 
 param(
-    [string] $GitCommit = $env:bamboo_planRepository_revision,
-    [string] $BuildNumber = $env:bamboo_buildNumber,
+    [string] $GitCommit = $env:Build_SourceVersion,
+    [string] $BuildNumber = $env:Build_BuildNumber,
     [string] $Vsce = $env:bamboo_capability_system_builder_command_vsce,
     [string] $Npm = $env:bamboo_capability_system_builder_command_npm,
-    [string] $Branch = $env:bamboo_planRepository_branch,
+    [string] $Branch = $env:Build_SourceBranchName,
     [string] $ReleaseBranch = 'master'
 )
 
