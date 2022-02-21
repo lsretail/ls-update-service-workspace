@@ -65,7 +65,7 @@
             "default": "",
             "type": "string",
             "description": "Specify package version.",
-            "pattern": "^[a-zA-Z0-9+.<>=${}!-_^ ]*$"
+            "pattern": "^[a-zA-Z0-9+.<>=${}!-_^| ]*$"
         },
         "versionTarget": {
             "type": "object",

@@ -283,7 +283,7 @@ function Get-ResolvedProjectFile
         $BranchName
     )
     $ProjectFile = Get-ProjectFile -Path $ProjectFilePath -Target $Target -BranchName $BranchName
-    return ConvertTo-Json $ProjectFile -Compress -Depth 100
+    return (ConvertTo-Json $ProjectFile -Compress -Depth 100)
 }
 
 function Get-ResolvedPackageGroup

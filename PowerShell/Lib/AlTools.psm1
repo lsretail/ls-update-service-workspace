@@ -580,7 +580,7 @@ function Invoke-ProjectBuild
         if (!$Projects[$Dependency.id].AppPath)
         {
             Write-Verbose "Need to compile dependency `"$($Dependency.id)`" first."
-            Invoke-ProjectBuild -AppId $Dependency.id -Projects $Projects -CompilerPath $CompilerPath -Verbose:$Verbose -Force:$Force -TempDirBase $TempDirBase -Server $Server -OnlyCompile $OnlyCompile
+            Invoke-ProjectBuild -AppId $Dependency.id -Projects $Projects -CompilerPath $CompilerPath -Verbose:$Verbose -Force:$Force -TempDirBase $TempDirBase -Server $Server -OnlyCompile:$OnlyCompile
             Write-Verbose "Continuing with `"$AppId`"."
         }
 
@@ -779,7 +779,7 @@ function Invoke-AlProjectBuild
         {
             $TempDirBase = Join-Path $env:TEMP ([System.IO.Path]::GetRandomFileName())
         }
-        $verbose = [bool]$PSBoundParameters["Verbose"]
+        $Verbose = [bool]$PSBoundParameters["Verbose"]
         foreach ($AppId in $Projects.Keys)
         {
             if (!$Projects.AppPath)
