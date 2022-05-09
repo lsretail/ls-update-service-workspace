@@ -41,7 +41,7 @@ function Get-DependenciesInternal
 
     $Resolved = @($AllResolved | Where-Object { $PackageIds.Contains($_.Id)})
 
-    $TempDir = [System.IO.Path]::Combine($env:TEMP, "AlTools", [System.IO.Path]::GetRandomFileName())
+    $TempDir = [System.IO.Path]::Combine(([System.IO.Path]::GetTempPath()), "AlTools", [System.IO.Path]::GetRandomFileName())
     [System.IO.Directory]::CreateDirectory($TempDir) | Out-Null
     [System.IO.Directory]::CreateDirectory($OutputDir) | Out-Null
 
@@ -67,14 +67,6 @@ function Get-DependenciesInternal
             {
                 $AppJson = Get-AppJsonFromApp -Path $AppPath
                 $FileName = "$($AppJson.Publisher)_$($AppJson.Name)_$($AppJson.Version).app"
-                if ($AppJson.propagateDependencies)
-                {
-                    $Manifest = Get-JsonFileFromPackage -Id $Package.Id -VersionQuery $Package.Version -FilePath 'Manifest.json'
-                    foreach ($Dependency in $Manifest.Dependencies)
-                    {
-                        $PropagateDependencies += $Dependency
-                    }
-                }
             }
             catch
             {
@@ -85,6 +77,15 @@ function Get-DependenciesInternal
                     $Version = (ConvertTo-GocSemanticVersion $Package.Version).ToString($true, $true)
                     $FileName = [IO.Path]::GetFileNameWithoutExtension($FileName)
                     $FileName = "$($FileName)_$($Version).app"
+                }
+            }
+
+            if ($AppJson -and $AppJson.propagateDependencies)
+            {
+                $Manifest = Get-JsonFileFromPackage -Id $Package.Id -VersionQuery $Package.Version -FilePath 'Manifest.json'
+                foreach ($Dependency in $Manifest.Dependencies)
+                {
+                    $PropagateDependencies += $Dependency
                 }
             }
             $DestinationPath = (Join-Path $OutputDir $FileName)
@@ -129,7 +130,7 @@ function Get-AlAddinDependencies
 
     $Resolved = @($Deps | Get-GocUpdates -Server $Server | Where-Object { $PackageIds.Contains($_.Id) -or ($IncludeServer -and $_.Id -eq 'bc-server')})
 
-    $TempDir = [System.IO.Path]::Combine($env:TEMP, "AlTools", [System.IO.Path]::GetRandomFileName())
+    $TempDir = [System.IO.Path]::Combine(([System.IO.Path]::GetTempPath()), "AlTools", [System.IO.Path]::GetRandomFileName())
 
     if (Test-Path $TempDir)
     {
@@ -216,7 +217,7 @@ function Get-AlDevDependencies
 
     if (!$TempDir)
     {
-        $TempDir = Join-Path $env:TEMP 'AlTools'
+        $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) 'AlTools'
     }
     
     [System.IO.Directory]::CreateDirectory($TempDir) | Out-Null
@@ -527,7 +528,7 @@ function Invoke-AlProjectCompile
     {
         if ($UseDependencyTempDir)
         {
-            $TempDirBase = Join-Path $env:TEMP ([System.IO.Path]::GetRandomFileName())
+            $TempDirBase = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
         }
         $verbose = [bool]$PSBoundParameters["Verbose"]
         foreach ($AppId in $Projects.Keys)
@@ -591,6 +592,20 @@ function Invoke-ProjectBuild
 
         $DependencyApps += $Projects[$Dependency.id].AppPath
         $DependencyPackageId += $Projects[$Dependency.id].Package.Id
+
+        if ($Projects[$Dependency.id].AppJson.propagateDependencies)
+        {
+            foreach ($PropDependency in $Projects[$Dependency.id].AppJson.dependencies)
+            {
+                if (!$Projects.ContainsKey($PropDependency.id))
+                {
+                    continue
+                }
+
+                $DependencyApps += $Projects[$PropDependency.id].AppPath
+                $DependencyPackageId += $Projects[$PropDependency.id].Package.Id
+            }
+        }
     }
 
     $Arguments = @{
@@ -777,12 +792,12 @@ function Invoke-AlProjectBuild
     {
         if ($UseDependencyTempDir)
         {
-            $TempDirBase = Join-Path $env:TEMP ([System.IO.Path]::GetRandomFileName())
+            $TempDirBase = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
         }
         $Verbose = [bool]$PSBoundParameters["Verbose"]
         foreach ($AppId in $Projects.Keys)
         {
-            if (!$Projects.AppPath)
+            if (!$Projects[$AppId].AppPath)
             {
                 Invoke-ProjectBuild -AppId $AppId -Projects $Projects -CompilerPath $CompilerPath -Force:$Force -Verbose:$Verbose -TempDirBase $TempDirBase -Server $Server
             }
