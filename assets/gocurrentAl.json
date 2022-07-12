@@ -11,9 +11,10 @@
         "lsCentralVersion": {
             "alAppId": "5ecfc871-5d82-43f1-9c54-59685e82318d",
             "alAppIdType": "fromMinor",
-            "alAppParts": 3
+            "alAppIdParts": 3
         }
     },
+    "alIncludeServerAssemblies": false,
     "devPackageGroups": [
         {
             "id": "149ede3e-02b8-45ab-8793-8adb2bf6f190",

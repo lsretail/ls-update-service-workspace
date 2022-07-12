@@ -58,7 +58,7 @@ function Get-ProjectFile
     $ResolveContainer = Get-ResolveContainer -ProjectDir $ProjectDir -ProjectFile $ProjectFile -Target $Target -BranchName $BranchName -Variables $Variables
 
     $ResolveAsVariables = @('id', 'name', 'displayName', 'description', 'outputDir')
-    $CopyProperties = @('instance', 'substituteFor', 'windowsUpdateSensitive')
+    $CopyProperties = @('instance', 'substituteFor', 'windowsUpdateSensitive', 'alIncludeServerAssemblies')
 
     $Result = @{}
 
@@ -72,7 +72,7 @@ function Get-ProjectFile
 
     foreach ($Property in $CopyProperties)
     {
-        if ($ProjectFile.$Property)
+        if ($null -ne $ProjectFile.$Property)
         {
             $Result[(ConvertTo-Title $Property)] = $ProjectFile.$Property
         }

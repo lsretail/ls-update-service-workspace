@@ -416,6 +416,12 @@ function Get-AlProjectDependencies
 
     $DependenciesGroup = Get-ProjectFilePackages -Path $ProjectFilePath -Id 'dependencies' -Target $Target -BranchName $BranchName -Variables $Variables
     $DevDependencies = Get-ProjectFilePackages -Path $ProjectFilePath -Id 'devDependencies' -Target $Target -BranchName $BranchName -Variables $Variables
+    $ProjectFile = Get-ProjectFile -Path $ProjectFilePath -Target $Target -BranchName $BranchName -Variables $Variables
+    $IncludeServer = $true
+    if ($null -ne $ProjectFile.alIncludeServerAssemblies)
+    {
+        $IncludeServer = $ProjectFile.alIncludeServerAssemblies
+    }
 
     if (!$PackageCacheDir)
     {
@@ -477,7 +483,7 @@ function Get-AlProjectDependencies
     Get-AlDependencies -Dependencies $ModifiedDependencies -OutputDir $PackageCacheDir -Verbose:$Verbose -Force:$Force -Server $Server
     
     Write-Verbose 'Downloading assemblies for app...'
-    Get-AlAddinDependencies -Dependencies $ModifiedDependencies -OutputDir $AssemblyProbingDir -IncludeServer -Verbose:$Verbose -Force:$Force -Server $Server
+    Get-AlAddinDependencies -Dependencies $ModifiedDependencies -OutputDir $AssemblyProbingDir -IncludeServer:$IncludeServer -Verbose:$Verbose -Force:$Force -Server $Server
 
     Write-Verbose 'Downloading dev dependencies for app...'
     Get-AlDevDependencies -Dependencies $ModifiedDependencies -ProjectDir $ProjectDir -Verbose:$Verbose -Server $Server

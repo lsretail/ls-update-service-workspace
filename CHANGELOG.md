@@ -1,6 +1,11 @@
 # Change Log
 All notable changes to the "LS Retail Update Service Workspace" extension will be documented in this file.
 
+## [1.5.0]
+### Added
+- A new property now available on *gocurrent.json*, *alIncludeServerAssemblies*, to specify if Business Central service-tier assemblies are required when compiling the AL app.
+- Now, a local package (.zip file) can be specified in *packages* under *devPackageGroup*.
+
 ## [1.4.0]
 ### Added
 - A new command called *Manage Installs* that offers the following management operations:

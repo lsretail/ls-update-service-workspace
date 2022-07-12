@@ -41,6 +41,11 @@
                 "$ref": "./sharedDefinitions.json#/definitions/packageList"
             }
         },
+        "alIncludeServerAssemblies": {
+            "type": "boolean",
+            "description": "Specify if AL app requires Business Central service tier assemblies for compilation.",
+            "default": false
+        },
         "parameters": {
             "type": "array",
             "description": "Specify parameters this package accepts.",
