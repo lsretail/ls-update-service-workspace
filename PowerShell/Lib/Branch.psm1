@@ -52,7 +52,7 @@ function ConvertTo-BranchPreReleaseLabel
     $BranchName = $BranchName.ToLower()
     $Label = $Label.Replace("%BRANCHNAME%", $BranchName)
     $Label = [regex]::Replace($Label, "[^a-zA-Z0-9-.+]", "-")  
-    $Label
+    return [regex]::Replace($Label, "[-]{2,}", "-").ToLower()
 }
 
 function ConvertTo-PreReleaseLabel
