@@ -68,6 +68,16 @@ export class AlPsService
         return this.executeAsAdmin("Invoke-UnpublishApp", true, param);
     }
 
+    public async importLicense(instanceName: string, fileName: string): Promise<boolean>
+    {
+        let param = {
+            'InstanceName': instanceName,
+            'FileName': fileName,
+        }
+
+        return this.executeAsAdmin("Invoke-ImportLicense", true, param);
+    }
+
     public async upgradeData(instanceName: string): Promise<string[]>
     {
         let param = {

@@ -123,6 +123,28 @@ function Invoke-UnpublishApp
     }
 }
 
+function Invoke-ImportLicense
+{
+    param(
+        [Parameter(Mandatory)]
+        $InstanceName,
+        [Parameter(Mandatory)]
+        $FileName        
+    )
+    
+    $Server = Get-GocInstalledPackage -Id 'bc-server' -InstanceName $InstanceName
+
+    if (!$Server)
+    {
+        Write-JsonError -Message "Instance doesn't exists `"$InstanceName`"." -Type 'User'
+    }
+
+    $ServerInstance = $Server.Info.ServerInstance
+
+    Import-NAVServerLicense -ServerInstance $ServerInstance -Tenant default -LicenseData ([Byte[]]$(Get-Content -Path $FileName -Encoding Byte))
+
+}
+
 function Publish-AppAdmin
 {
     param(

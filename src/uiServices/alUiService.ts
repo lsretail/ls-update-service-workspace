@@ -47,6 +47,7 @@ export class AlUiService extends UiService
     {
         this.registerCommand("ls-update-service.al.repopulateLaunchJson", this.rePopulateLaunchJson);
         this.registerCommand("ls-update-service.al.unpublishApp", this.alUnpublishApp);
+        this.registerCommand("ls-update-service.al.importLicense", this.alImportLicense);
         this.registerCommand("ls-update-service.al.upgradeData", this.alUpgradeData);
         this.registerCommand("ls-update-service.al.publishApp", this.alPublishApp);
         this.registerCommand("ls-update-service.al.addNewDependencies", this.alAddNewDependencies);
@@ -164,6 +165,34 @@ export class AlUiService extends UiService
         else
             window.showInformationMessage(`App already unpublished.`);
     }
+    
+    private async alImportLicense()
+    {
+        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
+        if (!workspaceFolder)
+            return;
+
+        let alService: AlService = this._wsAlServices.getService(workspaceFolder);
+        
+        let instance = await this.showAlInstancePicks(await this.getAllAlInstances());
+
+        if (!instance)
+            return
+
+        let fileName = window.showOpenDialog()              
+
+        let imported = await window.withProgress({
+            location: ProgressLocation.Notification,
+            title: "Importing license..."
+        }, async () => {
+            return await alService.importLicense(instance.InstanceName, fileName);
+        });
+
+        if (imported)
+            window.showInformationMessage(`License imported.`);
+        else
+            window.showInformationMessage(`License already imported.`);
+    } 
 
     private async showAlInstancePicks(instances: PackageInfo[]): Promise<PackageInfo>
     {        
