@@ -98,10 +98,9 @@ export class AlService implements IWorkspaceService
         return await this._alPsService.unpublishApp(instanceName, appData.id);
     }
 
-    public async importLicense(instanceName: string) : Promise<boolean>
+    public async importLicense(instanceName: string, fileName: string) : Promise<boolean>
     {
-        let appData = await this._appJson.getData();
-        return await this._alPsService.importLicense(instanceName, appData.id);
+        return await this._alPsService.importLicense(instanceName, fileName);
     }    
 
     public async upgradeData(instanceName: string) : Promise<string[]>
