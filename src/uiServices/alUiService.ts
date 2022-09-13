@@ -179,7 +179,20 @@ export class AlUiService extends UiService
         if (!instance)
             return
 
-        let fileName = window.showOpenDialog()              
+        const fileName = await window.showOpenDialog({    
+            filters: {
+            'Package files (*.flf)': ['flf'],
+            'Package files (*.bclicense)': ['bclicense']
+          },
+          canSelectFolders: false,
+          canSelectFiles: true,
+          canSelectMany: false,
+          openLabel: 'Select license file ...',
+        });    
+        
+        if (!fileName || fileName.length < 1) {
+            return;
+          }
 
         let imported = await window.withProgress({
             location: ProgressLocation.Notification,

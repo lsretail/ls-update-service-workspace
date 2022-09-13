@@ -1,3 +1,4 @@
+import { Uri } from 'vscode';
 import {PowerShell} from '../../PowerShell'
 
 export class AlPsService
@@ -68,7 +69,7 @@ export class AlPsService
         return this.executeAsAdmin("Invoke-UnpublishApp", true, param);
     }
 
-    public async importLicense(instanceName: string, fileName: string): Promise<boolean>
+    public async importLicense(instanceName: string, fileName: Uri[]): Promise<boolean>
     {
         let param = {
             'InstanceName': instanceName,

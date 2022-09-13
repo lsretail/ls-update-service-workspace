@@ -1,6 +1,6 @@
 import { DeployService } from "../../deployService/services/deployService";
 import { PostDeployController } from "../../postDeployController";
-import { Disposable, WorkspaceFolder } from "vscode";
+import { Disposable, Uri, WorkspaceFolder } from "vscode";
 import { AlPsService } from "./alPsService";
 import { PackageInfo } from "../../interfaces/packageInfo";
 import { Constants } from "../../constants";
@@ -98,7 +98,7 @@ export class AlService implements IWorkspaceService
         return await this._alPsService.unpublishApp(instanceName, appData.id);
     }
 
-    public async importLicense(instanceName: string, fileName: string) : Promise<boolean>
+    public async importLicense(instanceName: string, fileName: Uri[]) : Promise<boolean>
     {
         return await this._alPsService.importLicense(instanceName, fileName);
     }    
