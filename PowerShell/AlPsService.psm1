@@ -123,6 +123,36 @@ function Invoke-UnpublishApp
     }
 }
 
+function Invoke-ImportLicenseAdmin
+{
+    param(
+        [Parameter(Mandatory)]
+        $InstanceName,
+        [Parameter(Mandatory)]
+        $FileName        
+    )
+
+    $Block = {
+        param(
+            [Parameter(Mandatory)]
+            $ScriptDir,
+            [Parameter(Mandatory)]
+            $FileName,
+            [Parameter(Mandatory)]
+            $InstanceName
+        )
+        Import-Module (Join-Path $ScriptDir 'AlPsService.psm1')
+        Invoke-ImportLicense -FileName $FileName -InstanceName $InstanceName
+    }
+    $Arguments = @{
+        ScriptDir = $PSScriptRoot
+        FileName = $FileName
+        InstanceName = $InstanceName
+    }
+    return Invoke-AsAdmin -ScriptBlock $Block -Arguments $Arguments
+}
+
+
 function Invoke-ImportLicense
 {
     param(
@@ -139,9 +169,12 @@ function Invoke-ImportLicense
         Write-JsonError -Message "Instance doesn't exists `"$InstanceName`"." -Type 'User'
     }
 
+    Import-Module (Join-Path $Server.Info.ServerDir 'Microsoft.Dynamics.Nav.Management.dll')
+
     $ServerInstance = $Server.Info.ServerInstance
 
-    Import-NAVServerLicense -ServerInstance $ServerInstance -Tenant default -LicenseData ([Byte[]]$(Get-Content -Path $FileName -Encoding Byte))
+    Import-NAVServerLicense $ServerInstance -Tenant default -LicenseData ([Byte[]]$(Get-Content -Path $FileName -Encoding Byte))
+    #Import-NAVServerLicense $ServerInstance -Tenant default -LicenseFile $FileName
 
 }
 
