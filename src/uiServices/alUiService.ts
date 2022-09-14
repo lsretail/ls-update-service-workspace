@@ -1,6 +1,7 @@
 import path = require("path");
+import { fileURLToPath, pathToFileURL } from "url";
 import { format } from "util";
-import { ProgressLocation, ExtensionContext, QuickPickOptions, window, commands, Disposable, WorkspaceFolder } from "vscode";
+import { ProgressLocation, ExtensionContext, QuickPickOptions, window, commands, Disposable, WorkspaceFolder, Uri, FileChangeType } from "vscode";
 import { AlService } from "../alService/services/alService";
 import { Constants } from "../constants";
 import { DeployService } from "../deployService/services/deployService";
@@ -179,7 +180,7 @@ export class AlUiService extends UiService
         if (!instance)
             return
 
-        const fileName = await window.showOpenDialog({    
+        const result = await window.showOpenDialog({    
             filters: {
             'Package files (*.flf)': ['flf'],
             'Package files (*.bclicense)': ['bclicense']
@@ -190,9 +191,37 @@ export class AlUiService extends UiService
           openLabel: 'Select license file ...',
         });    
         
-        if (!fileName || fileName.length < 1) {
+        if (!result || result.length < 1) {
             return;
           }
+
+        const filePath = result[0].fsPath;
+
+        let fileName = fileURLToPath(filePath)
+
+        //let fileName = Uri.file(filePath);
+
+        //let fs = require("fs");
+              
+        /*if (!Buffer.isBuffer(fileName)) {
+            fileName = await fs.readFile(
+                (fileName)
+            );
+        }*/
+
+
+        //fileName = fs.readFile(fileName);
+
+        /*fs.readFile(fileName, 'utf8', (err, data) => {
+            if (err) {
+              console.error(err);
+              return;
+            }
+            console.log(data);
+          });*/
+
+        window.showInformationMessage(`Selected file:` + fileName);
+        console.log('Selected file: ' + fileName);
 
         let imported = await window.withProgress({
             location: ProgressLocation.Notification,

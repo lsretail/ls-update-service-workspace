@@ -143,7 +143,11 @@ function Invoke-ImportLicenseAdmin
         )
         Import-Module (Join-Path $ScriptDir 'AlPsService.psm1')
         Invoke-ImportLicense -FileName $FileName -InstanceName $InstanceName
+
+        FileName = $FileName
+        InstanceName = $InstanceName
     }
+
     $Arguments = @{
         ScriptDir = $PSScriptRoot
         FileName = $FileName
@@ -162,6 +166,8 @@ function Invoke-ImportLicense
         $FileName        
     )
     
+    Write-Host $FileName
+
     $Server = Get-GocInstalledPackage -Id 'bc-server' -InstanceName $InstanceName
 
     if (!$Server)
@@ -173,9 +179,15 @@ function Invoke-ImportLicense
 
     $ServerInstance = $Server.Info.ServerInstance
 
-    Import-NAVServerLicense $ServerInstance -Tenant default -LicenseData ([Byte[]]$(Get-Content -Path $FileName -Encoding Byte))
-    #Import-NAVServerLicense $ServerInstance -Tenant default -LicenseFile $FileName
+    Write-EventLog -LogName "Application" -Source "Application Error" -EventID 3001 -EntryType Information -Message $FileName -Category 1 -RawData 10,20
+    ##
+    # -LicenseData doesn't work
 
+    #Import-NAVServerLicense $ServerInstance -Tenant default -LicenseData ([Byte[]]$(Get-Content -Path $FileName ))
+    #Import-NAVServerLicense $ServerInstance -Tenant default -LicenseData ([Byte[]]$(Get-Content -Path "C:\Users\alexandraei\Desktop\5337065.bclicense" -Encoding Byte ))
+    
+    Import-NAVServerLicense $ServerInstance -Tenant default -LicenseFile $FileName
+    #Import-NAVServerLicense $ServerInstance -Tenant default -LicenseFile "C:\Users\alexandraei\Desktop\5337065.flf"
 }
 
 function Publish-AppAdmin
