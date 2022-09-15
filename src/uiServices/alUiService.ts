@@ -195,13 +195,6 @@ export class AlUiService extends UiService
             return;
           }
 
-        //let fileName = fileURLToPath(filePath)
-
-        //let fileName = Uri.parse(filePath).fsPath;
-
-        //let fileName = require('file-uri-to-path');
-        //fileName(filePath);
-
         let imported = await window.withProgress({
             location: ProgressLocation.Notification,
             title: "Importing license..."
