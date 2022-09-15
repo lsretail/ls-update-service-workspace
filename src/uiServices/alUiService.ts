@@ -195,11 +195,13 @@ export class AlUiService extends UiService
             return;
           }
 
+        let fileName =   result[0].toString();
+
         let imported = await window.withProgress({
             location: ProgressLocation.Notification,
             title: "Importing license..."
         }, async () => {
-            return await alService.importLicense(instance.InstanceName, result[0]);
+            return await alService.importLicense(instance.InstanceName, fileName);
         });
 
         if (imported)

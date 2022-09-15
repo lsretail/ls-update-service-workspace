@@ -142,10 +142,8 @@ function Invoke-ImportLicenseAdmin
             $InstanceName
         )
         Import-Module (Join-Path $ScriptDir 'AlPsService.psm1')
-        Invoke-ImportLicense -FileName $FileName -InstanceName $InstanceName
+        Invoke-ImportLicense -InstanceName $InstanceName -FileName $FileName 
 
-        FileName = $FileName
-        InstanceName = $InstanceName
     }
 
     $Arguments = @{
@@ -162,7 +160,7 @@ function Invoke-ImportLicense
     param(
         [Parameter(Mandatory)]
         $InstanceName,
-        [Parameter(Mandatory)] [Uri]
+        [Parameter(Mandatory)]
         $FileName        
     )
     
@@ -180,8 +178,8 @@ function Invoke-ImportLicense
     $Uri = New-Object System.UriBuilder($FileName)
 
     $File = ($Uri.Uri.Localpath).Substring(1)
-
-    Import-NAVServerLicense $ServerInstance -Tenant default -LicenseFile $File
+    
+    Import-NAVServerLicense $ServerInstance -Tenant default -LicenseData ([Byte[]]$(Get-Content -Path  $File -Encoding Byte))
 }
 
 function Publish-AppAdmin
