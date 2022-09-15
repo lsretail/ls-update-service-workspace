@@ -162,12 +162,10 @@ function Invoke-ImportLicense
     param(
         [Parameter(Mandatory)]
         $InstanceName,
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory)] [Uri]
         $FileName        
     )
     
-    Write-Host $FileName
-
     $Server = Get-GocInstalledPackage -Id 'bc-server' -InstanceName $InstanceName
 
     if (!$Server)
@@ -179,14 +177,22 @@ function Invoke-ImportLicense
 
     $ServerInstance = $Server.Info.ServerInstance
 
-    Write-EventLog -LogName "Application" -Source "Application Error" -EventID 3001 -EntryType Information -Message $FileName -Category 1 -RawData 10,20
+    $ub = New-Object System.UriBuilder($FileName)
+
+    #Write-EventLog -LogName "Application" -Source "Application Error" -EventID 3001 -EntryType Information -Message $ub.path -Category 1 -RawData 10,20
+    
+    #$FileName = $ub.path -replace "/","\"
+    $File = ($ub.uri.localpath).Substring(1)
+
+    Write-EventLog -LogName "Application" -Source "Application Error" -EventID 3001 -EntryType Information -Message $File -Category 1 -RawData 10,20
+
     ##
     # -LicenseData doesn't work
 
     #Import-NAVServerLicense $ServerInstance -Tenant default -LicenseData ([Byte[]]$(Get-Content -Path $FileName ))
     #Import-NAVServerLicense $ServerInstance -Tenant default -LicenseData ([Byte[]]$(Get-Content -Path "C:\Users\alexandraei\Desktop\5337065.bclicense" -Encoding Byte ))
     
-    Import-NAVServerLicense $ServerInstance -Tenant default -LicenseFile $FileName
+    Import-NAVServerLicense $ServerInstance -Tenant default -LicenseFile $File
     #Import-NAVServerLicense $ServerInstance -Tenant default -LicenseFile "C:\Users\alexandraei\Desktop\5337065.flf"
 }
 

@@ -195,39 +195,18 @@ export class AlUiService extends UiService
             return;
           }
 
-        const filePath = result[0].fsPath;
+        //let fileName = fileURLToPath(filePath)
 
-        let fileName = fileURLToPath(filePath)
+        //let fileName = Uri.parse(filePath).fsPath;
 
-        //let fileName = Uri.file(filePath);
-
-        //let fs = require("fs");
-              
-        /*if (!Buffer.isBuffer(fileName)) {
-            fileName = await fs.readFile(
-                (fileName)
-            );
-        }*/
-
-
-        //fileName = fs.readFile(fileName);
-
-        /*fs.readFile(fileName, 'utf8', (err, data) => {
-            if (err) {
-              console.error(err);
-              return;
-            }
-            console.log(data);
-          });*/
-
-        window.showInformationMessage(`Selected file:` + fileName);
-        console.log('Selected file: ' + fileName);
+        //let fileName = require('file-uri-to-path');
+        //fileName(filePath);
 
         let imported = await window.withProgress({
             location: ProgressLocation.Notification,
             title: "Importing license..."
         }, async () => {
-            return await alService.importLicense(instance.InstanceName, fileName);
+            return await alService.importLicense(instance.InstanceName, result[0]);
         });
 
         if (imported)
