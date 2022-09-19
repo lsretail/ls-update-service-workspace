@@ -161,9 +161,9 @@ function Invoke-ImportLicense
         [Parameter(Mandatory)]
         $InstanceName,
         [Parameter(Mandatory)]
-        $FileName        
+        $FileName
     )
-    
+
     $Server = Get-GocInstalledPackage -Id 'bc-server' -InstanceName $InstanceName
 
     if (!$Server)
@@ -179,7 +179,7 @@ function Invoke-ImportLicense
 
     $File = ($Uri.Uri.Localpath).Substring(1)
     
-    Import-NAVServerLicense $ServerInstance -Tenant default -LicenseData ([Byte[]]$(Get-Content -Path  $File -Encoding Byte))
+    Import-NAVServerLicense -LicenseFile $File -Database NavDatabase -ServerInstance $ServerInstance
 }
 
 function Publish-AppAdmin

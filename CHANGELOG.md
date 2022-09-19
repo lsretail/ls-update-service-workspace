@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to the "LS Retail Update Service Workspace" extension will be documented in this file.
 
+## [1.6.0]
+### Added
+- A new command, *Import License*, to allow importing a license file to an instance assigned to a project.
+
 ## [1.5.0]
 ### Added
 - A new property now available on *gocurrent.json*, *alIncludeServerAssemblies*, to specify if Business Central service-tier assemblies are required when compiling the AL app.

@@ -182,8 +182,7 @@ export class AlUiService extends UiService
 
         const result = await window.showOpenDialog({    
             filters: {
-            'Package files (*.flf)': ['flf'],
-            'Package files (*.bclicense)': ['bclicense']
+            'License files (*.flf, *.bclicense)': ['flf', 'bclicense'],
           },
           canSelectFolders: false,
           canSelectFiles: true,
@@ -197,17 +196,14 @@ export class AlUiService extends UiService
 
         let fileName =   result[0].toString();
 
-        let imported = await window.withProgress({
+        await window.withProgress({
             location: ProgressLocation.Notification,
             title: "Importing license..."
         }, async () => {
-            return await alService.importLicense(instance.InstanceName, fileName);
+            await alService.importLicense(instance.InstanceName, fileName);
         });
 
-        if (imported)
-            window.showInformationMessage(`License imported.`);
-        else
-            window.showInformationMessage(`License already imported.`);
+        window.showInformationMessage(`License imported.`);
     } 
 
     private async showAlInstancePicks(instances: PackageInfo[]): Promise<PackageInfo>
