@@ -1,6 +1,7 @@
 import path = require("path");
+import { fileURLToPath, pathToFileURL } from "url";
 import { format } from "util";
-import { ProgressLocation, ExtensionContext, QuickPickOptions, window, commands, Disposable, WorkspaceFolder } from "vscode";
+import { ProgressLocation, ExtensionContext, QuickPickOptions, window, commands, Disposable, WorkspaceFolder, Uri, FileChangeType } from "vscode";
 import { AlService } from "../alService/services/alService";
 import { Constants } from "../constants";
 import { DeployService } from "../deployService/services/deployService";
@@ -47,6 +48,7 @@ export class AlUiService extends UiService
     {
         this.registerCommand("ls-update-service.al.repopulateLaunchJson", this.rePopulateLaunchJson);
         this.registerCommand("ls-update-service.al.unpublishApp", this.alUnpublishApp);
+        this.registerCommand("ls-update-service.al.importLicense", this.alImportLicense);
         this.registerCommand("ls-update-service.al.upgradeData", this.alUpgradeData);
         this.registerCommand("ls-update-service.al.publishApp", this.alPublishApp);
         this.registerCommand("ls-update-service.al.addNewDependencies", this.alAddNewDependencies);
@@ -164,6 +166,49 @@ export class AlUiService extends UiService
         else
             window.showInformationMessage(`App already unpublished.`);
     }
+    
+    private async alImportLicense()
+    {
+        let workspaceFolder = await UiHelpers.showWorkspaceFolderPick(await this._wsAlServices.getWorkspaces({active: true, workspaceFilter: w => Promise.resolve(!w.virtual)}));
+        if (!workspaceFolder)
+            return;
+
+        let alService: AlService = this._wsAlServices.getService(workspaceFolder);
+        
+        let instance = await this.showAlInstancePicks(await this.getAllAlInstances());
+
+        if (!instance)
+            return
+
+        const result = await window.showOpenDialog({    
+            filters: {
+            'Package files (*.flf)': ['flf'],
+            'Package files (*.bclicense)': ['bclicense']
+          },
+          canSelectFolders: false,
+          canSelectFiles: true,
+          canSelectMany: false,
+          openLabel: 'Select license file ...',
+        });    
+        
+        if (!result || result.length < 1) {
+            return;
+          }
+
+        let fileName =   result[0].toString();
+
+        let imported = await window.withProgress({
+            location: ProgressLocation.Notification,
+            title: "Importing license..."
+        }, async () => {
+            return await alService.importLicense(instance.InstanceName, fileName);
+        });
+
+        if (imported)
+            window.showInformationMessage(`License imported.`);
+        else
+            window.showInformationMessage(`License already imported.`);
+    } 
 
     private async showAlInstancePicks(instances: PackageInfo[]): Promise<PackageInfo>
     {        

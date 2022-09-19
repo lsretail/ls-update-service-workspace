@@ -91,6 +91,11 @@
                 "category": "LS Update Service AL"
             },
             {
+                "command": "ls-update-service.al.importLicense",
+                "title": "Import License",
+                "category": "LS Update Service AL"
+            },            
+            {
                 "command": "ls-update-service.al.upgradeData",
                 "title": "Start App Data Upgrade",
                 "category": "LS Update Service AL"
@@ -163,6 +168,10 @@
                     "command": "ls-update-service.al.unpublishApp",
                     "when": "ls-update-service.al.active"
                 },
+                {
+                    "command": "ls-update-service.al.importLicense",
+                    "when": "ls-update-service.al.active"
+                },                
                 {
                     "command": "ls-update-service.al.upgradeData",
                     "when": "ls-update-service.al.active"

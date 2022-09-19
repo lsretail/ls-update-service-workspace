@@ -123,6 +123,65 @@ function Invoke-UnpublishApp
     }
 }
 
+function Invoke-ImportLicenseAdmin
+{
+    param(
+        [Parameter(Mandatory)]
+        $InstanceName,
+        [Parameter(Mandatory)]
+        $FileName        
+    )
+
+    $Block = {
+        param(
+            [Parameter(Mandatory)]
+            $ScriptDir,
+            [Parameter(Mandatory)]
+            $FileName,
+            [Parameter(Mandatory)]
+            $InstanceName
+        )
+        Import-Module (Join-Path $ScriptDir 'AlPsService.psm1')
+        Invoke-ImportLicense -InstanceName $InstanceName -FileName $FileName 
+
+    }
+
+    $Arguments = @{
+        ScriptDir = $PSScriptRoot
+        FileName = $FileName
+        InstanceName = $InstanceName
+    }
+    return Invoke-AsAdmin -ScriptBlock $Block -Arguments $Arguments
+}
+
+
+function Invoke-ImportLicense
+{
+    param(
+        [Parameter(Mandatory)]
+        $InstanceName,
+        [Parameter(Mandatory)]
+        $FileName        
+    )
+    
+    $Server = Get-GocInstalledPackage -Id 'bc-server' -InstanceName $InstanceName
+
+    if (!$Server)
+    {
+        Write-JsonError -Message "Instance doesn't exists `"$InstanceName`"." -Type 'User'
+    }
+
+    Import-Module (Join-Path $Server.Info.ServerDir 'Microsoft.Dynamics.Nav.Management.dll')
+
+    $ServerInstance = $Server.Info.ServerInstance
+
+    $Uri = New-Object System.UriBuilder($FileName)
+
+    $File = ($Uri.Uri.Localpath).Substring(1)
+    
+    Import-NAVServerLicense $ServerInstance -Tenant default -LicenseData ([Byte[]]$(Get-Content -Path  $File -Encoding Byte))
+}
+
 function Publish-AppAdmin
 {
     param(
