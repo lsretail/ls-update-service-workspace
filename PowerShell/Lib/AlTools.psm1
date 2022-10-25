@@ -46,6 +46,7 @@ function Get-DependenciesInternal
     [System.IO.Directory]::CreateDirectory($OutputDir) | Out-Null
 
     $PropagateDependencies = @()
+    $SubstituteFor = @{}
 
     try
     {
@@ -80,10 +81,25 @@ function Get-DependenciesInternal
                 }
             }
 
+            # Check for backwards compatibility, if property *SubstituteFor* is not included, we need to fetch the file.
+            if (![bool]($Package.PSobject.Properties.name -match "SubstituteFor"))
+            {
+                # We end up here if backwards compatibility is needed, if *SubstituteFor* is not included, we need to fetch the file.
+                $Manifest = Get-JsonFileFromPackage -Id $Package.Id -VersionQuery $Package.Version -FilePath 'Manifest.json'
+                if ($Manifest.SubstituteFor)
+                {
+                    $SubstituteFor[$Manifest.SubstituteFor] = $Manifest.Id
+                }
+            }
+            elseif ($Package.SubstituteFor)
+            {
+                $SubstituteFor[$Package.SubstituteFor] = $Package.Id
+            }
+
             if ($AppJson -and $AppJson.propagateDependencies)
             {
-                $Manifest = Get-JsonFileFromPackage -Id $Package.Id -VersionQuery $Package.Version -FilePath 'Manifest.json'
-                foreach ($Dependency in $Manifest.Dependencies)
+                $PackageDetails = Get-GocPackage -Id $Package.Id -Version $Package.Version -IncludeDependencies
+                foreach ($Dependency in $PackageDetails.Dependencies)
                 {
                     $PropagateDependencies += $Dependency
                 }
@@ -109,6 +125,14 @@ function Get-DependenciesInternal
     }
     if ($PropagateDependencies)
     {
+        # We must use substitute packages, if any.
+        foreach ($Dep in $PropagateDependencies)
+        {
+            if ($SubstituteFor.ContainsKey($Dep.Id))
+            {
+                $Dep.Id = $SubstituteFor[$Dep.Id]
+            }
+        }
         Get-DependenciesInternal -Dependencies $PropagateDependencies -OutputDir $OutputDir -Force:$Force -Verbose:$Verbose -SkipPackages $SkipPackages -Server $Server
     }
 }
