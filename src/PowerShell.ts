@@ -36,7 +36,7 @@ export class PowerShell
             executionPolicy: 'Bypass',
             noProfile: true,
             verbose: this._debug,
-            nonInteractive: true
+            nonInteractive: false
         });
 
         this._shell.on('end', code => {
