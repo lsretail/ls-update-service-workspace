@@ -129,13 +129,13 @@ export class PackagePsService
         let tempFile = path.join(tempAux, Constants.dummyFile);
 
         let param = {
-            projectDirs: projectDirs,
-            resultFilePath: tempFile,
-            compilerPath: compilerPath,
-            branchName: branchName,
-            target: target
+            projectDirs: projectDirs.map((projectDir) => `'${projectDir}'`),
+            resultFilePath: `'${tempFile}'`,
+            compilerPath: `'${compilerPath}'`,
+            branchName: `'${branchName}'`,
+            target: `'${target}'`
         };
-        
+
         let powerShell = this._powerShell.getNewPowerShell(outputChannel);
         try
         {
