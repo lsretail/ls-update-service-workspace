@@ -117,6 +117,11 @@ export class PostDeployController implements IWorkspaceService
                 launch.authentication = "AAD";
             }
 
+            if ((typeof launch.authentication || launch.authentication instanceof String) && (<string>launch.authentication).toLowerCase() === "navuserpassword")
+            {
+                launch.authentication = "UserPassword";
+            }
+
             if (info.ServerConfig)
                 launch.port = parseInt(info.ServerConfig.DeveloperServicesPort);
 
