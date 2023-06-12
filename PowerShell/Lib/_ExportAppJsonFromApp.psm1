@@ -52,7 +52,7 @@ function Get-AppJsonFromApp
         $Path
     )
 
-    $TempDir = [System.IO.Path]::Combine($ENV:TEMP, [System.IO.Path]::GetRandomFileName())
+    $TempDir = [System.IO.Path]::Combine([IO.Path]::GetTempPath(), [System.IO.Path]::GetRandomFileName())
     [System.IO.Directory]::CreateDirectory($TempDir) | Out-Null
 
     try 

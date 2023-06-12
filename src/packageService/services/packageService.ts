@@ -165,7 +165,15 @@ export class PackageService implements IWorkspaceService
         let dllsLocked = await this._packagesPsService.testNetPackagesLocked(projectDir, assemblyProbingDir);
         if (dllsLocked && this._alExtensionService.isActive)
         {
-            await this._alExtensionService.stop();
+            try
+            {
+                await this._alExtensionService.stop();
+            }
+            catch
+            {
+                // ignore
+            }
+            
             let count = 0
             while (count < 10)
             {

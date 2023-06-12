@@ -42,7 +42,8 @@ function Invoke-UpgradeData
         return (ConvertTo-Json @() -Compress)
     }
 
-    Import-Module (Join-Path $Server.Info.ServerDir 'Microsoft.Dynamics.Nav.Apps.Management.dll')
+    $ModuleDir = Get-BcModuleDir -InstanceName $InstanceName
+    Import-Module (Join-Path $ModuleDir 'Microsoft.Dynamics.Nav.Apps.Management.dll')
 
     $Apps = Get-NAVAppInfo -ServerInstance $Server.Info.ServerInstance -TenantSpecificProperties -Tenant default
     $Apps = $Apps | Where-Object { $_.ExtensionDataVersion -ne $_.Version}
@@ -106,7 +107,8 @@ function Invoke-UnpublishApp
         Write-JsonError -Message "Instance doesn't exists `"$InstanceName`"." -Type 'User'
     }
 
-    Import-Module (Join-Path $Server.Info.ServerDir 'Microsoft.Dynamics.Nav.Apps.Management.dll')
+    $ModuleDir = Get-BcModuleDir -InstanceName $InstanceName
+    Import-Module (Join-Path $ModuleDir 'Microsoft.Dynamics.Nav.Apps.Management.dll')
 
     $ServerInstance = $Server.Info.ServerInstance
 
@@ -171,7 +173,8 @@ function Invoke-ImportLicense
         Write-JsonError -Message "Instance doesn't exists `"$InstanceName`"." -Type 'User'
     }
 
-    Import-Module (Join-Path $Server.Info.ServerDir 'Microsoft.Dynamics.Nav.Management.dll')
+    $ModuleDir = Get-BcModuleDir -InstanceName $InstanceName
+    Import-Module (Join-Path $ModuleDir 'Microsoft.Dynamics.Nav.Management.dll')
 
     $ServerInstance = $Server.Info.ServerInstance
 
@@ -226,7 +229,9 @@ function Publish-App
         Write-JsonError -Message "Instance doesn't exists `"$InstanceName`"." -Type 'User'
     }
 
-    Import-Module (Join-Path $Server.Info.ServerDir 'Microsoft.Dynamics.Nav.Apps.Management.dll')
+    $ModuleDir = Get-BcModuleDir -InstanceName $InstanceName
+    Import-Module (Join-Path $ModuleDir 'Microsoft.Dynamics.Nav.Apps.Management.dll')
+
     $SyncMode = 'Development'
     $AllowForceSync = $true
 
@@ -264,4 +269,32 @@ function Publish-App
     {
         $App | Start-NAVAppDataUpgrade -ServerInstance $ServerInstance    
     }
+}
+
+function Get-BcModuleDir
+{
+    param(
+        [Parameter(Mandatory, ParameterSetName='ServerDir')]
+        $ServerDir,
+        [Parameter(Mandatory, ParameterSetName='InstanceName')]
+        $InstanceName
+    )
+
+    if ($InstanceName)
+    {
+        $BcServer = Get-UscInstalledPackage -Id 'bc-server' -InstanceName $InstanceName
+
+        if (!$BcServer)
+        {
+            throw "Specified instance ($InstanceName) does not exists or is not a Business Central instance."
+        }
+
+        $ServerDir = $BcServer.Info.ServerDir
+    }
+
+    if (Test-Path (Join-Path $ServerDir 'Management\Microsoft.Dynamics.Nav.Management.dll'))
+    {
+        return Join-Path $ServerDir 'Management'
+    }
+    return $ServerDir
 }

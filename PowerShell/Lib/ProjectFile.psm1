@@ -37,7 +37,7 @@ function Get-ProjectFilePackages
 
     $ProjectDir = Split-Path $Path -Parent
     $ProjectFile = Get-Content -Path $Path -Raw | ConvertFrom-Json
-    
+
     Get-PackageGroupFromObj -ProjectFile $ProjectFile -Id $Id -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -Variables $Variables
 }
 
@@ -57,7 +57,7 @@ function Get-ProjectFile
 
     $ResolveContainer = Get-ResolveContainer -ProjectDir $ProjectDir -ProjectFile $ProjectFile -Target $Target -BranchName $BranchName -Variables $Variables
 
-    $ResolveAsVariables = @('id', 'name', 'displayName', 'description', 'outputDir')
+    $ResolveAsVariables = @('id', 'name', 'displayName', 'description', 'outputDir','alAppSourceCopVersionQuery')
     $CopyProperties = @('instance', 'substituteFor', 'windowsUpdateSensitive', 'alIncludeServerAssemblies')
 
     $Result = @{}
@@ -105,7 +105,7 @@ function Get-ProjectFile
             $File = Resolve-VersionTarget -Value $File -Target $Target
             if ($File -is [string])
             {
-                
+
                 $Result.InputPath += [System.IO.Path]::Combine($ProjectDir, (Resolve-VariablesInString -Value $File @ResolveContainer))
             }
             elseif ($null -eq $File)
@@ -145,7 +145,7 @@ function Get-ProjectFile
     {
         $Result.Commands = [hashtable] $ProjectFileHashTable.commands
     }
-    
+
     return $Result
 }
 
@@ -204,7 +204,7 @@ function Get-ProjectFileCompileModifiers
     }
     elseif (($null -ne $Idx) -and $Idx -eq 0)
     {
-        $Packages = New-Object -TypeName System.Collections.ArrayList        
+        $Packages = New-Object -TypeName System.Collections.ArrayList
         $Packages.AddRange($ProjectFile.compileModifiers) | Out-Null
         Resolve-PackagesVersions -Packages $Packages @ResolveContainer
         $Packages.ToArray()
@@ -220,7 +220,7 @@ function Get-ProjectFileTargets
     <#
         .SYNOPSIS
             Get version targets defined in specified package group or dependencies.
-        
+
         .NOTES
             Use -UseDevTarget to return the targets specified by the devTarget property
             in the project file.
@@ -240,7 +240,7 @@ function Get-ProjectFileTargets
 
     $ProjectDir = Split-Path $Path -Parent
     $ProjectFile = Get-Content -Path $Path -Raw | ConvertFrom-Json
-    
+
     $GlobalDevTarget = @()
     if ($UseDevTarget -and $ProjectFile.devTarget)
     {
@@ -274,7 +274,7 @@ function Get-ProjectFileTargets
     {
         if (($Package.version -isnot [string]) -and $Package.version.default)
         {
-            $Package.version.PSObject.Properties | ForEach-Object { 
+            $Package.version.PSObject.Properties | ForEach-Object {
                 if (!($Targets -icontains $_.Name))
                 {
                     $Targets += $_.Name
@@ -323,7 +323,7 @@ function Get-ResolveContainer
             }
             else
             {
-                $ProjectVariables[$VariableName] = $Variables[$VariableName].ToString()    
+                $ProjectVariables[$VariableName] = $Variables[$VariableName].ToString()
             }
         }
     }
@@ -339,7 +339,7 @@ function Get-ResolveContainer
         ProjectDir       = $ProjectDir
         ProjectFile      = $ProjectFile
         Target           = $Target
-        BranchName       = $BranchName 
+        BranchName       = $BranchName
         BranchToLabelMap = $BranchToLabelMap
     }
 }
@@ -354,7 +354,7 @@ function GetBranchLabelMap
     if ($null -ne $ProjectFile.branchToPreReleaseLabelMap)
     {
         $BranchToPreReleaseLabelMap = @{}
-        $ProjectFile.branchToPreReleaseLabelMap.PSObject.properties | ForEach-Object { 
+        $ProjectFile.branchToPreReleaseLabelMap.PSObject.properties | ForEach-Object {
             $Name = $_.Name
             if ($Name -ieq '${currentBranch}')
             {
@@ -416,10 +416,10 @@ function Get-PackageGroupFromObj
                 $Packages.Add($Entry) | Out-Null
             }
         }
-        
+
         if (!$DoNotResolveVersions)
         {
-            Resolve-PackagesVersions -Packages $Packages @ResolveContainer    
+            Resolve-PackagesVersions -Packages $Packages @ResolveContainer
         }
         $Set.packages = $Packages
         return $Set
@@ -515,7 +515,7 @@ function Resolve-VariablesInString
         {
             $FuncName = $Match.Groups['Func'].Value
         }
-        
+
         $ArgsList = @()
         if ($Match.Groups['Args'])
         {
@@ -550,7 +550,12 @@ function Resolve-VariablesInString
             $Replacement = Resolve-VersionWithFunction -VersionValue $ProjectVariables[$VariableName] -Target $Target -ProjectDir $ProjectDir -VariableName $VariableName -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap -ResolveCache $ResolveCache -ProjectVariables $ProjectVariables
             $ResolveCache[$VariableName] = $Replacement
         }
-        
+        elseif($VariableName.ToLower() -eq 'alAppSourceCopVersion'.ToLower())
+        {
+            $Replacement = (get-content (join-path ((Get-Item $ProjectDir).Parent.FullName) 'AppSourceCop.json') | ConvertFrom-Json).Version
+            $ResolveCache[$VariableName] = $Replacement
+        }
+
         if ($null -ne $Replacement)
         {
             $FromIdx = $Match.Index + $Match.Length
@@ -570,7 +575,7 @@ function Resolve-VariablesInString
             {
                 $Replacement = Get-MaxLength -Value $Replacement @ArgsList
             }
-            $Value = $Value.Substring(0, $Match.Index) + $Replacement + $Value.Substring($FromIdx, $Value.Length - $FromIdx) 
+            $Value = $Value.Substring(0, $Match.Index) + $Replacement + $Value.Substring($FromIdx, $Value.Length - $FromIdx)
         }
     }
     return $Value
@@ -621,7 +626,7 @@ function Resolve-VersionTarget
     {
         return $Value
     }
-    
+
     if ($Target -and ($Target -in $Value.PSobject.Properties.name))
     {
         return $Value.$Target
@@ -653,7 +658,7 @@ function Resolve-VersionWithFunction
     {
         return (Resolve-VariablesInString -Value $VersionValue -ProjectVariables $ProjectVariables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap)
     }
-    
+
     if ($null -ne $VersionValue.AlAppId)
     {
         $Arguments = @{
@@ -671,10 +676,10 @@ function Resolve-VersionWithFunction
     elseif ($null -ne $VersionValue.Id)
     {
         $Arguments = @{
-            Id               = $VersionValue.Id 
+            Id               = $VersionValue.Id
             Version          = (Resolve-VariablesInString -Value $VersionValue.Version -ProjectVariables $ProjectVariables -ResolveCache $ResolveCache -ProjectDir $ProjectDir -Target $Target -BranchName $BranchName -BranchToLabelMap $BranchToLabelMap)
             ResolverPath     = $VersionValue.ResolverPath
-            ResolverFunction = $VersionValue.ResolverFunction 
+            ResolverFunction = $VersionValue.ResolverFunction
             ProjectDir       = $ProjectDir
             Target           = $Target
         }
@@ -825,7 +830,7 @@ function Resolve-VariableBranchFilter
     {
         $Arguments.BranchToLabelMap = $BranchToLabelMap
     }
-    ConvertTo-BranchPriorityPreReleaseFilter @Arguments 
+    ConvertTo-BranchPriorityPreReleaseFilter @Arguments
 }
 
 function Resolve-AdvancedFilePath
@@ -848,7 +853,7 @@ function Resolve-AdvancedFilePath
         BranchName       = $BranchName
         BranchToLabelMap = $BranchToLabelMap
     }
-    
+
     if (('SourcePath' -iin $Value.PSobject.Properties.name) -and ('Destination' -iin $Value.PSobject.Properties.name))
     {
         $Hashtable = @{
@@ -863,7 +868,7 @@ function Resolve-AdvancedFilePath
         return $Hashtable
     }
     else
-    {   
+    {
         return $Value
     }
 }

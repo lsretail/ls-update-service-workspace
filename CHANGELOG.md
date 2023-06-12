@@ -1,6 +1,14 @@
 # Change Log
 All notable changes to the "LS Retail Update Service Workspace" extension will be documented in this file.
 
+## [1.6.3]
+### Changed
+- The ability to remove dependency at compile time has been added through compile modifiers, by adding version for a package to 'skip'.
+
+## [1.6.2]
+### Changed
+- Use correct Business Central management cmdlet path after move in 22.0.
+
 ## [1.6.0]
 ### Added
 - A new command, *Import License*, to allow importing a license file to an instance assigned to a project.

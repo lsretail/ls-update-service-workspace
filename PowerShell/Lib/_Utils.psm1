@@ -212,7 +212,7 @@ function Get-JsonFileFromPackage
         throw "Package $Id ($VersionQuery) does not exists."
     }
 
-    $TempDir = Join-Path $env:TEMP ([IO.Path]::GetRandomFileName())
+    $TempDir = Join-Path ([IO.Path]::GetTempPath()) ([IO.Path]::GetRandomFileName())
     [IO.Directory]::CreateDirectory($TempDir) | Out-Null
     try 
     {

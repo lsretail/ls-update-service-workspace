@@ -8,12 +8,12 @@ Import-Module (Join-Path $PSScriptRoot '_ExportAppJsonFromApp.psm1') -Force
 function Get-AlDependencies
 {
     param(
-        [Parameter(Mandatory)]
-        $Dependencies,
-        [Parameter(Mandatory)]
-        $OutputDir,
-        $Server,
-        [switch] $Force
+    [Parameter(Mandatory)]
+    $Dependencies,
+    [Parameter(Mandatory)]
+    $OutputDir,
+    $Server,
+    [switch] $Force
     )
     $Verbose = [bool]$PSBoundParameters["Verbose"]
     Get-DependenciesInternal -Dependencies $Dependencies -OutputDir $OutputDir -Force:$Force -SkipPackages ([System.Collections.ArrayList]::new()) -Verbose:$Verbose -Server $Server
@@ -22,19 +22,19 @@ function Get-AlDependencies
 function Get-DependenciesInternal
 {
     param(
-        [Parameter(Mandatory)]
-        $Dependencies,
-        [Parameter(Mandatory)]
-        $OutputDir,
-        [System.Collections.ArrayList] $SkipPackages,
-        $Server,
-        [switch] $Force
+    [Parameter(Mandatory)]
+    $Dependencies,
+    [Parameter(Mandatory)]
+    $OutputDir,
+    [System.Collections.ArrayList] $SkipPackages,
+    $Server,
+    [switch] $Force
     )
 
     $Verbose = [bool]$PSBoundParameters["Verbose"]
-    
+
     $PackageIds = $Dependencies | ForEach-Object { Get-Value -Values @($_.Id, $_.PackageId) }
-    
+
     $Deps = ConvertTo-HashtableList $Dependencies
 
     $AllResolved = $Deps | Get-GocUpdates
@@ -116,7 +116,7 @@ function Get-DependenciesInternal
     {
         try
         {
-            Remove-Item $TempDir -Force -Recurse    
+            Remove-Item $TempDir -Force -Recurse
         }
         catch
         {
@@ -140,16 +140,16 @@ function Get-DependenciesInternal
 function Get-AlAddinDependencies
 {
     param(
-        [Parameter(Mandatory = $true)]
-        $Dependencies,
-        [Parameter(Mandatory = $true)]
-        $OutputDir,
-        $Server,
-        [switch] $IncludeServer,
-        [switch] $Force
+    [Parameter(Mandatory = $true)]
+    $Dependencies,
+    [Parameter(Mandatory = $true)]
+    $OutputDir,
+    $Server,
+    [switch] $IncludeServer,
+    [switch] $Force
     )
     $PackageIds = $Dependencies | ForEach-Object { $_.Id}
-    
+
     $Deps = ConvertTo-HashtableList $Dependencies
 
     $Resolved = @($Deps | Get-GocUpdates -Server $Server | Where-Object { $PackageIds.Contains($_.Id) -or ($IncludeServer -and $_.Id -eq 'bc-server')})
@@ -205,13 +205,13 @@ function Get-AlAddinDependencies
 
         if ($IsBcServer)
         {
-            Move-Item -Path ([System.IO.Path]::Combine($TempDir, $Package.Id, 'Service', '*')) -Destination $Dir | Out-Null    
+            Move-Item -Path ([System.IO.Path]::Combine($TempDir, $Package.Id, 'Service', '*')) -Destination $Dir | Out-Null
         }
         else
         {
             Move-Item -Path ([System.IO.Path]::Combine($TempDir, $Package.Id, 'Addin', '*')) -Destination $Dir | Out-Null
         }
-        
+
         Get-ChildItem -Path $Dir -Filter '*.txt' -Recurse | Remove-Item
         Get-ChildItem -Path $Dir -Filter '*.xml' -Recurse | Remove-Item
     }
@@ -225,16 +225,16 @@ function Get-AlAddinDependencies
 function Get-AlDevDependencies
 {
     param(
-        [Parameter(Mandatory)]
-        $Dependencies,
-        [Parameter(Mandatory)]
-        $ProjectDir,
-        $Server,
-        $TempDir
+    [Parameter(Mandatory)]
+    $Dependencies,
+    [Parameter(Mandatory)]
+    $ProjectDir,
+    $Server,
+    $TempDir
     )
 
     $PackageIds = $Dependencies | ForEach-Object { $_.Id}
-    
+
     $Deps = ConvertTo-HashtableList $Dependencies
 
     $Resolved = @($Deps | Get-GocUpdates -Server $Server | Where-Object { $PackageIds.Contains($_.Id)})
@@ -243,7 +243,7 @@ function Get-AlDevDependencies
     {
         $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) 'AlTools'
     }
-    
+
     [System.IO.Directory]::CreateDirectory($TempDir) | Out-Null
 
     $ScriptFileName = 'ProjectDeploy.ps1'
@@ -271,16 +271,16 @@ function Get-AlDevDependencies
 function Invoke-AlCompiler
 {
     param(
-        [Parameter(Mandatory)]
-        [string] $ProjectDir,
-        [Parameter(Mandatory)]
-        [string] $CompilerPath,
-        [Parameter(Mandatory)]
-        $OutputDir,
-        $AlPackagesDir = $null,
-        [Array] $AssemblyDir = $null
+    [Parameter(Mandatory)]
+    [string] $ProjectDir,
+    [Parameter(Mandatory)]
+    [string] $CompilerPath,
+    [Parameter(Mandatory)]
+    $OutputDir,
+    $AlPackagesDir = $null,
+    [Array] $AssemblyDir = $null,
+    [switch] $RunALCops
     )
-
     $AppJsonPath = Join-Path $ProjectDir 'app.json'
     $AppJson = Get-Content -Path $AppJsonPath -Raw | ConvertFrom-Json
 
@@ -303,8 +303,40 @@ function Invoke-AlCompiler
         $Arguments += "/assemblyprobingpaths:`"$Joined`""
     }
 
-    Write-Verbose "`"$CompilerPath`" $([string]::Join(' ', $Arguments))"
+    if ($RunALCops)
+    {
+        if(!(Test-Path (join-path $ProjectDir '.vscode\settings.json')))
+        {
+            Write-Warning "Settings.json missing for $ProjectDir. It is required for using codecop. Refer to microsoft documentation on how to structure: https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-using-code-analysis-tool"
+        }
+        else
+        {
+            $Rules = (get-content (join-path $ProjectDir '.vscode\settings.json')) | ConvertFrom-Json
+            $RulesetFile = join-path $ProjectDir $Rules.'al.ruleSetPath'
+            if(!(test-path $RulesetFile) -or $null -eq $Rules.'al.ruleSetPath')
+            {
+                Write-Warning "Ruleset file specified by al.ruleSetPath not found. Refer to documentation here: https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-using-code-analysis-tool"
+            }
+            else
+            {
+                if($Rules.'al.codeAnalyzers'.Contains('${AppSourceCop}'))
+                {
+                    $Arguments += @("/analyzer:$(Join-Path (Get-Item $CompilerPath).Directory.Parent.FullName 'Analyzers\Microsoft.Dynamics.Nav.AppSourceCop.dll')")
+                }
+                if($Rules.'al.codeAnalyzers'.Contains('${UICop}'))
+                {
+                    $Arguments += @("/analyzer:$(Join-Path (Get-Item $CompilerPath).Directory.Parent.FullName 'Analyzers\Microsoft.Dynamics.Nav.UICop.dll')")
+                }
+                if($Rules.'al.codeAnalyzers'.Contains('${CodeCop}'))
+                {
+                    $Arguments += @("/analyzer:$(Join-Path (Get-Item $CompilerPath).Directory.Parent.FullName 'Analyzers\Microsoft.Dynamics.Nav.CodeCop.dll')")
+                }
+                $Arguments += @("/ruleset:$RulesetFile")
+            }
+        }
+    }
 
+    Write-Verbose "`"$CompilerPath`" $([string]::Join(' ', $Arguments))"
     $Output = & $CompilerPath @Arguments | Out-String
 
     if ($LASTEXITCODE -ne 0)
@@ -313,7 +345,7 @@ function Invoke-AlCompiler
         {
             Write-Warning $Output
         }
-   
+
         throw "AL Compiler exited with exit code $LASTEXITCODE."
     }
     elseif ($Output)
@@ -326,8 +358,8 @@ function Invoke-AlCompiler
 function Get-AlCompiler
 {
     param(
-        $InstanceName = 'AlCompiler',
-        $Server
+    $InstanceName = 'AlCompiler',
+    $Server
     )
 
     $PackageId = 'bc-al-compiler'
@@ -340,7 +372,21 @@ function Get-AlCompiler
     }
 
     $InstalledPackage = Get-GocInstalledPackage -InstanceName $InstanceName -Id $PackageId
-    return $InstalledPackage.Info.CompilerPath
+
+    if(test-path (join-path $InstalledPackage.InstanceDirectory 'Compiler\win32\alc.exe'))
+    {
+        $CompilerPath = (join-path $InstalledPackage.InstanceDirectory 'Compiler\win32\alc.exe')
+    }
+    else
+    {
+        $CompilerPath = (join-path $InstalledPackage.InstanceDirectory 'Compiler\alc.exe')
+    }
+    Write-Verbose "Compiler path: $CompilerPath"
+    if(!(Test-Path $CompilerPath))
+    {
+        throw "Compiler not found at $CompilerPath"
+    }
+    return $CompilerPath
 }
 
 function Remove-IfExists
@@ -359,23 +405,23 @@ function Remove-IfExists
 function New-AlPackage
 {
     param(
-        [Parameter(Mandatory = $true)]
-        $AlProjectFilePath,
-        [Parameter(Mandatory = $true)]
-        $GocProjectFilePath,
-        [Parameter(Mandatory = $false)]
-        $AppPath,
-        $OutputDir,
-        $DefaultOutputDir,
-        [string] $Target,
-        [string] $BranchName,
-        [hashtable] $Variables,
-        [switch] $Force
+    [Parameter(Mandatory = $true)]
+    $AlProjectFilePath,
+    [Parameter(Mandatory = $true)]
+    $GocProjectFilePath,
+    [Parameter(Mandatory = $false)]
+    $AppPath,
+    $OutputDir,
+    $DefaultOutputDir,
+    [string] $Target,
+    [string] $BranchName,
+    [hashtable] $Variables,
+    [switch] $Force
     )
     Import-Module LsPackageTools\AppPackageCreator -Verbose:$false
 
     $DefaultOutputDir = Split-Path $AlProjectFilePath -Parent
-    
+
     $AlProject = Get-Content -Path $AlProjectFilePath -Raw | ConvertFrom-Json
     $DepdenciesGroup = Get-ProjectFilePackages -Id 'dependencies' -Path $GocProjectFilePath -Target $Target -BranchName $BranchName -Variables $Variables
 
@@ -420,18 +466,19 @@ function New-AlPackage
 function Get-AlProjectDependencies
 {
     param(
-        [Parameter(Mandatory)]
-        $ProjectDir,
-        $BranchName,
-        $Target,
-        [hashtable] $Variables,
-        $PackageCacheDir,
-        $AssemblyProbingDir,
-        [Array] $CompileModifiers,
-        [string[]] $SkipPackageId = @(),
-        $Server,
-        [switch] $ClearDirs,
-        [switch] $Force
+    [Parameter(Mandatory)]
+    $ProjectDir,
+    $BranchName,
+    $Target,
+    [hashtable] $Variables,
+    $PackageCacheDir,
+    $AssemblyProbingDir,
+    [Array] $CompileModifiers,
+    [string[]] $SkipPackageId = @(),
+    $Server,
+    [switch] $ClearDirs,
+    [switch] $Force,
+    [switch] $RunALCops
     )
 
     $Verbose = [bool]$PSBoundParameters["Verbose"]
@@ -466,17 +513,16 @@ function Get-AlProjectDependencies
     }
 
     $Dependencies = $DependenciesGroup.Packages
-    
+
     if ($ClearDirs)
     {
-        Remove-IfExists -Path $AssemblyProbingDir -Recurse -Force
         Remove-IfExists -Path (Join-Path $PackageCacheDir '*') -Recurse -Force
     }
 
     Write-Verbose "Dependencies for package:"
     $Dependencies | Format-Table -AutoSize | Out-String | Write-Verbose
 
-    $ModifiedDependencies = $Dependencies    
+    $ModifiedDependencies = $Dependencies
 
     if ($DevDependencies -and $DevDependencies.Packages)
     {
@@ -503,9 +549,62 @@ function Get-AlProjectDependencies
         return
     }
 
+    if($RunALCops)
+    {
+        $AppSourceJsonPath = Join-Path $ProjectDir 'AppSourceCop.json'
+
+        # Get comparison app defined in gocurrent.json with alAppSourceCopVersionQuery
+        $ComparisonAppVersion = (Get-GocPackage -Id $ProjectFile.Id -VersionQuery $ProjectFile.alAppSourceCopVersionQuery).Version
+        $FilePath = (Get-GocFile -Id $ProjectFile.Id -Version $ComparisonAppVersion | Where-Object {$_.FilePath -like '*.app'}).FilePath
+        Write-Verbose "Downloading comparison app file for version $ComparisonAppVersion"
+        Get-GocFile -Id $ProjectFile.Id -Version $ComparisonAppVersion -Download -OutputPath (join-path $PackageCacheDir $FilePath) -FilePath $FilePath
+        $AppSourceJsonContent = get-content $AppSourceJsonPath | convertfrom-json
+        if(($null -eq $AppSourceJsonContent.version) -or $AppSourceJsonContent.version -eq "")
+        {
+            Write-Debug "No version found in $AppSourceJsonPath"
+        }
+        else
+        {
+            # The exact version of the app, in particular the build numer, needs to be injected into appsourcecop.json
+            # If the version can not be found, we remove the version line requirement from appsourcecop.json
+            $AppVersion = $null
+            try # Try to extract correct version from the app file's app.json
+            {
+                $AppVersion = (Get-AppJsonFromApp (join-path $PackageCacheDir $FilePath)).Version
+            }
+            catch {
+                Write-Warning "Unable to get version information from app file. Error message below:"
+                Write-Warning $_
+            }
+            if(!$AppVersion) # Try to fetch version from the app file name
+            {
+                try
+                {
+                    $Regex = '(\d+).(\d+).(\d+).(\d+)'
+                    $FilePath -match $Regex | Out-Null
+                    $AppVersion = $Matches[0]
+                }
+                catch
+                {
+                    Write-Warning "Unable to get version information from app file name: $FilePath"
+                }
+            }
+
+            if($AppVersion) # If a version has been found, we inject into appsourcecop.json
+            {
+                $AppSourceJsonContent.version = $AppVersion
+            }
+            else # Otherwise we remove version requirement from app.json
+            {
+                $AppSourceJsonContent.version = ""
+            }
+            $AppSourceJsonContent | ConvertTo-Json | Out-File $AppSourceJsonPath
+        }
+    }
+
     Write-Verbose 'Downloading dependencies for app...'
     Get-AlDependencies -Dependencies $ModifiedDependencies -OutputDir $PackageCacheDir -Verbose:$Verbose -Force:$Force -Server $Server
-    
+
     Write-Verbose 'Downloading assemblies for app...'
     Get-AlAddinDependencies -Dependencies $ModifiedDependencies -OutputDir $AssemblyProbingDir -IncludeServer:$IncludeServer -Verbose:$Verbose -Force:$Force -Server $Server
 
@@ -517,16 +616,16 @@ function Invoke-AlProjectCompile
 {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
-        [Alias('Dir')]
-        [Alias('Path')]
-        [string[]] $ProjectDir,
-        [Parameter(ValueFromPipelineByPropertyName)]
-        [string] $OutputDir,
-        $CompilerPath,
-        $Server,
-        [switch] $Force,
-        [switch] $UseDependencyTempDir
+    [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+    [Alias('Dir')]
+    [Alias('Path')]
+    [string[]] $ProjectDir,
+    [Parameter(ValueFromPipelineByPropertyName)]
+    [string] $OutputDir,
+    $CompilerPath,
+    $Server,
+    [switch] $Force,
+    [switch] $UseDependencyTempDir
     )
 
     begin
@@ -578,24 +677,24 @@ function Invoke-AlProjectCompile
 function Invoke-ProjectBuild
 {
     param(
-        [Parameter(Mandatory)]
-        [string] $AppId,
-        [Parameter(Mandatory)]
-        [hashtable] $Projects,
-        [string] $CompilerPath,
-        $Server,
-        [switch] $Force,
-        $TempDirBase,
-        [switch] $OnlyCompile
-    )
+    [Parameter(Mandatory)]
+    [string] $AppId,
+    [Parameter(Mandatory)]
+    [hashtable] $Projects,
+    [string] $CompilerPath,
+    $Server,
+    [switch] $Force,
+    $TempDirBase,
+    [switch] $OnlyCompile,
+    [string] $SignToolPath,
+    [array] $SignToolArgumentList,
+    [switch] $RunALCops    )
     $verbose = [bool]$PSBoundParameters["Verbose"]
     Write-Verbose "Building: `"$($Projects[$AppId].ProjectDir)`" `"$AppId`"."
-
     if ($Projects[$AppId].Package)
     {
         return
     }
-
     $Project = $Projects[$AppId]
 
     $DependencyPackageId = @()
@@ -611,7 +710,7 @@ function Invoke-ProjectBuild
         if (!$Projects[$Dependency.id].AppPath)
         {
             Write-Verbose "Need to compile dependency `"$($Dependency.id)`" first."
-            Invoke-ProjectBuild -AppId $Dependency.id -Projects $Projects -CompilerPath $CompilerPath -Verbose:$Verbose -Force:$Force -TempDirBase $TempDirBase -Server $Server -OnlyCompile:$OnlyCompile
+            Invoke-ProjectBuild -AppId $Dependency.id -Projects $Projects -CompilerPath $CompilerPath -Verbose:$Verbose -Force:$Force -TempDirBase $TempDirBase -Server $Server -OnlyCompile:$OnlyCompile -SignToolPath $SignToolPath -SignToolArgumentList $SignToolArgumentList -RunALCops:$RunALCops
             Write-Verbose "Continuing with `"$AppId`"."
         }
 
@@ -639,9 +738,9 @@ function Invoke-ProjectBuild
     }
 
     $Arguments = @{
-        BranchName = $Project.BranchName 
+        BranchName = $Project.BranchName
         Target = $Project.Target
-        Variables = $Project.Variables 
+        Variables = $Project.Variables
     }
 
     $AllCompileModifiers = Get-ProjectFileCompileModifiers -Path (Get-GocProjectFilePath -ProjectDir $Projects[$AppId].ProjectDir) @Arguments
@@ -655,7 +754,7 @@ function Invoke-ProjectBuild
     $Arguments += @{
         ProjectDir = $Project.ProjectDir
     }
-    
+
     $AlPackagesDir = $null
     $NetPackagesDir = $null
     if ($TempDirBase)
@@ -681,6 +780,25 @@ function Invoke-ProjectBuild
         $AssemblyDir += (Join-Path $Projects[$AppId].ProjectDir '.netpackages')
     }
 
+
+    if($RunALCops)
+    {
+        $AppSourceJsonPath = Join-Path $ProjectDir 'AppSourceCop.json'
+        if(!(Test-Path $AppSourceJsonPath))
+        {
+            Write-Warning "AppSourceCop.json not found at location: $AppSourceJsonPath"
+            Write-Warning "Can not run AL cop."
+            $RunALCops = $false
+        }
+        elseif ($null -eq $ProjectFile.alAppSourceCopVersionQuery)
+        {
+            Write-Warning "alAppSourceCopVersionQuery variable not defined in project file in project folder: $ProjectDir"
+            Write-Warning "Unable to run AL Cop."
+            $RunALCops = $false
+        }
+    }
+
+
     foreach ($CompileModifiers in $AllCompileModifiers)
     {
         Get-AlProjectDependencies @Arguments `
@@ -691,7 +809,8 @@ function Invoke-ProjectBuild
             -Server $Server `
             -Verbose:$verbose `
             -ClearDirs `
-            -Force
+            -Force `
+            -RunALCops:$RunALCops
 
         if ($DependencyApps)
         {
@@ -702,7 +821,7 @@ function Invoke-ProjectBuild
             }
             else
             {
-                $DestDir = (Join-Path $Projects[$AppId].ProjectDir '.alpackages')    
+                $DestDir = (Join-Path $Projects[$AppId].ProjectDir '.alpackages')
             }
             [IO.Directory]::CreateDirectory($DestDir) | Out-Null
             Copy-Item -Path $DependencyApps -Destination $DestDir
@@ -715,14 +834,29 @@ function Invoke-ProjectBuild
             AssemblyDir = $AssemblyDir
             AlPackagesDir = $AlPackagesDir
             Verbose = $Verbose
+            RunALCops = $RunALCops
         }
 
         if ($OnlyCompile -and $Projects[$AppId].OutputDir)
         {
             $CompileArguments.OutputDir = $Projects[$AppId].OutputDir
         }
-        
+
         $Projects[$AppId].AppPath = Invoke-AlCompiler @CompileArguments
+    }
+
+    # Signing apps
+    if ($SignToolPath)
+    {
+        $app = $Projects[$AppId].AppPath
+        Write-Verbose "File being signed: $app"
+        & $SignToolPath $SignToolArgumentList $app
+        $SignStatus = (Get-AuthenticodeSignature $app).status
+        Write-Verbose "Signing status of $app : $SignStatus"
+        if ($SignStatus -ne 'Valid')
+        {
+            Write-Error Signed failed
+        }
     }
 
     if ($ProjectTempDir -and (Test-Path $ProjectTempDir))
@@ -737,8 +871,8 @@ function Invoke-ProjectBuild
             OutputDir = $Project.OutputDir
             Force = $Force
         }
-    
-        $Projects[$AppId].Package = New-AlProjectPackage @Arguments -Verbose:$verbose 
+
+        $Projects[$AppId].Package = New-AlProjectPackage @Arguments -Verbose:$verbose
         $Projects[$AppId].Package
     }
 }
@@ -746,52 +880,66 @@ function Invoke-ProjectBuild
 function Invoke-AlProjectBuild
 {
     <#
-        .SYNOPSIS
-            Build specified al project
-        
-        .PARAMETER ProjectDir
-            Specify the project directory (or repository directory).
-        
-        .PARAMETER BranchName
-            Specify the Git branch name for you repository (if appropriate).
+    .SYNOPSIS
+    Build specified al project
 
-        .PARAMETER Target
-            Specify a target to compile against. Can be used to resolve
-            different dependencies for release, release candidate and development.
-        
-        .PARAMETER Variables
-            Specify a hashtable of variables to make available for project file.
-            The values specified here, will overwrite any variables specified
-            in the project file.
+    .PARAMETER ProjectDir
+    Specify the project directory (or repository directory).
 
-        .PARAMETER OutputDir
-            Specifies the output directory for the package and artifacts.
-        
-        .PARAMETER CompilerPath
-            Specifies a path to the AL compiler (alc.exe). If not specified, 
-            it will install the bc-al-compiler package and use to compile.
-        
-        .PARAMETER Force
-            If specified, it will overwrite any existing files.
+    .PARAMETER BranchName
+    Specify the Git branch name for you repository (if appropriate).
+
+    .PARAMETER Target
+    Specify a target to compile against. Can be used to resolve
+    different dependencies for release, release candidate and development.
+
+    .PARAMETER Variables
+    Specify a hashtable of variables to make available for project file.
+    The values specified here, will overwrite any variables specified
+    in the project file.
+
+    .PARAMETER OutputDir
+    Specifies the output directory for the package and artifacts.
+
+    .PARAMETER CompilerPath
+    Specifies a path to the AL compiler (alc.exe). If not specified,
+    it will install the bc-al-compiler package and use to compile.
+
+        .PARAMETER SignToolPath
+            Specifies a path to the sign tool that will be used to sign apps.
+            If not specified, the apps will not be signed.
+
+        .PARAMETER SignToolArgumentList
+            Specifies arguments for signing apps. The list should look like this:
+            @('sign', '/f', 'pfxCertificatePath', '/p', 'pfxCertificatePassword',
+            '/tr', "http://timestamp.digicert.com")
+            Refer here for more clarification on signtool paramater list:
+            https://learn.microsoft.com/en-us/windows/win32/seccrypto/signtool
+
+    .PARAMETER Force
+    If specified, it will overwrite any existing files.
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
-        [Alias('Dir')]
-        [Alias('Path')]
-        [string[]] $ProjectDir,
-        [Parameter(ValueFromPipelineByPropertyName)]
-        $BranchName,
-        [Parameter(ValueFromPipelineByPropertyName)]
-        $Target,
-        [Parameter(ValueFromPipelineByPropertyName)]
-        [hashtable] $Variables,
-        [Parameter(ValueFromPipelineByPropertyName)]
-        [string] $OutputDir,
-        $CompilerPath,
-        $Server,
-        [switch] $Force,
-        [switch] $UseDependencyTempDir
+    [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+    [Alias('Dir')]
+    [Alias('Path')]
+    [string[]] $ProjectDir,
+    [Parameter(ValueFromPipelineByPropertyName)]
+    $BranchName,
+    [Parameter(ValueFromPipelineByPropertyName)]
+    $Target,
+    [Parameter(ValueFromPipelineByPropertyName)]
+    [hashtable] $Variables,
+    [Parameter(ValueFromPipelineByPropertyName)]
+    [string] $OutputDir,
+    $CompilerPath,
+    $Server,
+        [string] $SignToolPath,
+        [array] $SignToolArgumentList,
+    [switch] $Force,
+    [switch] $UseDependencyTempDir,
+    [switch] $RunALCops
     )
     begin
     {
@@ -829,7 +977,7 @@ function Invoke-AlProjectBuild
         {
             if (!$Projects[$AppId].AppPath)
             {
-                Invoke-ProjectBuild -AppId $AppId -Projects $Projects -CompilerPath $CompilerPath -Force:$Force -Verbose:$Verbose -TempDirBase $TempDirBase -Server $Server
+                Invoke-ProjectBuild -AppId $AppId -Projects $Projects -CompilerPath $CompilerPath -Force:$Force -Verbose:$Verbose -TempDirBase $TempDirBase -Server $Server -SignToolPath $SignToolPath -SignToolArgumentList $SignToolArgumentList -RunALCops:$RunALCops
             }
         }
         if ($UseDependencyTempDir -and (Test-Path $TempDirBase))
@@ -842,24 +990,24 @@ function Invoke-AlProjectBuild
 function New-AlProjectPackage
 {
     param(
-        [Parameter(Mandatory)]
-        $ProjectDir,
-        [Parameter(Mandatory = $false)]
-        $AppPath,
-        $OutputDir,
-        [string] $Target,
-        [string] $BranchName,
-        [hashtable] $Variables,
-        [switch] $Force
+    [Parameter(Mandatory)]
+    $ProjectDir,
+    [Parameter(Mandatory = $false)]
+    $AppPath,
+    $OutputDir,
+    [string] $Target,
+    [string] $BranchName,
+    [hashtable] $Variables,
+    [switch] $Force
     )
 
     $ProjectFilePath = Get-GocProjectFilePath -ProjectDir $ProjectDir
 
     $Arguments = @{
-        AlProjectFilePath = (Join-Path $ProjectDir 'app.json') 
-        GocProjectFilePath = $ProjectFilePath 
+        AlProjectFilePath = (Join-Path $ProjectDir 'app.json')
+        GocProjectFilePath = $ProjectFilePath
         AppPath = $AppPath
-        OutputDir = $OutputDir 
+        OutputDir = $OutputDir
         Force = $Force
         Target = $Target
         BranchName = $BranchName
@@ -872,8 +1020,8 @@ function New-AlProjectPackage
 function Undo-AlVersion
 {
     param(
-        [Parameter(Mandatory = $true)]
-        $ProjectDir
+    [Parameter(Mandatory = $true)]
+    $ProjectDir
     )
 
     $ProjectFilePath = (Join-Path $ProjectDir 'app.json')
@@ -888,8 +1036,8 @@ function Undo-AlVersion
 function Get-AlModifiedDependencies
 {
     param(
-        [Array] $Dependencies,
-        [Array] $CompileModifiers
+    [Array] $Dependencies,
+    [Array] $CompileModifiers
     )
 
     $Used = @()
@@ -901,6 +1049,11 @@ function Get-AlModifiedDependencies
         if ($Modifier)
         {
             $Used += $Modifier
+            if ($Modifier.version -eq 'skip')
+            {
+                continue
+            }
+            
             $Query1 = [LSRetail.GoCurrent.Common.SemanticVersioning.VersionQuery]::Parse($Dependency.version)
             $Query2 = [LSRetail.GoCurrent.Common.SemanticVersioning.VersionQuery]::Parse($Modifier.version)
             $NewQuery = [LSRetail.GoCurrent.Common.SemanticVersioning.VersionQuery]::Intersection(@($Query1, $Query2))
@@ -925,8 +1078,8 @@ function Get-AlModifiedDependencies
 function Get-GocProjectFilePath
 {
     param(
-        [Parameter(Mandatory)]
-        $ProjectDir
+    [Parameter(Mandatory)]
+    $ProjectDir
     )
     $PossibleProjectPath = @((Join-Path $ProjectDir '.gocurrent\gocurrent.json'), (Join-Path $ProjectDir 'gocurrent.json'))
     $ProjectFilePath = $PossibleProjectPath | Where-Object { Test-Path $_ } | Select-Object -First 1
@@ -940,8 +1093,8 @@ function Get-GocProjectFilePath
 function Get-FirstValue
 {
     param(
-        [Array] $Values,
-        $DefaultValue = $null
+    [Array] $Values,
+    $DefaultValue = $null
     )
     foreach ($Value in $Values)
     {
@@ -956,7 +1109,7 @@ function Get-FirstValue
 function ConvertTo-HashtableList
 {
     param(
-        [Array]$Object
+    [Array]$Object
     )
 
     foreach ($Item in $Object)
@@ -964,7 +1117,7 @@ function ConvertTo-HashtableList
         if ($Item -is [hashtable])
         {
             $Item
-            continue    
+            continue
         }
         $Hashtable = @{}
         $Item.psobject.Properties | ForEach-Object { $Hashtable[$_.Name] = $_.Value }
